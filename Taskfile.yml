@@ -1,0 +1,62 @@
+version: '3'
+
+vars:
+  BINARY_BUILD_DIR: build/bin
+  CLI_BINARY: ldfctl
+  SRV_BINARY: ldfd
+  LDFLAGS: -ldflags \"-s -w\"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:all:
+    desc: Build all binaries
+    deps: [build:cli, build:srv]
+
+  build:cli:
+    desc: Build CLI binary
+    cmds:
+      - mkdir -p {{.BINARY_BUILD_DIR}}
+      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/client/cmd/ldfctl
+
+  build:srv:
+    desc: Build Server API binary
+    cmds:
+      - mkdir -p {{.BINARY_BUILD_DIR}}
+      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.API_BINARY}} ./src/server/cmd/ldfd
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BINARY_BUILD_DIR}}
+      - go clean
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./src/server/...
+
+  run:srv:
+    desc: Run Server API binary
+    deps: [build:srv]
+    cmds:
+      - ./{{.BINARY_BUILD_DIR}}/{{.API_BINARY}}
+
+  deps:
+    desc: Download dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./src/server/...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run ./src/server/...
