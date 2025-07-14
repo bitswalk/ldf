@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Script to complete the Linux Distribution Factory directory structure
+
+echo "Creating remaining directory structure..."
+
+# Create remaining directories
+directories=(
+    "src/internal/core/builder"
+    "src/internal/core/kernel"
+    "src/internal/core/components/bootloader"
+    "src/internal/core/components/filesystem"
+    "src/internal/core/components/init"
+    "src/internal/core/components/journal"
+    "src/internal/core/components/package"
+    "src/internal/core/components/security"
+    "src/internal/core/platform/aarch64"
+    "src/internal/core/platform/x86_64"
+    "src/internal/core/board"
+    "src/internal/core/distribution"
+    "src/internal/api/handlers"
+    "src/internal/api/middleware"
+    "src/internal/api/models"
+    "src/internal/api/routes"
+    "src/internal/tui/models"
+    "src/internal/tui/views"
+    "src/internal/tui/components"
+    "src/internal/cli/distribution"
+    "src/internal/cli/board"
+    "src/internal/cli/kernel"
+    "src/internal/log"
+    "src/internal/config"
+    "src/pkg/types"
+    "src/pkg/utils"
+    "src/api/openapi/schemas"
+    "src/configs/examples"
+    "src/templates/kernel"
+    "src/templates/init/systemd"
+    "src/templates/init/openrc"
+    "src/templates/bootloader/grub"
+    "src/templates/bootloader/systemd-boot"
+    "src/data/boards"
+    "src/data/patches"
+    "src/test/unit"
+    "src/test/integration"
+    "src/test/fixtures"
+    "docs/guides"
+    "tools/docker"
+    "tools/scripts"
+    "build/workspace"
+    "build/output"
+    ".github/workflows"
+)
+
+for dir in "${directories[@]}"; do
+    mkdir -p "$dir"
+    echo "Created: $dir"
+done
+
+echo "Directory structure complete!"
+echo ""
+echo "To get started:"
+echo "1. Run 'go mod tidy' to download dependencies"
+echo "2. Run 'make build' to build all binaries"
+echo "3. Run './bin/ldf --help' for CLI usage"
+echo "4. Run './bin/ldf-api' to start the API server"
+echo "5. Run './bin/ldf-tui' to launch the TUI"

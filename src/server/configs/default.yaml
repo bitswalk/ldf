@@ -1,0 +1,122 @@
+# Linux Distribution Factory - Default Configuration
+
+# Build configuration
+build:
+  # Workspace directory for build operations
+  cache_dir: ldf/build/cache/
+  # Output directory for completed distributions
+  release_dir: ldf/build/release/
+  # Number of parallel jobs for compilation
+  parallel_jobs: 4
+  # Enable build caching
+  cache_enabled: true
+
+# API server configuration
+api:
+  # API server host
+  host: 0.0.0.0
+  # API server port
+  port: 8080
+  # Enable CORS
+  cors_enabled: true
+  # Allowed CORS origins
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:8080
+  # Read timeout
+  read_timeout: 10s
+  # Write timeout
+  write_timeout: 10s
+  # Maximum request body size
+  max_body_size: 100MB
+
+# TUI configuration
+tui:
+  # Color theme
+  theme: default
+  # Enable mouse support
+  mouse_enabled: true
+  # Refresh rate in milliseconds
+  refresh_rate: 100
+
+# Logging configuration
+log:
+  # Log level: debug, info, warn, error
+  level: info
+  # Log format: json, text
+  format: text
+  # Log file path (empty for stdout)
+  file: ""
+  # Enable log rotation
+  rotation_enabled: false
+  # Maximum log file size in MB
+  max_size: 100
+  # Maximum number of old log files to keep
+  max_backups: 3
+  # Maximum age of log files in days
+  max_age: 30
+
+# Kernel configuration
+kernel:
+  # Default kernel source URL
+  source_url: https://kernel.org/pub/linux/kernel
+  # Default kernel version (empty for latest stable)
+  default_version: ""
+  # Kernel build timeout
+  build_timeout: 1h
+  # Enable kernel config validation
+  config_validation: true
+
+# Distribution defaults
+distribution:
+  # Default platform
+  default_platform: x86_64
+  # Default init system
+  default_init: systemd
+  # Default filesystem
+  default_filesystem: btrfs
+  # Default bootloader
+  default_bootloader: systemd-boot
+  # Default resource management
+  default_resource_mgmt: cgroups
+  # Default package manager
+  default_package_manager: dnf
+
+# Security configuration
+security:
+  # Enable signature verification
+  signature_verification: true
+  # GPG keyring path
+  keyring_path: ~/.gnupg
+  # Trusted key IDs
+  trusted_keys: []
+
+# Network configuration
+network:
+  # Download timeout
+  download_timeout: 30m
+  # Number of download retries
+  download_retries: 3
+  # Proxy settings (empty for no proxy)
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: "localhost,127.0.0.1"
+
+# Repository configuration
+repository:
+  # Local repository path
+  local_path: ~/.local/share/ldf/repo
+  # Enable repository caching
+  cache_enabled: true
+  # Repository sync interval
+  sync_interval: 24h
+
+# Notification configuration
+notifications:
+  # Enable build notifications
+  enabled: true
+  # Notification methods
+  methods:
+    - terminal
+  # Webhook URL for external notifications
+  webhook_url: ""

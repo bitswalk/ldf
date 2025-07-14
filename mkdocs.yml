@@ -1,0 +1,31 @@
+site_name: Linux Distribution Factory
+site_url: https://ldf.bitswalk.com/docs
+copyright: Copyright &copy; 2025 - Bitswalk, inc.
+
+theme:
+  name: material
+  features:
+    - announce.dismiss
+    - navigation.footer
+    # - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+plugins:
+  - blog
+  - search
+  - social
+  - tags
+
+extra:
+  generator: true

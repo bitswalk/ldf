@@ -1,0 +1,131 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Binary output directory
+bin/
+
+# Build directories
+build/
+dist/
+output/
+.cache/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Configuration files with sensitive data
+config.local.yaml
+config.prod.yaml
+.env
+.env.local
+.env.production
+
+# Coverage reports
+coverage/
+*.coverprofile
+coverage.html
+coverage.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Build artifacts
+*.img
+*.iso
+*.tar
+*.tar.gz
+*.tar.xz
+*.zip
+
+# Kernel build artifacts
+linux-*/
+*.config.old
+
+# Distribution workspace
+workspace/
+
+# Generated documentation
+docs/_build/
+docs/site/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Certificates
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.bak
+*.backup
+
+# Debug files
+debug
+debug.test
+
+# Profile outputs
+*.prof
+*.ppof
+
+# Core dumps
+core
+
+# Vim
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
