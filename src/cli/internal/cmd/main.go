@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/charmbracelet/log"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ldf",
+	Use:   "ldfctl",
 	Short: "Linux Distribution Factory - Build custom Linux distributions",
 	Long: `Linux Distribution Factory (LDF) is a modern tool for creating custom Linux distributions.
 It provides an easy-to-use interface for configuring and building Linux distributions
@@ -25,9 +25,9 @@ with your choice of kernel, init system, filesystem, and other components.`,
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/ldf/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/ldfctl/config.yaml)")
 	rootCmd.PersistentFlags().String("log-level", "info", "log level (debug, info, warn, error)")
-	
+
 	viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level"))
 
 	// Initialize logger
@@ -41,7 +41,7 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		viper.AddConfigPath(home + "/.config/ldf")
+		viper.AddConfigPath(home + "/.config/ldfctl")
 		viper.AddConfigPath(".")
 		viper.SetConfigType("yaml")
 		viper.SetConfigName("config")

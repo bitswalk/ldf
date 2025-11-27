@@ -1,6 +1,6 @@
-module github.com/bitswalk/linux-distribution-factory
+module github.com/bitswalk/ldf
 
-go 1.24.0
+go 1.24.5
 
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
