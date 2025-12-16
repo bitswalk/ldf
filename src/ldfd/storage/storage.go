@@ -1,0 +1,84 @@
+// Package storage provides storage backends for ldfd distribution artifacts.
+package storage
+
+import (
+	"context"
+	"io"
+	"time"
+)
+
+// Backend defines the interface for storage backends
+type Backend interface {
+	// Upload uploads data to storage
+	Upload(ctx context.Context, key string, reader io.Reader, size int64, contentType string) error
+
+	// Download downloads an object from storage
+	Download(ctx context.Context, key string) (io.ReadCloser, *ObjectInfo, error)
+
+	// Delete deletes an object from storage
+	Delete(ctx context.Context, key string) error
+
+	// Exists checks if an object exists
+	Exists(ctx context.Context, key string) (bool, error)
+
+	// GetInfo retrieves metadata for an object
+	GetInfo(ctx context.Context, key string) (*ObjectInfo, error)
+
+	// List lists objects with the given prefix
+	List(ctx context.Context, prefix string) ([]ObjectInfo, error)
+
+	// GetPresignedURL generates a presigned URL for downloading (may not be supported by all backends)
+	GetPresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error)
+
+	// Ping checks if the storage is accessible
+	Ping(ctx context.Context) error
+
+	// Type returns the storage backend type
+	Type() string
+
+	// Location returns a human-readable location description
+	Location() string
+}
+
+// ObjectInfo holds metadata about a storage object
+type ObjectInfo struct {
+	Key          string    `json:"key"`
+	Size         int64     `json:"size"`
+	ContentType  string    `json:"content_type,omitempty"`
+	ETag         string    `json:"etag,omitempty"`
+	LastModified time.Time `json:"last_modified"`
+}
+
+// Config holds the storage configuration
+type Config struct {
+	// Type is the storage backend type: "s3" or "local"
+	Type string
+
+	// Local storage configuration
+	Local LocalConfig
+
+	// S3 storage configuration
+	S3 S3Config
+}
+
+// DefaultConfig returns a default storage configuration (local filesystem)
+func DefaultConfig() Config {
+	return Config{
+		Type: "local",
+		Local: LocalConfig{
+			BasePath: "~/.ldfd/artifacts",
+		},
+	}
+}
+
+// New creates a new storage backend based on configuration
+func New(cfg Config) (Backend, error) {
+	switch cfg.Type {
+	case "s3":
+		return NewS3(cfg.S3)
+	case "local", "":
+		return NewLocal(cfg.Local)
+	default:
+		return NewLocal(cfg.Local)
+	}
+}
