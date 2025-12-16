@@ -257,7 +257,7 @@ export const Console: Component<ConsoleProps> = (props) => {
   return (
     <Show when={isDevMode()}>
       <footer
-        class="fixed bottom-0 left-0 right-0 bg-card border-t border-border font-mono text-xs z-[9999] flex flex-col"
+        class="fixed bottom-0 left-[5vw] right-0 bg-card border-t border-border font-mono text-xs z-[9999] flex flex-col"
         classList={{ "select-none": isDragging() }}
       >
         {/* Resize Handle - Only visible when expanded */}

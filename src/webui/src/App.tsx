@@ -8,6 +8,7 @@ import { Register } from "./views/Register";
 import { ServerConnection } from "./views/ServerConnection";
 import { UserSettings } from "./views/UserSettings";
 import { Console } from "./components/Console";
+import { Menu } from "./components/Menu";
 import { logout, type UserInfo } from "./services/authService";
 import type { APIInfo } from "./services/storageService";
 import {
@@ -158,64 +159,74 @@ const App: Component = () => {
   };
 
   return (
-    <>
-      <section id="header" class="h-[10vh] w-full">
-        <Header
-          isLoggedIn={isLoggedIn()}
-          user={authState().user}
-          onLogout={handleLogout}
-          onSettings={handleOpenSettings}
-          onBadgeClick={handleBadgeClick}
-        />
+    <section class="flex h-screen w-screen">
+      {/* Left Menu */}
+      <Menu orientation="vertical" />
+
+      {/* Main Content Area */}
+      <section class="flex flex-col flex-1 w-[95vw]">
+        <header id="header" class="h-[10vh] w-full">
+          <Header
+            isLoggedIn={isLoggedIn()}
+            user={authState().user}
+            onLogout={handleLogout}
+            onSettings={handleOpenSettings}
+            onBadgeClick={handleBadgeClick}
+          />
+        </header>
+        <main id="viewport" class="h-[90vh] w-full relative">
+          <Transition
+            mode="outin"
+            enterActiveClass="transition-opacity duration-300 ease-in"
+            enterClass="opacity-0"
+            enterToClass="opacity-100"
+            exitActiveClass="transition-opacity duration-300 ease-in"
+            exitClass="opacity-100"
+            exitToClass="opacity-0"
+          >
+            <Switch>
+              <Match when={currentView() === "server-connection"}>
+                <ServerConnection
+                  onConnect={handleServerConnect}
+                  initialError={connectionError()}
+                />
+              </Match>
+              <Match when={currentView() === "distribution"}>
+                <Distribution
+                  isLoggedIn={isLoggedIn()}
+                  user={authState().user}
+                />
+              </Match>
+              <Match when={currentView() === "login"}>
+                <Login
+                  serverUrl={authState().serverUrl}
+                  onLoginSuccess={handleLoginSuccess}
+                  onShowRegister={handleShowRegister}
+                />
+              </Match>
+              <Match when={currentView() === "register"}>
+                <Register
+                  serverUrl={authState().serverUrl}
+                  prefillUsername={pendingUsername()}
+                  onSuccess={handleRegisterSuccess}
+                  onBackToLogin={handleBackToLogin}
+                />
+              </Match>
+              <Match when={currentView() === "settings"}>
+                <UserSettings onBack={handleBackFromSettings} />
+              </Match>
+            </Switch>
+          </Transition>
+        </main>
       </section>
-      <main id="viewport" class="h-[90vh] w-full relative">
-        <Transition
-          mode="outin"
-          enterActiveClass="transition-opacity duration-300 ease-in"
-          enterClass="opacity-0"
-          enterToClass="opacity-100"
-          exitActiveClass="transition-opacity duration-300 ease-in"
-          exitClass="opacity-100"
-          exitToClass="opacity-0"
-        >
-          <Switch>
-            <Match when={currentView() === "server-connection"}>
-              <ServerConnection
-                onConnect={handleServerConnect}
-                initialError={connectionError()}
-              />
-            </Match>
-            <Match when={currentView() === "distribution"}>
-              <Distribution isLoggedIn={isLoggedIn()} user={authState().user} />
-            </Match>
-            <Match when={currentView() === "login"}>
-              <Login
-                serverUrl={authState().serverUrl}
-                onLoginSuccess={handleLoginSuccess}
-                onShowRegister={handleShowRegister}
-              />
-            </Match>
-            <Match when={currentView() === "register"}>
-              <Register
-                serverUrl={authState().serverUrl}
-                prefillUsername={pendingUsername()}
-                onSuccess={handleRegisterSuccess}
-                onBackToLogin={handleBackToLogin}
-              />
-            </Match>
-            <Match when={currentView() === "settings"}>
-              <UserSettings onBack={handleBackFromSettings} />
-            </Match>
-          </Switch>
-        </Transition>
-      </main>
+
       <Console
         isLoggedIn={isLoggedIn()}
         onToggleLogin={handleToggleLogin}
         currentView={currentView()}
         onViewChange={setCurrentView}
       />
-    </>
+    </section>
   );
 };
 
