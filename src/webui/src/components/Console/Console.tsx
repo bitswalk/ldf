@@ -93,7 +93,7 @@ const getLevelLabel = (level: LogLevel): string => {
 };
 
 // Constants for resize behavior
-const HEADER_HEIGHT = 32; // min-h-[32px] of the header
+const HEADER_HEIGHT = 48; // h-12 (48px) of the header
 const MAX_CONSOLE_HEIGHT_VH = 30; // 30vh max height
 const MIN_DRAG_THRESHOLD = 50; // px - if dragged below this, collapse
 
@@ -257,7 +257,7 @@ export const Console: Component<ConsoleProps> = (props) => {
   return (
     <Show when={isDevMode()}>
       <footer
-        class="fixed bottom-0 left-[5vw] right-0 bg-card border-t border-border font-mono text-xs z-[9999] flex flex-col"
+        class="fixed bottom-0 left-12 right-0 bg-card border-t border-border font-mono text-xs z-[50] flex flex-col"
         classList={{ "select-none": isDragging() }}
       >
         {/* Resize Handle - Only visible when expanded */}
@@ -272,7 +272,7 @@ export const Console: Component<ConsoleProps> = (props) => {
         </Show>
 
         {/* Console Header Bar - Always visible when dev mode is on */}
-        <header class="flex items-center justify-between px-3 py-1.5 bg-muted border-b border-border min-h-[32px]">
+        <header class="flex items-center justify-between px-3 h-12 bg-muted border-b border-border">
           {/* Left section - Console toggle and info */}
           <section class="flex items-center gap-3">
             <button

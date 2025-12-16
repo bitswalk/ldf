@@ -159,22 +159,28 @@ const App: Component = () => {
   };
 
   return (
-    <section class="flex h-screen w-screen">
-      {/* Left Menu */}
-      <Menu orientation="vertical" />
+    <section class="flex flex-col h-screen w-screen">
+      {/* Header - Full width at top */}
+      <header id="header" class="h-12 w-full shrink-0">
+        <Header
+          isLoggedIn={isLoggedIn()}
+          user={authState().user}
+          onLogout={handleLogout}
+          onSettings={handleOpenSettings}
+          onBadgeClick={handleBadgeClick}
+        />
+      </header>
 
-      {/* Main Content Area */}
-      <section class="flex flex-col flex-1 w-[95vw]">
-        <header id="header" class="h-[10vh] w-full">
-          <Header
-            isLoggedIn={isLoggedIn()}
-            user={authState().user}
-            onLogout={handleLogout}
-            onSettings={handleOpenSettings}
-            onBadgeClick={handleBadgeClick}
-          />
-        </header>
-        <main id="viewport" class="h-[90vh] w-full relative">
+      {/* Content Area - Menu + Viewport */}
+      <section class="flex flex-1 overflow-hidden relative">
+        {/* Left Menu */}
+        <Menu orientation="vertical" />
+
+        {/* Menu Spacer - reserves space for collapsed menu */}
+        <div class="w-12 shrink-0" />
+
+        {/* Main Viewport */}
+        <main id="viewport" class="flex-1 relative overflow-auto">
           <Transition
             mode="outin"
             enterActiveClass="transition-opacity duration-300 ease-in"
@@ -220,6 +226,7 @@ const App: Component = () => {
         </main>
       </section>
 
+      {/* Console Footer */}
       <Console
         isLoggedIn={isLoggedIn()}
         onToggleLogin={handleToggleLogin}

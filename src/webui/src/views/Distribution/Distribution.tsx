@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../../components/DropdownMenu";
+import { SummaryToggle } from "../../components/Summary";
 import {
   listDistributions,
   deleteDistribution,
@@ -353,13 +354,11 @@ export const Distribution: Component<DistributionProps> = (props) => {
             <nav class="flex items-center gap-4">
               <Show when={isAdmin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyMine()}
-                    onChange={(e) => setShowOnlyMine(e.currentTarget.checked)}
-                    class="w-4 h-4 accent-primary cursor-pointer"
-                  />
                   <span>Show only mine</span>
+                  <SummaryToggle
+                    checked={showOnlyMine()}
+                    onChange={setShowOnlyMine}
+                  />
                 </label>
               </Show>
               <button

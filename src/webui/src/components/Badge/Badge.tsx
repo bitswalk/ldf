@@ -11,7 +11,7 @@ export const Badge: Component<BadgeProps> = (props) => {
   return (
     <button
       onClick={props.onClick}
-      class="w-10 h-10 rounded-full bg-muted hover:border-primary transition-colors flex items-center justify-center overflow-hidden border-2 border-border group"
+      class="w-8 h-8 rounded-full bg-muted hover:border-primary transition-colors flex items-center justify-center overflow-hidden border-2 border-border group"
       title={props.isLoggedIn ? "Profile" : "Login"}
     >
       {props.avatarUrl ? (
@@ -23,7 +23,7 @@ export const Badge: Component<BadgeProps> = (props) => {
       ) : (
         <Icon
           name="user"
-          size="xl"
+          size="lg"
           class="text-muted-foreground group-hover:text-primary transition-colors"
         />
       )}
