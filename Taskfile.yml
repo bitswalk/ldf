@@ -1,10 +1,21 @@
-version: '3'
+version: "3"
 
 vars:
   BINARY_BUILD_DIR: build/bin
   CLI_BINARY: ldfctl
   SRV_BINARY: ldfd
-  LDFLAGS: -ldflags \"-s -w\"
+  # Version components
+  RELEASE_NAME: Phoenix
+  RELEASE_VERSION: 1.0.1
+  RELEASE_DATE:
+    sh: date -u +"%Y.%m"
+  GIT_COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  BUILD_DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  # Full version string: Phoenix (2025.12) - v1.0.0-4f9f297
+  VERSION_STRING: "{{.RELEASE_NAME}} ({{.RELEASE_DATE}}) - v{{.RELEASE_VERSION}}-{{.GIT_COMMIT}}"
+  LDFLAGS: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfd/core.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfd/core.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseVersion={{.RELEASE_VERSION}}"
 
 tasks:
   default:
@@ -20,13 +31,13 @@ tasks:
     desc: Build CLI binary
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/client/cmd/ldfctl
+      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
 
   build:srv:
     desc: Build Server API binary
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.API_BINARY}} ./src/server/cmd/ldfd
+      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
 
   clean:
     desc: Clean build artifacts
@@ -35,15 +46,31 @@ tasks:
       - go clean
 
   test:
-    desc: Run tests
+    desc: Run all tests
     cmds:
-      - go test -v ./src/server/...
+      - go test -v ./src/...
+
+  test:srv:
+    desc: Run server tests
+    cmds:
+      - go test -v ./src/ldfd/...
+
+  test:cli:
+    desc: Run CLI tests
+    cmds:
+      - go test -v ./src/ldfctl/...
 
   run:srv:
     desc: Run Server API binary
     deps: [build:srv]
     cmds:
-      - ./{{.BINARY_BUILD_DIR}}/{{.API_BINARY}}
+      - ./{{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}}
+
+  run:srv:dev:
+    desc: Run Server API in development mode
+    deps: [build:srv]
+    cmds:
+      - ./{{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} --log-output stdout --log-level debug
 
   deps:
     desc: Download dependencies
@@ -54,9 +81,9 @@ tasks:
   fmt:
     desc: Format code
     cmds:
-      - go fmt ./src/server/...
+      - go fmt ./src/...
 
   lint:
     desc: Run linter
     cmds:
-      - golangci-lint run ./src/server/...
+      - golangci-lint run ./src/...
