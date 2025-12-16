@@ -7,7 +7,7 @@ import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { ServerConnection } from "./views/ServerConnection";
 import { UserSettings } from "./views/UserSettings";
-import { DebugPanel } from "./components/DebugPanel";
+import { Console } from "./components/Console";
 import { logout, type UserInfo } from "./services/authService";
 import type { APIInfo } from "./services/storageService";
 import {
@@ -209,7 +209,7 @@ const App: Component = () => {
           </Switch>
         </Transition>
       </main>
-      <DebugPanel
+      <Console
         isLoggedIn={isLoggedIn()}
         onToggleLogin={handleToggleLogin}
         currentView={currentView()}
