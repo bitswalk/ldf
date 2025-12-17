@@ -404,3 +404,27 @@ func (d *Database) SetSetting(key, value string) error {
 	`, key, value)
 	return err
 }
+
+// GetAllSettings retrieves all settings as a map
+func (d *Database) GetAllSettings() (map[string]string, error) {
+	rows, err := d.db.Query("SELECT key, value FROM settings")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	settings := make(map[string]string)
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return nil, err
+		}
+		settings[key] = value
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
+}

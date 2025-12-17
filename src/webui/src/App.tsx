@@ -53,8 +53,21 @@ const App: Component = () => {
   const [connectionError, setConnectionError] = createSignal<string | null>(
     null,
   );
+  const [isDevMode, setIsDevMode] = createSignal(false);
 
   onMount(async () => {
+    // Check dev mode state
+    const devMode = localStorage.getItem("dev-mode") === "true";
+    setIsDevMode(devMode);
+
+    // Listen for dev mode changes
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "dev-mode") {
+        setIsDevMode(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
     // If we have a server URL but missing endpoints, try to re-discover them
     if (hasServerConnection() && !hasCompleteServerConnection()) {
       const result = await discoverAPIEndpoints();
@@ -179,8 +192,12 @@ const App: Component = () => {
         {/* Menu Spacer - reserves space for collapsed menu */}
         <div class="w-12 shrink-0" />
 
-        {/* Main Viewport */}
-        <main id="viewport" class="flex-1 relative overflow-auto">
+        {/* Main Viewport - adds bottom padding when dev console is visible */}
+        <main
+          id="viewport"
+          class="flex-1 relative overflow-auto"
+          classList={{ "pb-14": isDevMode() }}
+        >
           <Transition
             mode="outin"
             enterActiveClass="transition-opacity duration-300 ease-in"

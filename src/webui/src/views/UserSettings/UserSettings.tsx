@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
 import {
   Summary,
@@ -13,8 +13,15 @@ import {
   SummarySelect,
   SummaryButton,
 } from "../../components/Summary";
+import { ServerSettingsPanel } from "../../components/ServerSettingsPanel";
 import { themeService } from "../../services/themeService";
 import { getServerUrl } from "../../services/storageService";
+import {
+  getServerSettings,
+  updateServerSetting,
+  isRootUser,
+  type ServerSetting,
+} from "../../services/settingsService";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -28,6 +35,54 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
   const [serverUrl, setServerUrl] = createSignal("");
   const [useSystemPrompts, setUseSystemPrompts] = createSignal(true);
   const [redactPrivateValues, setRedactPrivateValues] = createSignal(false);
+
+  // Server settings state (for root users)
+  const [serverSettings, setServerSettings] = createSignal<ServerSetting[]>([]);
+  const [settingsLoading, setSettingsLoading] = createSignal(false);
+  const [settingsError, setSettingsError] = createSignal<string | null>(null);
+  const [updatingSettings, setUpdatingSettings] = createSignal<Set<string>>(
+    new Set(),
+  );
+
+  const loadServerSettings = async () => {
+    if (!isRootUser()) return;
+
+    setSettingsLoading(true);
+    setSettingsError(null);
+
+    const result = await getServerSettings();
+    if (result.success) {
+      setServerSettings(result.settings);
+    } else {
+      setSettingsError(result.message);
+    }
+
+    setSettingsLoading(false);
+  };
+
+  const handleSettingUpdate = async (
+    key: string,
+    value: string | number | boolean,
+  ) => {
+    setUpdatingSettings((prev) => new Set(prev).add(key));
+
+    const result = await updateServerSetting(key, value);
+    if (result.success) {
+      // Update local state
+      setServerSettings((prev) =>
+        prev.map((s) => (s.key === key ? { ...s, value: result.value } : s)),
+      );
+      // Could show a toast notification here if rebootRequired
+    } else {
+      setSettingsError(result.message);
+    }
+
+    setUpdatingSettings((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
 
   onMount(() => {
     // Load current theme preference
@@ -44,6 +99,9 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
     if (url) {
       setServerUrl(url);
     }
+
+    // Load server settings if user is root
+    loadServerSettings();
   });
 
   const handleThemeChange = (preference: ThemePreference) => {
@@ -90,12 +148,11 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
           <SummaryCategory id="appearance" label="Appearance" icon="palette">
             <SummaryNavItem id="theme" label="Theme" />
           </SummaryCategory>
-          <SummaryCategory
-            id="connection"
-            label="Connection"
-            icon="plugs-connected"
-          >
-            <SummaryNavItem id="server" label="Server" />
+          <SummaryCategory id="server" label="Server" icon="plugs-connected">
+            <SummaryNavItem id="server-connection" label="Connection" />
+            <Show when={isRootUser()}>
+              <SummaryNavItem id="server-settings" label="Settings" />
+            </Show>
           </SummaryCategory>
           <SummaryCategory id="account" label="Account" icon="user">
             <SummaryNavItem id="profile" label="Profile" />
@@ -182,10 +239,10 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
             </SummaryItem>
           </SummarySection>
 
-          {/* Server Section */}
+          {/* Server Connection Section */}
           <SummarySection
-            id="server"
-            title="Server"
+            id="server-connection"
+            title="Connection"
             description="Server connection settings"
           >
             <SummaryItem
@@ -202,6 +259,22 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
             >
               <SummaryButton onClick={() => {}}>Test connection</SummaryButton>
             </SummaryItem>
+          </SummarySection>
+
+          {/* Server Settings Section (Root users only) */}
+          <SummarySection
+            id="server-settings"
+            title="Server Settings"
+            description="Configure server runtime settings (requires root access)"
+          >
+            <ServerSettingsPanel
+              settings={serverSettings()}
+              loading={settingsLoading()}
+              error={settingsError()}
+              updatingKeys={updatingSettings()}
+              onUpdate={handleSettingUpdate}
+              onRetry={loadServerSettings}
+            />
           </SummarySection>
 
           {/* Profile Section */}

@@ -128,6 +128,11 @@ func (l *Logger) Output() LogOutput {
 	return l.output
 }
 
+// SetLevel updates the log level at runtime
+func (l *Logger) SetLevel(level string) {
+	l.Logger.SetLevel(parseLevel(level))
+}
+
 // journaldWriter implements io.Writer for journald
 type journaldWriter struct {
 	identifier string
