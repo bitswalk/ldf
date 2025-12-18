@@ -3,7 +3,7 @@ import "./index.css";
 import { render } from "solid-js/web";
 
 import App from "./App";
-import { themeService } from "./services/themeService";
+import { themeService } from "./services/theme";
 import { defaultTheme } from "./themes/default";
 
 const root = document.getElementById("root");

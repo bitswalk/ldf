@@ -30,6 +30,10 @@ type Backend interface {
 	// GetPresignedURL generates a presigned URL for downloading (may not be supported by all backends)
 	GetPresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error)
 
+	// GetWebURL returns a direct web URL for accessing an artifact via the web gateway
+	// For S3-compatible storage with separate web endpoints (like GarageHQ)
+	GetWebURL(key string) string
+
 	// Ping checks if the storage is accessible
 	Ping(ctx context.Context) error
 

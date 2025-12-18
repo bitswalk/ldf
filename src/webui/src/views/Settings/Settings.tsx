@@ -14,27 +14,31 @@ import {
   SummaryButton,
 } from "../../components/Summary";
 import { ServerSettingsPanel } from "../../components/ServerSettingsPanel";
-import { themeService } from "../../services/themeService";
-import { getServerUrl } from "../../services/storageService";
+import { themeService } from "../../services/theme";
+import { getServerUrl } from "../../services/storage";
 import {
   getServerSettings,
   updateServerSetting,
   isRootUser,
+  setDevMode,
   type ServerSetting,
-} from "../../services/settingsService";
+} from "../../services/settings";
+import { isDevMode } from "../../lib/utils";
 
 type ThemePreference = "system" | "light" | "dark";
 
-interface UserSettingsProps {
+interface SettingsProps {
   onBack?: () => void;
 }
 
-export const UserSettings: Component<UserSettingsProps> = (props) => {
+export const Settings: Component<SettingsProps> = (props) => {
   const [themePreference, setThemePreference] =
     createSignal<ThemePreference>("system");
   const [serverUrl, setServerUrl] = createSignal("");
   const [useSystemPrompts, setUseSystemPrompts] = createSignal(true);
   const [redactPrivateValues, setRedactPrivateValues] = createSignal(false);
+  const [devModeEnabled, setDevModeEnabled] = createSignal(false);
+  const [devModeUpdating, setDevModeUpdating] = createSignal(false);
 
   // Server settings state (for root users)
   const [serverSettings, setServerSettings] = createSignal<ServerSetting[]>([]);
@@ -84,6 +88,15 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
     });
   };
 
+  const handleDevModeToggle = async (enabled: boolean) => {
+    setDevModeUpdating(true);
+    const result = await setDevMode(enabled);
+    if (result.success) {
+      setDevModeEnabled(enabled);
+    }
+    setDevModeUpdating(false);
+  };
+
   onMount(() => {
     // Load current theme preference
     const autoMode = localStorage.getItem("theme-auto");
@@ -99,6 +112,9 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
     if (url) {
       setServerUrl(url);
     }
+
+    // Load devmode state from localStorage
+    setDevModeEnabled(isDevMode());
 
     // Load server settings if user is root
     loadServerSettings();
@@ -190,6 +206,18 @@ export const UserSettings: Component<UserSettingsProps> = (props) => {
                 onChange={() => {}}
               />
             </SummaryItem>
+            <Show when={isRootUser()}>
+              <SummaryItem
+                title="Developer Mode"
+                description="Enable debug console and verbose logging."
+              >
+                <SummaryToggle
+                  checked={devModeEnabled()}
+                  onChange={handleDevModeToggle}
+                  disabled={devModeUpdating()}
+                />
+              </SummaryItem>
+            </Show>
           </SummarySection>
 
           {/* Privacy Section */}

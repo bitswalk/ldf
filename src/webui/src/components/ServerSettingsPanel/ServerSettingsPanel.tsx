@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, createMemo, Show, For } from "solid-js";
 import { Icon } from "../Icon";
-import type { ServerSetting } from "../../services/settingsService";
+import type { ServerSetting } from "../../services/settings";
 
 interface ServerSettingsPanelProps {
   settings: ServerSetting[];
@@ -131,9 +131,21 @@ const settingsStructure: SettingGroupConfig[] = [
         label: "S3 Compatible",
         children: [
           {
+            key: "storage.s3.provider",
+            label: "Provider",
+            description: "S3-compatible storage provider",
+            type: "string",
+            options: [
+              { value: "garage", label: "GarageHQ" },
+              { value: "minio", label: "MinIO" },
+              { value: "aws", label: "Amazon S3" },
+              { value: "other", label: "Other" },
+            ],
+          },
+          {
             key: "storage.s3.endpoint",
             label: "Endpoint",
-            description: "S3-compatible endpoint URL",
+            description: "Base S3 domain (e.g., s3.example.com)",
             type: "string",
           },
           {
@@ -160,12 +172,6 @@ const settingsStructure: SettingGroupConfig[] = [
             description: "S3 secret access key",
             type: "string",
           },
-          {
-            key: "storage.s3.path_style",
-            label: "Path Style",
-            description: "Use path-style addressing",
-            type: "bool",
-          },
         ],
       },
     ],
@@ -181,6 +187,76 @@ const SettingInput: Component<{
   onUpdate: (key: string, value: string | number | boolean) => void;
 }> = (props) => {
   const value = () => props.setting?.value ?? "";
+  const [editValue, setEditValue] = createSignal<string>("");
+  const [isEditing, setIsEditing] = createSignal(false);
+  const [hasChanges, setHasChanges] = createSignal(false);
+
+  // Check if value is sensitive (masked)
+  const isSensitive = () => {
+    const key = props.config.key;
+    return key === "storage.s3.access_key" || key === "storage.s3.secret_key";
+  };
+
+  // Initialize edit value when entering edit mode
+  const startEditing = () => {
+    if (props.disabled || props.updating) return;
+    // For sensitive fields, start with empty value since we can't show the real one
+    const initialValue = isSensitive() ? "" : String(value());
+    setEditValue(initialValue);
+    setIsEditing(true);
+    setHasChanges(false);
+  };
+
+  // Handle input change
+  const handleInputChange = (newValue: string) => {
+    setEditValue(newValue);
+    const originalValue = isSensitive() ? "" : String(value());
+    setHasChanges(newValue !== originalValue);
+  };
+
+  // Submit the value
+  const submitValue = () => {
+    if (!hasChanges() && !isSensitive()) {
+      setIsEditing(false);
+      return;
+    }
+
+    // For sensitive fields, only submit if user entered something
+    if (isSensitive() && editValue() === "") {
+      setIsEditing(false);
+      return;
+    }
+
+    const finalValue =
+      props.config.type === "int" ? parseInt(editValue(), 10) : editValue();
+
+    // Validate int type
+    if (props.config.type === "int" && isNaN(finalValue as number)) {
+      setIsEditing(false);
+      return;
+    }
+
+    props.onUpdate(props.config.key, finalValue);
+    setIsEditing(false);
+    setHasChanges(false);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setHasChanges(false);
+  };
+
+  // Handle keyboard events
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitValue();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEditing();
+    }
+  };
 
   return (
     <article class="flex items-center justify-between py-3 pl-8 pr-4 gap-4">
@@ -192,7 +268,8 @@ const SettingInput: Component<{
           </span>
         </Show>
       </section>
-      <section class="shrink-0">
+      <section class="shrink-0 flex items-center gap-2">
+        {/* Boolean toggle */}
         <Show when={props.config.type === "bool"}>
           <button
             type="button"
@@ -211,6 +288,8 @@ const SettingInput: Component<{
             />
           </button>
         </Show>
+
+        {/* Select dropdown */}
         <Show when={props.config.type === "string" && props.config.options}>
           <select
             value={String(value())}
@@ -223,15 +302,114 @@ const SettingInput: Component<{
             </For>
           </select>
         </Show>
+
+        {/* Editable string input */}
         <Show when={props.config.type === "string" && !props.config.options}>
-          <span class="text-sm text-muted-foreground font-mono max-w-48 truncate block">
-            {String(value()) || "—"}
-          </span>
+          <Show
+            when={isEditing()}
+            fallback={
+              <button
+                type="button"
+                onClick={startEditing}
+                disabled={props.disabled || props.updating}
+                class="text-sm font-mono max-w-56 truncate block px-2 py-1 border border-transparent rounded hover:border-border hover:bg-muted/50 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-50"
+                title={isSensitive() ? "Click to edit" : String(value())}
+              >
+                {props.updating ? (
+                  <Icon name="spinner" size="xs" class="animate-spin" />
+                ) : isSensitive() ? (
+                  <span class="text-muted-foreground">••••••••</span>
+                ) : (
+                  String(value()) || (
+                    <span class="text-muted-foreground">—</span>
+                  )
+                )}
+              </button>
+            }
+          >
+            <section class="flex items-center gap-1">
+              <input
+                type={isSensitive() ? "password" : "text"}
+                value={editValue()}
+                onInput={(e) => handleInputChange(e.currentTarget.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={submitValue}
+                autofocus
+                placeholder={isSensitive() ? "Enter new value" : ""}
+                class="w-48 px-2 py-1 text-sm font-mono border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <Show when={hasChanges() || isSensitive()}>
+                <button
+                  type="button"
+                  onClick={submitValue}
+                  class="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                  title="Save"
+                >
+                  <Icon name="check" size="xs" />
+                </button>
+              </Show>
+              <button
+                type="button"
+                onClick={cancelEditing}
+                class="p-1 text-muted-foreground hover:bg-muted rounded transition-colors"
+                title="Cancel"
+              >
+                <Icon name="x" size="xs" />
+              </button>
+            </section>
+          </Show>
         </Show>
+
+        {/* Editable int input */}
         <Show when={props.config.type === "int"}>
-          <span class="text-sm text-muted-foreground font-mono">
-            {String(value())}
-          </span>
+          <Show
+            when={isEditing()}
+            fallback={
+              <button
+                type="button"
+                onClick={startEditing}
+                disabled={props.disabled || props.updating}
+                class="text-sm font-mono px-2 py-1 border border-transparent rounded hover:border-border hover:bg-muted/50 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-50"
+                title="Click to edit"
+              >
+                {props.updating ? (
+                  <Icon name="spinner" size="xs" class="animate-spin" />
+                ) : (
+                  String(value())
+                )}
+              </button>
+            }
+          >
+            <section class="flex items-center gap-1">
+              <input
+                type="number"
+                value={editValue()}
+                onInput={(e) => handleInputChange(e.currentTarget.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={submitValue}
+                autofocus
+                class="w-24 px-2 py-1 text-sm font-mono border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <Show when={hasChanges()}>
+                <button
+                  type="button"
+                  onClick={submitValue}
+                  class="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                  title="Save"
+                >
+                  <Icon name="check" size="xs" />
+                </button>
+              </Show>
+              <button
+                type="button"
+                onClick={cancelEditing}
+                class="p-1 text-muted-foreground hover:bg-muted rounded transition-colors"
+                title="Cancel"
+              >
+                <Icon name="x" size="xs" />
+              </button>
+            </section>
+          </Show>
         </Show>
       </section>
     </article>

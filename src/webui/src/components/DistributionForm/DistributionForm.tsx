@@ -1,5 +1,6 @@
 import type { Component } from "solid-js";
 import { createSignal, Show, For } from "solid-js";
+import { debugLog } from "../../lib/utils";
 
 // Mock API response structure from LDF server
 interface LDFServerOptions {
@@ -265,9 +266,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
       },
     };
 
-    console.log("=== LDF Distribution Configuration ===");
-    console.log(JSON.stringify(ldfConfig, null, 2));
-    console.log("======================================");
+    debugLog("=== LDF Distribution Configuration ===");
+    debugLog(JSON.stringify(ldfConfig, null, 2));
+    debugLog("======================================");
 
     props.onSubmit(ldfConfig);
   };

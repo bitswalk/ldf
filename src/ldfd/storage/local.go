@@ -239,6 +239,12 @@ func (b *LocalBackend) GetPresignedURL(ctx context.Context, key string, expiry t
 	return "", fmt.Errorf("presigned URLs not supported for local filesystem storage")
 }
 
+// GetWebURL is not supported for local filesystem (no web gateway)
+func (b *LocalBackend) GetWebURL(key string) string {
+	// Local storage doesn't have a web endpoint
+	return ""
+}
+
 // Ping checks if the storage directory is accessible
 func (b *LocalBackend) Ping(ctx context.Context) error {
 	_, err := os.Stat(b.basePath)

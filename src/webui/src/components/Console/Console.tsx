@@ -207,11 +207,26 @@ export const Console: Component<ConsoleProps> = (props) => {
     };
     window.addEventListener("storage", handleStorage);
 
+    // Listen for devmode changes from the same tab (custom event)
+    const handleDevModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ enabled: boolean }>;
+      setIsDevMode(customEvent.detail.enabled);
+      if (customEvent.detail.enabled) {
+        addLog("success", "Dev console enabled.");
+      }
+    };
+    window.addEventListener("devmode-change", handleDevModeChange);
+
     // Add initial log entries for demo
     if (devMode === "true") {
       addLog("success", "Dev console initialized successfully.");
       addLog("info", `Current view: ${props.currentView}`);
     }
+
+    onCleanup(() => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("devmode-change", handleDevModeChange);
+    });
   });
 
   // Log view changes - use `on` to explicitly track only currentView
@@ -257,7 +272,7 @@ export const Console: Component<ConsoleProps> = (props) => {
   return (
     <Show when={isDevMode()}>
       <footer
-        class="fixed bottom-0 left-12 right-0 bg-card border-t border-border font-mono text-xs z-[50] flex flex-col"
+        class="shrink-0 bg-card border-t border-border font-mono text-xs flex flex-col"
         classList={{ "select-none": isDragging() }}
       >
         {/* Resize Handle - Only visible when expanded */}

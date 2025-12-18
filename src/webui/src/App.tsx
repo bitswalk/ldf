@@ -3,14 +3,15 @@ import { createSignal, Match, onMount, Switch } from "solid-js";
 import { Transition } from "solid-transition-group";
 import { Header } from "./components/Header";
 import { Distribution } from "./views/Distribution";
+import { Artifacts } from "./views/Artifacts";
 import { Login } from "./views/Login";
 import { Register } from "./views/Register";
-import { ServerConnection } from "./views/ServerConnection";
-import { UserSettings } from "./views/UserSettings";
+import { Connection } from "./views/Connection";
+import { Settings } from "./views/Settings";
 import { Console } from "./components/Console";
-import { Menu } from "./components/Menu";
-import { logout, type UserInfo } from "./services/authService";
-import type { APIInfo } from "./services/storageService";
+import { Menu, type MenuItem } from "./components/Menu";
+import { logout, type UserInfo } from "./services/auth";
+import type { APIInfo } from "./services/storage";
 import {
   getServerUrl,
   setServerUrl,
@@ -25,11 +26,13 @@ import {
   discoverAPIEndpoints,
   clearServerUrl,
   clearAllAuth,
-} from "./services/storageService";
+} from "./services/storage";
+import { syncDevModeFromServer } from "./services/settings";
 
 type ViewType =
   | "server-connection"
   | "distribution"
+  | "artifacts"
   | "login"
   | "register"
   | "settings";
@@ -53,21 +56,8 @@ const App: Component = () => {
   const [connectionError, setConnectionError] = createSignal<string | null>(
     null,
   );
-  const [isDevMode, setIsDevMode] = createSignal(false);
 
   onMount(async () => {
-    // Check dev mode state
-    const devMode = localStorage.getItem("dev-mode") === "true";
-    setIsDevMode(devMode);
-
-    // Listen for dev mode changes
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "dev-mode") {
-        setIsDevMode(e.newValue === "true");
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-
     // If we have a server URL but missing endpoints, try to re-discover them
     if (hasServerConnection() && !hasCompleteServerConnection()) {
       const result = await discoverAPIEndpoints();
@@ -89,6 +79,8 @@ const App: Component = () => {
       setAuthState({ serverUrl, user, token });
       setIsLoggedIn(true);
       setCurrentView("distribution");
+      // Sync devmode setting from server for root users
+      syncDevModeFromServer();
     } else if (hasCompleteServerConnection()) {
       const serverUrl = getServerUrl()!;
       setAuthState((prev) => ({ ...prev, serverUrl }));
@@ -143,6 +135,8 @@ const App: Component = () => {
     setAuthState({ serverUrl, user, token });
     setIsLoggedIn(true);
     setCurrentView("distribution");
+    // Sync devmode setting from server for root users
+    syncDevModeFromServer();
   };
 
   const handleShowRegister = (username: string) => {
@@ -171,9 +165,24 @@ const App: Component = () => {
     setCurrentView("distribution");
   };
 
+  const menuItems = (): MenuItem[] => [
+    {
+      id: "distribution",
+      label: "Distributions",
+      icon: "linux-logo",
+      onClick: () => setCurrentView("distribution"),
+    },
+    {
+      id: "artifacts",
+      label: "Artifacts",
+      icon: "package",
+      onClick: () => setCurrentView("artifacts"),
+    },
+  ];
+
   return (
-    <section class="flex flex-col h-screen w-screen">
-      {/* Header - Full width at top */}
+    <>
+      {/* Row 1: Header */}
       <header id="header" class="h-12 w-full shrink-0">
         <Header
           isLoggedIn={isLoggedIn()}
@@ -184,73 +193,75 @@ const App: Component = () => {
         />
       </header>
 
-      {/* Content Area - Menu + Viewport */}
-      <section class="flex flex-1 overflow-hidden relative">
-        {/* Left Menu */}
-        <Menu orientation="vertical" />
+      {/* Row 2: Menu + Content Area */}
+      <section class="flex flex-1 overflow-hidden">
+        <Menu
+          orientation="vertical"
+          items={menuItems()}
+          activeItemId={currentView()}
+        />
 
-        {/* Menu Spacer - reserves space for collapsed menu */}
-        <div class="w-12 shrink-0" />
+        <section class="flex flex-col flex-1 overflow-hidden">
+          <main id="viewport" class="flex-1 relative overflow-auto">
+            <Transition
+              mode="outin"
+              enterActiveClass="transition-opacity duration-300 ease-in"
+              enterClass="opacity-0"
+              enterToClass="opacity-100"
+              exitActiveClass="transition-opacity duration-300 ease-in"
+              exitClass="opacity-100"
+              exitToClass="opacity-0"
+            >
+              <Switch>
+                <Match when={currentView() === "server-connection"}>
+                  <Connection
+                    onConnect={handleServerConnect}
+                    initialError={connectionError()}
+                  />
+                </Match>
+                <Match when={currentView() === "distribution"}>
+                  <Distribution
+                    isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                  />
+                </Match>
+                <Match when={currentView() === "artifacts"}>
+                  <Artifacts
+                    isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                  />
+                </Match>
+                <Match when={currentView() === "login"}>
+                  <Login
+                    serverUrl={authState().serverUrl}
+                    onLoginSuccess={handleLoginSuccess}
+                    onShowRegister={handleShowRegister}
+                  />
+                </Match>
+                <Match when={currentView() === "register"}>
+                  <Register
+                    serverUrl={authState().serverUrl}
+                    prefillUsername={pendingUsername()}
+                    onSuccess={handleRegisterSuccess}
+                    onBackToLogin={handleBackToLogin}
+                  />
+                </Match>
+                <Match when={currentView() === "settings"}>
+                  <Settings onBack={handleBackFromSettings} />
+                </Match>
+              </Switch>
+            </Transition>
+          </main>
 
-        {/* Main Viewport - adds bottom padding when dev console is visible */}
-        <main
-          id="viewport"
-          class="flex-1 relative overflow-auto"
-          classList={{ "pb-14": isDevMode() }}
-        >
-          <Transition
-            mode="outin"
-            enterActiveClass="transition-opacity duration-300 ease-in"
-            enterClass="opacity-0"
-            enterToClass="opacity-100"
-            exitActiveClass="transition-opacity duration-300 ease-in"
-            exitClass="opacity-100"
-            exitToClass="opacity-0"
-          >
-            <Switch>
-              <Match when={currentView() === "server-connection"}>
-                <ServerConnection
-                  onConnect={handleServerConnect}
-                  initialError={connectionError()}
-                />
-              </Match>
-              <Match when={currentView() === "distribution"}>
-                <Distribution
-                  isLoggedIn={isLoggedIn()}
-                  user={authState().user}
-                />
-              </Match>
-              <Match when={currentView() === "login"}>
-                <Login
-                  serverUrl={authState().serverUrl}
-                  onLoginSuccess={handleLoginSuccess}
-                  onShowRegister={handleShowRegister}
-                />
-              </Match>
-              <Match when={currentView() === "register"}>
-                <Register
-                  serverUrl={authState().serverUrl}
-                  prefillUsername={pendingUsername()}
-                  onSuccess={handleRegisterSuccess}
-                  onBackToLogin={handleBackToLogin}
-                />
-              </Match>
-              <Match when={currentView() === "settings"}>
-                <UserSettings onBack={handleBackFromSettings} />
-              </Match>
-            </Switch>
-          </Transition>
-        </main>
+          <Console
+            isLoggedIn={isLoggedIn()}
+            onToggleLogin={handleToggleLogin}
+            currentView={currentView()}
+            onViewChange={setCurrentView}
+          />
+        </section>
       </section>
-
-      {/* Console Footer */}
-      <Console
-        isLoggedIn={isLoggedIn()}
-        onToggleLogin={handleToggleLogin}
-        currentView={currentView()}
-        onViewChange={setCurrentView}
-      />
-    </section>
+    </>
   );
 };
 

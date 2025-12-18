@@ -1,6 +1,7 @@
 // Settings service for LDF server settings management
 
-import { getServerUrl, getAuthToken, getUserInfo } from "./storageService";
+import { setDevModeLocal } from "../lib/utils";
+import { getServerUrl, getAuthToken, getUserInfo } from "./storage";
 
 export interface ServerSetting {
   key: string;
@@ -8,7 +9,7 @@ export interface ServerSetting {
   type: "string" | "int" | "bool";
   description: string;
   rebootRequired: boolean;
-  category: "server" | "log" | "database" | "storage";
+  category: "server" | "log" | "database" | "storage" | "webui";
 }
 
 export interface ServerSettingsResponse {
@@ -310,4 +311,35 @@ export function groupSettingsByCategory(
     },
     {} as Record<string, ServerSetting[]>,
   );
+}
+
+/**
+ * Sync devmode setting from server to localStorage
+ * This is called on app initialization for root users
+ */
+export async function syncDevModeFromServer(): Promise<void> {
+  if (!isRootUser()) {
+    // Non-root users should have devmode disabled
+    setDevModeLocal(false);
+    return;
+  }
+
+  const result = await getServerSetting("webui.devmode");
+  if (result.success) {
+    const enabled = result.setting.value === true;
+    setDevModeLocal(enabled);
+  }
+}
+
+/**
+ * Update devmode setting on server and sync to localStorage
+ */
+export async function setDevMode(
+  enabled: boolean,
+): Promise<UpdateSettingResult> {
+  const result = await updateServerSetting("webui.devmode", enabled);
+  if (result.success) {
+    setDevModeLocal(enabled);
+  }
+  return result;
 }

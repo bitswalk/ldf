@@ -1,6 +1,6 @@
 // Distribution service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storageService";
+import { getServerUrl, getAuthToken } from "./storage";
 
 export type DistributionStatus =
   | "pending"

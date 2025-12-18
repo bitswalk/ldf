@@ -301,6 +301,16 @@ func (d *Database) persistToDisk() error {
 	return nil
 }
 
+// tableExistsInDiskDB checks if a table exists in the attached disk_db
+func (d *Database) tableExistsInDiskDB(tableName string) bool {
+	var count int
+	err := d.db.QueryRow(`
+		SELECT COUNT(*) FROM disk_db.sqlite_master
+		WHERE type='table' AND name=?
+	`, tableName).Scan(&count)
+	return err == nil && count > 0
+}
+
 // LoadFromDisk loads data from the persisted database file into memory
 func (d *Database) LoadFromDisk() error {
 	d.mu.Lock()
@@ -325,55 +335,67 @@ func (d *Database) LoadFromDisk() error {
 	defer d.db.Exec("DETACH DATABASE disk_db")
 
 	// Copy settings table first (no dependencies)
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO settings
-		SELECT * FROM disk_db.settings
-	`); err != nil {
-		// Ignore error if table doesn't exist in old database
+	if d.tableExistsInDiskDB("settings") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO settings
+			SELECT * FROM disk_db.settings
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	// Copy custom roles (non-system roles) - before users (users reference roles)
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO roles
-		SELECT * FROM disk_db.roles WHERE is_system = 0
-	`); err != nil {
-		// Ignore error if table doesn't exist in old database
+	if d.tableExistsInDiskDB("roles") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO roles
+			SELECT * FROM disk_db.roles WHERE is_system = 0
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	// Copy users table - before distributions (distributions reference users)
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO users
-		SELECT * FROM disk_db.users
-	`); err != nil {
-		// Ignore error if table doesn't exist in old database
+	if d.tableExistsInDiskDB("users") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO users
+			SELECT * FROM disk_db.users
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	// Copy distributions table (handle schema migration for visibility column)
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO distributions
-		(id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message)
-		SELECT id, name, version, status,
-		       COALESCE(visibility, 'private') as visibility,
-		       config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message
-		FROM disk_db.distributions
-	`); err != nil {
-		return fmt.Errorf("failed to copy distributions: %w", err)
+	if d.tableExistsInDiskDB("distributions") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO distributions
+			(id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message)
+			SELECT id, name, version, status,
+			       COALESCE(visibility, 'private') as visibility,
+			       config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message
+			FROM disk_db.distributions
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	// Copy distribution_logs table
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO distribution_logs
-		SELECT * FROM disk_db.distribution_logs
-	`); err != nil {
-		return fmt.Errorf("failed to copy distribution_logs: %w", err)
+	if d.tableExistsInDiskDB("distribution_logs") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO distribution_logs
+			SELECT * FROM disk_db.distribution_logs
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	// Copy revoked_tokens table (references users)
-	if _, err := d.db.Exec(`
-		INSERT OR REPLACE INTO revoked_tokens
-		SELECT * FROM disk_db.revoked_tokens
-	`); err != nil {
-		// Ignore error if table doesn't exist in old database
+	if d.tableExistsInDiskDB("revoked_tokens") {
+		if _, err := d.db.Exec(`
+			INSERT OR REPLACE INTO revoked_tokens
+			SELECT * FROM disk_db.revoked_tokens
+		`); err != nil {
+			// Ignore error - table structure may have changed
+		}
 	}
 
 	return nil

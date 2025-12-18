@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,12 +12,30 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// S3Provider represents supported S3-compatible storage providers
+type S3Provider string
+
+const (
+	// S3ProviderGarage is GarageHQ - uses api.{endpoint} for API and {bucket}.{endpoint} for web
+	S3ProviderGarage S3Provider = "garage"
+	// S3ProviderMinio is MinIO - uses {endpoint} for both API and web (path-style)
+	S3ProviderMinio S3Provider = "minio"
+	// S3ProviderAWS is Amazon S3 - uses s3.{region}.amazonaws.com for API
+	S3ProviderAWS S3Provider = "aws"
+	// S3ProviderOther is a generic S3-compatible provider (path-style)
+	S3ProviderOther S3Provider = "other"
+)
+
 // S3Config holds the S3 storage configuration
 type S3Config struct {
-	// Endpoint is the S3-compatible endpoint URL (e.g., "https://s3.amazonaws.com" or "http://minio:9000")
+	// Provider is the S3 provider type (garage, minio, aws, other)
+	Provider S3Provider
+
+	// Endpoint is the base S3 domain (e.g., "s3.example.com")
+	// The actual API and web URLs are constructed based on the provider
 	Endpoint string
 
-	// Region is the S3 region (e.g., "us-east-1")
+	// Region is the S3 region (e.g., "us-east-1", "emea-west")
 	Region string
 
 	// Bucket is the default bucket name for storing artifacts
@@ -27,9 +46,63 @@ type S3Config struct {
 
 	// SecretAccessKey is the S3 secret key
 	SecretAccessKey string
+}
 
-	// UsePathStyle enables path-style addressing (required for most S3-compatible storage)
-	UsePathStyle bool
+// GetAPIEndpoint returns the full API endpoint URL based on the provider
+func (c *S3Config) GetAPIEndpoint() string {
+	endpoint := strings.TrimPrefix(c.Endpoint, "https://")
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+
+	switch c.Provider {
+	case S3ProviderGarage:
+		// GarageHQ: api.{endpoint}
+		return fmt.Sprintf("https://api.%s", endpoint)
+	case S3ProviderAWS:
+		// AWS: s3.{region}.amazonaws.com
+		return fmt.Sprintf("https://s3.%s.amazonaws.com", c.Region)
+	case S3ProviderMinio, S3ProviderOther:
+		// MinIO/Other: use endpoint directly
+		return fmt.Sprintf("https://%s", endpoint)
+	default:
+		return fmt.Sprintf("https://%s", endpoint)
+	}
+}
+
+// GetWebEndpoint returns the web endpoint URL for serving artifacts
+func (c *S3Config) GetWebEndpoint() string {
+	endpoint := strings.TrimPrefix(c.Endpoint, "https://")
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+
+	switch c.Provider {
+	case S3ProviderGarage:
+		// GarageHQ: {bucket}.{endpoint}
+		return fmt.Sprintf("https://%s.%s", c.Bucket, endpoint)
+	case S3ProviderAWS:
+		// AWS: {bucket}.s3.{region}.amazonaws.com
+		return fmt.Sprintf("https://%s.s3.%s.amazonaws.com", c.Bucket, c.Region)
+	case S3ProviderMinio, S3ProviderOther:
+		// MinIO/Other: {endpoint}/{bucket} (path-style)
+		return fmt.Sprintf("https://%s/%s", endpoint, c.Bucket)
+	default:
+		return fmt.Sprintf("https://%s/%s", endpoint, c.Bucket)
+	}
+}
+
+// UsePathStyle returns whether to use path-style addressing for this provider
+func (c *S3Config) UsePathStyle() bool {
+	switch c.Provider {
+	case S3ProviderGarage:
+		// GarageHQ uses path-style for API operations
+		return true
+	case S3ProviderMinio, S3ProviderOther:
+		// MinIO and generic providers use path-style
+		return true
+	case S3ProviderAWS:
+		// AWS uses virtual-hosted style by default
+		return false
+	default:
+		return true
+	}
 }
 
 // S3Backend implements storage using S3-compatible object storage
@@ -40,27 +113,21 @@ type S3Backend struct {
 
 // NewS3 creates a new S3 storage backend
 func NewS3(cfg S3Config) (*S3Backend, error) {
-	// Create custom resolver for S3-compatible endpoints
-	customResolver := aws.EndpointResolverWithOptionsFunc(
-		func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL:               cfg.Endpoint,
-				SigningRegion:     cfg.Region,
-				HostnameImmutable: true,
-			}, nil
-		},
-	)
+	// Get the API endpoint based on provider
+	apiEndpoint := cfg.GetAPIEndpoint()
 
-	// Create AWS config with static credentials
-	awsCfg := aws.Config{
-		Region:                      cfg.Region,
-		Credentials:                 credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
-		EndpointResolverWithOptions: customResolver,
+	// For GarageHQ, use "garage" as the region if not AWS
+	signingRegion := cfg.Region
+	if cfg.Provider == S3ProviderGarage && signingRegion == "" {
+		signingRegion = "garage"
 	}
 
-	// Create S3 client with path-style addressing option
-	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = cfg.UsePathStyle
+	// Create S3 client with custom endpoint configuration
+	s3Client := s3.New(s3.Options{
+		Region:       signingRegion,
+		Credentials:  credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
+		BaseEndpoint: aws.String(apiEndpoint),
+		UsePathStyle: cfg.UsePathStyle(),
 	})
 
 	backend := &S3Backend{
@@ -71,22 +138,16 @@ func NewS3(cfg S3Config) (*S3Backend, error) {
 	return backend, nil
 }
 
-// EnsureBucket creates the bucket if it doesn't exist
+// EnsureBucket checks if the bucket exists and is accessible.
+// It does NOT attempt to create the bucket - bucket creation should be done
+// through the storage provider's admin interface.
 func (b *S3Backend) EnsureBucket(ctx context.Context) error {
-	// Check if bucket exists
+	// Check if bucket exists and is accessible
 	_, err := b.s3Client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(b.config.Bucket),
 	})
-	if err == nil {
-		return nil // Bucket exists
-	}
-
-	// Create bucket
-	_, err = b.s3Client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(b.config.Bucket),
-	})
 	if err != nil {
-		return fmt.Errorf("failed to create bucket %s: %w", b.config.Bucket, err)
+		return fmt.Errorf("bucket %s is not accessible: %w", b.config.Bucket, err)
 	}
 
 	return nil
@@ -253,10 +314,21 @@ func (b *S3Backend) Type() string {
 
 // Location returns the S3 endpoint and bucket
 func (b *S3Backend) Location() string {
-	return fmt.Sprintf("%s/%s", b.config.Endpoint, b.config.Bucket)
+	return fmt.Sprintf("%s/%s", b.config.GetAPIEndpoint(), b.config.Bucket)
 }
 
 // Bucket returns the configured bucket name
 func (b *S3Backend) Bucket() string {
 	return b.config.Bucket
+}
+
+// GetWebURL returns a direct web URL for accessing an artifact via the web gateway.
+// The URL format is determined by the provider type.
+func (b *S3Backend) GetWebURL(key string) string {
+	return fmt.Sprintf("%s/%s", b.config.GetWebEndpoint(), key)
+}
+
+// Provider returns the configured S3 provider type
+func (b *S3Backend) Provider() S3Provider {
+	return b.config.Provider
 }

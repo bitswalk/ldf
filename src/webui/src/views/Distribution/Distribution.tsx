@@ -22,7 +22,7 @@ import {
   type DistributionStatus,
   type DistributionVisibility,
   type DistributionConfig,
-} from "../../services/distributionService";
+} from "../../services/distribution";
 
 interface UserInfo {
   id: string;
@@ -116,8 +116,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
     setIsModalOpen(false);
   };
 
-  const handleEditDistribution = (id: number) => {
-    console.log("Edit distribution:", id);
+  const handleEditDistribution = (_id: number) => {
+    // TODO: Implement edit distribution
   };
 
   const openDeleteModal = (dists: DistributionType[]) => {

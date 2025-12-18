@@ -1,14 +1,14 @@
 import type { Component } from "solid-js";
 import { createSignal, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
-import type { APIInfo } from "../../services/storageService";
+import type { APIInfo } from "../../services/storage";
 
-interface ServerConnectionProps {
+interface ConnectionProps {
   onConnect: (serverUrl: string, apiInfo: APIInfo) => void;
   initialError?: string | null;
 }
 
-export const ServerConnection: Component<ServerConnectionProps> = (props) => {
+export const Connection: Component<ConnectionProps> = (props) => {
   const [serverUrl, setServerUrl] = createSignal("");
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(

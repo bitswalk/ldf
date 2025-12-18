@@ -1,6 +1,6 @@
 // Auth service for LDF server communication
 
-import { getAuthEndpointUrl, getAuthToken } from "./storageService";
+import { getAuthEndpointUrl, getAuthToken } from "./storage";
 
 export interface AuthRequest {
   auth: {

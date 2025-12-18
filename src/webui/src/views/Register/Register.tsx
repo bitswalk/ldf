@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
-import { createUser } from "../../services/authService";
+import { createUser } from "../../services/auth";
 
 type UserRole = "root" | "developer" | "anonymous";
 

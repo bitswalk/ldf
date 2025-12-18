@@ -4,6 +4,7 @@ vars:
   BINARY_BUILD_DIR: build/bin
   CLI_BINARY: ldfctl
   SRV_BINARY: ldfd
+  WEBUI_DIR: src/webui
   # Version components
   RELEASE_NAME: Phoenix
   RELEASE_VERSION: 1.0.1
@@ -15,7 +16,10 @@ vars:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   # Full version string: Phoenix (2025.12) - v1.0.0-4f9f297
   VERSION_STRING: "{{.RELEASE_NAME}} ({{.RELEASE_DATE}}) - v{{.RELEASE_VERSION}}-{{.GIT_COMMIT}}"
-  LDFLAGS: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfd/core.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfd/core.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseVersion={{.RELEASE_VERSION}}"
+  # Production ldflags (stripped, optimized)
+  LDFLAGS_PROD: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfd/core.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfd/core.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseVersion={{.RELEASE_VERSION}}"
+  # Development ldflags (with debug info, version=dev)
+  LDFLAGS_DEV: -ldflags "-X 'github.com/bitswalk/ldf/src/ldfd/core.Version=dev' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate=unknown"
 
 tasks:
   default:
@@ -23,26 +27,57 @@ tasks:
     cmds:
       - task --list
 
-  build:all:
-    desc: Build all binaries
-    deps: [build:cli, build:srv]
+  build:
+    desc: Build all (server, CLI, and WebUI) for production
+    deps: [build:srv, build:cli, build:webui]
+
+  build:dev:
+    desc: Build all for development
+    deps: [build:srv:dev, build:cli:dev, build:webui]
 
   build:cli:
-    desc: Build CLI binary
+    desc: Build CLI binary (production)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
+      - go build {{.LDFLAGS_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
+
+  build:cli:dev:
+    desc: Build CLI binary (development)
+    cmds:
+      - mkdir -p {{.BINARY_BUILD_DIR}}
+      - go build {{.LDFLAGS_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
 
   build:srv:
-    desc: Build Server API binary
+    desc: Build server binary (production)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
+      - go build {{.LDFLAGS_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
+
+  build:srv:dev:
+    desc: Build server binary (development)
+    cmds:
+      - mkdir -p {{.BINARY_BUILD_DIR}}
+      - go build {{.LDFLAGS_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
+
+  build:webui:
+    desc: Build WebUI
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - bun install --frozen-lockfile
+      - bun run build
+
+  build:webui:dev:
+    desc: Start WebUI dev server
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - bun install
+      - bun run dev
 
   clean:
     desc: Clean build artifacts
     cmds:
       - rm -rf {{.BINARY_BUILD_DIR}}
+      - rm -rf {{.WEBUI_DIR}}/dist
       - go clean
 
   test:
@@ -61,22 +96,28 @@ tasks:
       - go test -v ./src/ldfctl/...
 
   run:srv:
-    desc: Run Server API binary
+    desc: Run server (production build)
     deps: [build:srv]
     cmds:
       - ./{{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}}
 
   run:srv:dev:
-    desc: Run Server API in development mode
-    deps: [build:srv]
+    desc: Run server in development mode
+    deps: [build:srv:dev]
     cmds:
       - ./{{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} --log-output stdout --log-level debug
 
   deps:
-    desc: Download dependencies
+    desc: Download Go dependencies
     cmds:
       - go mod download
       - go mod tidy
+
+  deps:webui:
+    desc: Install WebUI dependencies
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - bun install
 
   fmt:
     desc: Format code

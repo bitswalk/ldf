@@ -1,4 +1,5 @@
 import { createSignal, createEffect, createRoot } from "solid-js";
+import { debugError } from "../lib/utils";
 
 export type TimeOfDay = "day" | "night";
 
@@ -22,7 +23,7 @@ class TimeService {
       const isNight = hour >= 18 || hour < 6;
       return isNight ? "night" : "day";
     } catch (error) {
-      console.error("[TimeService] Failed to get current time:", error);
+      debugError("[TimeService] Failed to get current time:", error);
       // Fallback to day mode if we can't determine time
       return "day";
     }

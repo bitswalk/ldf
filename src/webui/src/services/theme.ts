@@ -1,6 +1,6 @@
 import { createSignal, createEffect, createRoot } from "solid-js";
 import type { Theme } from "../themes/default";
-import { timeService } from "./timeService";
+import { timeService } from "./time";
 
 // ThemeMode: false = dark/night (0), true = light/day (1)
 export type ThemeMode = boolean;

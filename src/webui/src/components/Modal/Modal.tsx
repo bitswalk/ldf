@@ -13,7 +13,6 @@ export const Modal: Component<ModalProps> = (props) => {
   let panelRef: HTMLElement | undefined;
 
   createEffect(() => {
-    console.log("Modal isOpen:", props.isOpen);
     if (props.isOpen) {
       document.body.style.overflow = "hidden";
     } else {

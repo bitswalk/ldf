@@ -1,11 +1,5 @@
 import type { Component, JSX } from "solid-js";
-import {
-  createSignal,
-  createContext,
-  useContext,
-  Show,
-  For,
-} from "solid-js";
+import { createSignal, createContext, useContext, Show, For } from "solid-js";
 import { Icon } from "../Icon";
 
 // Context for sharing summary state
@@ -21,7 +15,9 @@ const SummaryContext = createContext<SummaryContextValue>();
 const useSummaryContext = () => {
   const context = useContext(SummaryContext);
   if (!context) {
-    throw new Error("Summary components must be used within a Summary provider");
+    throw new Error(
+      "Summary components must be used within a Summary provider",
+    );
   }
   return context;
 };
@@ -99,9 +95,11 @@ interface SummaryButtonProps {
 
 // Summary Root Component
 export const Summary: Component<SummaryProps> = (props) => {
-  const [activeSection, setActiveSection] = createSignal(props.defaultSection ?? "");
+  const [activeSection, setActiveSection] = createSignal(
+    props.defaultSection ?? "",
+  );
   const [expandedCategories, setExpandedCategories] = createSignal<Set<string>>(
-    new Set(props.defaultExpanded ?? [])
+    new Set(props.defaultExpanded ?? []),
   );
 
   const toggleCategory = (category: string) => {
@@ -135,10 +133,8 @@ export const Summary: Component<SummaryProps> = (props) => {
 // Summary Navigation Sidebar
 export const SummaryNav: Component<SummaryNavProps> = (props) => {
   return (
-    <nav class={`w-56 shrink-0 border-r border-border overflow-y-auto ${props.class ?? ""}`}>
-      <ul class="flex flex-col py-2">
-        {props.children}
-      </ul>
+    <nav class={`w-56 shrink-0 border-r border-border ${props.class ?? ""}`}>
+      <ul class="flex flex-col py-2">{props.children}</ul>
     </nav>
   );
 };
@@ -170,9 +166,7 @@ export const SummaryCategory: Component<SummaryCategoryProps> = (props) => {
         <span>{props.label}</span>
       </button>
       <Show when={isExpanded()}>
-        <ul class="flex flex-col">
-          {props.children}
-        </ul>
+        <ul class="flex flex-col">{props.children}</ul>
       </Show>
     </li>
   );
@@ -210,9 +204,7 @@ export const SummaryNavItem: Component<SummaryNavItemProps> = (props) => {
 // Summary Content Area
 export const SummaryContent: Component<SummaryContentProps> = (props) => {
   return (
-    <article class={`flex-1 overflow-y-auto ${props.class ?? ""}`}>
-      {props.children}
-    </article>
+    <article class={`flex-1 ${props.class ?? ""}`}>{props.children}</article>
   );
 };
 
@@ -228,7 +220,9 @@ export const SummarySection: Component<SummarySectionProps> = (props) => {
         <header class="mb-6">
           <h2 class="text-xl font-semibold">{props.title}</h2>
           <Show when={props.description}>
-            <p class="text-sm text-muted-foreground mt-1">{props.description}</p>
+            <p class="text-sm text-muted-foreground mt-1">
+              {props.description}
+            </p>
           </Show>
         </header>
         <section class="flex flex-col divide-y divide-border">
@@ -242,21 +236,27 @@ export const SummarySection: Component<SummarySectionProps> = (props) => {
 // Summary Item (individual setting row)
 export const SummaryItem: Component<SummaryItemProps> = (props) => {
   return (
-    <article class={`flex items-center justify-between py-4 gap-4 ${props.class ?? ""}`}>
+    <article
+      class={`flex items-center justify-between py-4 gap-4 ${props.class ?? ""}`}
+    >
       <section class="flex items-start gap-3 flex-1 min-w-0">
         <Show when={props.icon}>
-          <Icon name={props.icon!} size="sm" class="text-muted-foreground mt-0.5 shrink-0" />
+          <Icon
+            name={props.icon!}
+            size="sm"
+            class="text-muted-foreground mt-0.5 shrink-0"
+          />
         </Show>
         <section class="flex flex-col min-w-0">
           <span class="font-medium">{props.title}</span>
           <Show when={props.description}>
-            <span class="text-sm text-muted-foreground">{props.description}</span>
+            <span class="text-sm text-muted-foreground">
+              {props.description}
+            </span>
           </Show>
         </section>
       </section>
-      <section class="shrink-0">
-        {props.children}
-      </section>
+      <section class="shrink-0">{props.children}</section>
     </article>
   );
 };
@@ -304,9 +304,7 @@ export const SummarySelect: Component<SummarySelectProps> = (props) => {
       class={`px-3 py-1.5 text-sm border border-border rounded bg-background text-foreground cursor-pointer hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${props.class ?? ""}`}
     >
       <For each={props.options}>
-        {(option) => (
-          <option value={option.value}>{option.label}</option>
-        )}
+        {(option) => <option value={option.value}>{option.label}</option>}
       </For>
     </select>
   );

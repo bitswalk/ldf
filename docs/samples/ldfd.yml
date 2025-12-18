@@ -42,12 +42,20 @@ storage:
   # S3-compatible object storage configuration
   # Uncomment and configure to use S3 instead of local storage
   # s3:
-  #   # S3-compatible endpoint URL
+  #   # S3 provider type - determines URL construction for API and web access
+  #   # Supported providers:
+  #   #   garage: GarageHQ - API at api.{endpoint}, web at {bucket}.{endpoint}
+  #   #   minio:  MinIO - uses endpoint directly with path-style
+  #   #   aws:    Amazon S3 - uses s3.{region}.amazonaws.com
+  #   #   other:  Generic S3-compatible (path-style)
+  #   provider: "garage"
+  #
+  #   # Base S3 domain (without protocol or api/bucket prefix)
   #   # Examples:
-  #   #   AWS S3:           https://s3.amazonaws.com
-  #   #   MinIO:            http://minio:9000
-  #   #   DigitalOcean:     https://nyc3.digitaloceanspaces.com
-  #   endpoint: "https://s3.amazonaws.com"
+  #   #   GarageHQ:         s3.example.com
+  #   #   MinIO:            minio.example.com:9000
+  #   #   DigitalOcean:     nyc3.digitaloceanspaces.com
+  #   endpoint: "s3.example.com"
   #
   #   # AWS/S3 region
   #   region: "us-east-1"
@@ -61,6 +69,3 @@ storage:
   #   #   LDFD_STORAGE_S3_SECRET_KEY
   #   access_key: ""
   #   secret_key: ""
-  #
-  #   # Use path-style addressing (required for most S3-compatible services)
-  #   path_style: true

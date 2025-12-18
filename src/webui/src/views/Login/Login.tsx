@@ -1,8 +1,8 @@
 import type { Component } from "solid-js";
 import { createSignal, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
-import { login } from "../../services/authService";
-import type { UserInfo } from "../../services/authService";
+import { login } from "../../services/auth";
+import type { UserInfo } from "../../services/auth";
 
 interface LoginProps {
   serverUrl: string;
