@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/bitswalk/ldf/src/common/paths"
+	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -42,13 +43,20 @@ func New(cfg Config) (*Database, error) {
 	// Expand ~ and env vars in persist path
 	persistPath := paths.Expand(cfg.PersistPath)
 
-	// Open in-memory database
-	db, err := sql.Open("sqlite3", ":memory:")
+	// Open in-memory database with shared cache mode
+	// This ensures all connections from the pool share the same in-memory database
+	// Without this, each connection from sql.DB's pool would get a separate empty database!
+	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open in-memory database: %w", err)
 	}
 
-	// Enable foreign keys and WAL mode for better performance
+	// For in-memory SQLite with shared cache, we need to ensure at least one connection
+	// stays open to prevent the database from being destroyed
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0) // Connections don't expire
+
+	// Enable foreign keys
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
@@ -59,10 +67,11 @@ func New(cfg Config) (*Database, error) {
 		persistPath: persistPath,
 	}
 
-	// Initialize schema
-	if err := database.initSchema(); err != nil {
+	// Run migrations to initialize schema
+	runner := migrations.NewRunner(db)
+	if err := runner.Run(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// Load existing data from disk if configured and file exists
@@ -79,159 +88,6 @@ func New(cfg Config) (*Database, error) {
 	// to avoid race conditions with multiple signal handlers
 
 	return database, nil
-}
-
-// initSchema creates the database tables
-func (d *Database) initSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS distributions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL UNIQUE,
-		version TEXT NOT NULL,
-		status TEXT NOT NULL DEFAULT 'pending',
-		visibility TEXT NOT NULL DEFAULT 'private',
-		config TEXT,
-		source_url TEXT,
-		checksum TEXT,
-		size_bytes INTEGER DEFAULT 0,
-		owner_id TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		started_at DATETIME,
-		completed_at DATETIME,
-		error_message TEXT,
-		FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_distributions_status ON distributions(status);
-	CREATE INDEX IF NOT EXISTS idx_distributions_name ON distributions(name);
-	CREATE INDEX IF NOT EXISTS idx_distributions_owner ON distributions(owner_id);
-	CREATE INDEX IF NOT EXISTS idx_distributions_visibility ON distributions(visibility);
-
-	CREATE TABLE IF NOT EXISTS distribution_logs (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		distribution_id INTEGER NOT NULL,
-		level TEXT NOT NULL,
-		message TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (distribution_id) REFERENCES distributions(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_distribution_logs_dist_id ON distribution_logs(distribution_id);
-
-	CREATE TABLE IF NOT EXISTS roles (
-		id TEXT PRIMARY KEY,
-		name TEXT NOT NULL UNIQUE,
-		description TEXT,
-		can_read BOOLEAN NOT NULL DEFAULT 1,
-		can_write BOOLEAN NOT NULL DEFAULT 0,
-		can_delete BOOLEAN NOT NULL DEFAULT 0,
-		can_admin BOOLEAN NOT NULL DEFAULT 0,
-		is_system BOOLEAN NOT NULL DEFAULT 0,
-		parent_role_id TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (parent_role_id) REFERENCES roles(id) ON DELETE SET NULL
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);
-	CREATE INDEX IF NOT EXISTS idx_roles_parent ON roles(parent_role_id);
-
-	CREATE TABLE IF NOT EXISTS users (
-		id TEXT PRIMARY KEY,
-		name TEXT NOT NULL UNIQUE,
-		email TEXT NOT NULL UNIQUE,
-		password_hash TEXT NOT NULL,
-		role_id TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
-	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-	CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id);
-
-	CREATE TABLE IF NOT EXISTS revoked_tokens (
-		token_id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		revoked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		expires_at DATETIME NOT NULL,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_revoked_tokens_user_id ON revoked_tokens(user_id);
-	CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens(expires_at);
-
-	CREATE TABLE IF NOT EXISTS settings (
-		key TEXT PRIMARY KEY,
-		value TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	`
-
-	_, err := d.db.Exec(schema)
-	if err != nil {
-		return err
-	}
-
-	// Seed default roles if they don't exist
-	return d.seedDefaultRoles()
-}
-
-// seedDefaultRoles creates the three default system roles if they don't exist
-func (d *Database) seedDefaultRoles() error {
-	// Fixed UUIDs for system roles - must match constants in auth/role.go
-	defaultRoles := []struct {
-		id          string
-		name        string
-		description string
-		canRead     bool
-		canWrite    bool
-		canDelete   bool
-		canAdmin    bool
-	}{
-		{
-			id:          "908b291e-61fb-4d95-98db-0b76c0afd6b4", // RoleIDRoot
-			name:        "root",
-			description: "Administrator role with full system access",
-			canRead:     true,
-			canWrite:    true,
-			canDelete:   true,
-			canAdmin:    true,
-		},
-		{
-			id:          "91db9f27-b8a2-4452-9b80-5f6ab1096da8", // RoleIDDeveloper
-			name:        "developer",
-			description: "Standard user with read/write access to owned resources",
-			canRead:     true,
-			canWrite:    true,
-			canDelete:   true,
-			canAdmin:    false,
-		},
-		{
-			id:          "e8fcda13-fea4-4a1f-9e60-e4c9b882e0d0", // RoleIDAnonymous
-			name:        "anonymous",
-			description: "Read-only access to public resources",
-			canRead:     true,
-			canWrite:    false,
-			canDelete:   false,
-			canAdmin:    false,
-		},
-	}
-
-	for _, role := range defaultRoles {
-		_, err := d.db.Exec(`
-			INSERT OR IGNORE INTO roles (id, name, description, can_read, can_write, can_delete, can_admin, is_system)
-			VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-		`, role.id, role.name, role.description, role.canRead, role.canWrite, role.canDelete, role.canAdmin)
-		if err != nil {
-			return fmt.Errorf("failed to seed role %s: %w", role.name, err)
-		}
-	}
-
-	return nil
 }
 
 // DB returns the underlying sql.DB for direct queries
@@ -320,12 +176,17 @@ func (d *Database) LoadFromDisk() error {
 		return nil
 	}
 
-	// Open the disk database
+	// Open the disk database to verify it's valid
 	diskDB, err := sql.Open("sqlite3", d.persistPath)
 	if err != nil {
 		return fmt.Errorf("failed to open disk database: %w", err)
 	}
 	defer diskDB.Close()
+
+	// Verify disk database is valid
+	if err := diskDB.Ping(); err != nil {
+		return fmt.Errorf("disk database ping failed: %w", err)
+	}
 
 	// Copy data from disk to memory using attach
 	attachQuery := fmt.Sprintf("ATTACH DATABASE '%s' AS disk_db", d.persistPath)
@@ -334,67 +195,100 @@ func (d *Database) LoadFromDisk() error {
 	}
 	defer d.db.Exec("DETACH DATABASE disk_db")
 
+	var loadedTables []string
+	var loadErrors []string
+
 	// Copy settings table first (no dependencies)
 	if d.tableExistsInDiskDB("settings") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO settings
 			SELECT * FROM disk_db.settings
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("settings: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("settings(%d)", rows))
 		}
 	}
 
 	// Copy custom roles (non-system roles) - before users (users reference roles)
 	if d.tableExistsInDiskDB("roles") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO roles
 			SELECT * FROM disk_db.roles WHERE is_system = 0
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("roles: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("roles(%d)", rows))
 		}
 	}
 
 	// Copy users table - before distributions (distributions reference users)
 	if d.tableExistsInDiskDB("users") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO users
 			SELECT * FROM disk_db.users
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("users: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("users(%d)", rows))
 		}
 	}
 
 	// Copy distributions table (handle schema migration for visibility column)
 	if d.tableExistsInDiskDB("distributions") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO distributions
 			(id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message)
 			SELECT id, name, version, status,
 			       COALESCE(visibility, 'private') as visibility,
 			       config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message
 			FROM disk_db.distributions
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("distributions: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("distributions(%d)", rows))
 		}
 	}
 
 	// Copy distribution_logs table
 	if d.tableExistsInDiskDB("distribution_logs") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO distribution_logs
 			SELECT * FROM disk_db.distribution_logs
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("distribution_logs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("distribution_logs(%d)", rows))
 		}
 	}
 
 	// Copy revoked_tokens table (references users)
 	if d.tableExistsInDiskDB("revoked_tokens") {
-		if _, err := d.db.Exec(`
+		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO revoked_tokens
 			SELECT * FROM disk_db.revoked_tokens
-		`); err != nil {
-			// Ignore error - table structure may have changed
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("revoked_tokens: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("revoked_tokens(%d)", rows))
+		}
+	}
+
+	// Log what was loaded
+	if len(loadedTables) > 0 {
+		fmt.Fprintf(os.Stderr, "INFO: Loaded from disk: %v\n", loadedTables)
+	}
+
+	// Log any errors
+	if len(loadErrors) > 0 {
+		for _, e := range loadErrors {
+			fmt.Fprintf(os.Stderr, "WARNING: Failed to load table: %s\n", e)
 		}
 	}
 

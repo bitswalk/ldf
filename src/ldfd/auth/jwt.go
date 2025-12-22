@@ -3,19 +3,12 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/bitswalk/ldf/src/common/errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-)
-
-var (
-	// ErrInvalidToken is returned when the token is invalid
-	ErrInvalidToken = errors.New("invalid token")
-	// ErrExpiredToken is returned when the token has expired
-	ErrExpiredToken = errors.New("token has expired")
 )
 
 // JWTService handles JWT token generation and validation
@@ -134,25 +127,25 @@ func (s *JWTService) ValidateToken(tokenString string) (*TokenClaims, error) {
 	})
 
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
+		if err == jwt.ErrTokenExpired {
+			return nil, errors.ErrTokenExpired
 		}
-		return nil, ErrInvalidToken
+		return nil, errors.ErrTokenInvalid
 	}
 
 	claims, ok := token.Claims.(*jwtClaims)
 	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
+		return nil, errors.ErrTokenInvalid
 	}
 
 	// Check if token has been revoked
 	if s.repo != nil {
 		revoked, err := s.repo.IsTokenRevoked(claims.ID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check token revocation: %w", err)
+			return nil, errors.ErrDatabaseQuery.WithCause(err)
 		}
 		if revoked {
-			return nil, ErrTokenRevoked
+			return nil, errors.ErrTokenRevoked
 		}
 	}
 
@@ -174,13 +167,13 @@ func (s *JWTService) RevokeToken(tokenString string) error {
 		return s.secretKey, nil
 	})
 
-	if err != nil && !errors.Is(err, jwt.ErrTokenExpired) {
-		return ErrInvalidToken
+	if err != nil && err != jwt.ErrTokenExpired {
+		return errors.ErrTokenInvalid
 	}
 
 	claims, ok := token.Claims.(*jwtClaims)
 	if !ok {
-		return ErrInvalidToken
+		return errors.ErrTokenInvalid
 	}
 
 	// Add token to revoked list
@@ -198,18 +191,18 @@ func (s *JWTService) GetTokenExpiry(tokenString string) (time.Time, error) {
 		return s.secretKey, nil
 	})
 
-	if err != nil && !errors.Is(err, jwt.ErrTokenExpired) {
-		return time.Time{}, ErrInvalidToken
+	if err != nil && err != jwt.ErrTokenExpired {
+		return time.Time{}, errors.ErrTokenInvalid
 	}
 
 	claims, ok := token.Claims.(*jwtClaims)
 	if !ok {
-		return time.Time{}, ErrInvalidToken
+		return time.Time{}, errors.ErrTokenInvalid
 	}
 
 	if claims.ExpiresAt != nil {
 		return claims.ExpiresAt.Time, nil
 	}
 
-	return time.Time{}, ErrInvalidToken
+	return time.Time{}, errors.ErrTokenInvalid
 }

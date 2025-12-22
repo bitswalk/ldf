@@ -45,9 +45,26 @@ func NewLocal(cfg LocalConfig) (*LocalBackend, error) {
 func (b *LocalBackend) fullPath(key string) string {
 	// Clean the key to prevent directory traversal
 	cleanKey := filepath.Clean(key)
-	cleanKey = strings.TrimPrefix(cleanKey, "/")
-	cleanKey = strings.TrimPrefix(cleanKey, "../")
-	return filepath.Join(b.basePath, cleanKey)
+
+	// Remove all leading path separators and parent directory references
+	for strings.HasPrefix(cleanKey, "/") || strings.HasPrefix(cleanKey, "../") || strings.HasPrefix(cleanKey, "..\\") {
+		cleanKey = strings.TrimPrefix(cleanKey, "/")
+		cleanKey = strings.TrimPrefix(cleanKey, "../")
+		cleanKey = strings.TrimPrefix(cleanKey, "..\\")
+	}
+
+	// Join with base path and verify the result is within basePath
+	fullPath := filepath.Join(b.basePath, cleanKey)
+
+	// Final safety check: ensure the path is within basePath
+	absBase, _ := filepath.Abs(b.basePath)
+	absFull, _ := filepath.Abs(fullPath)
+	if !strings.HasPrefix(absFull, absBase) {
+		// If somehow we escaped, return base path with sanitized filename only
+		return filepath.Join(b.basePath, filepath.Base(cleanKey))
+	}
+
+	return fullPath
 }
 
 // Upload uploads data to local filesystem

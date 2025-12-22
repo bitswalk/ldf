@@ -7,115 +7,9 @@ import (
 	"time"
 )
 
-// DistributionConfig represents the full configuration for building a distribution
-type DistributionConfig struct {
-	Core     CoreConfig     `json:"core"`
-	System   SystemConfig   `json:"system"`
-	Security SecurityConfig `json:"security"`
-	Runtime  RuntimeConfig  `json:"runtime"`
-	Target   TargetConfig   `json:"target"`
-}
-
-// CoreConfig contains core system configuration
-type CoreConfig struct {
-	Kernel       KernelConfig       `json:"kernel"`
-	Bootloader   string             `json:"bootloader"`
-	Partitioning PartitioningConfig `json:"partitioning"`
-}
-
-// KernelConfig contains kernel configuration
-type KernelConfig struct {
-	Version string `json:"version"`
-}
-
-// PartitioningConfig contains partitioning configuration
-type PartitioningConfig struct {
-	Type string `json:"type"`
-	Mode string `json:"mode"`
-}
-
-// SystemConfig contains system services configuration
-type SystemConfig struct {
-	Init           string           `json:"init"`
-	Filesystem     FilesystemConfig `json:"filesystem"`
-	PackageManager string           `json:"packageManager"`
-}
-
-// FilesystemConfig contains filesystem configuration
-type FilesystemConfig struct {
-	Type      string `json:"type"`
-	Hierarchy string `json:"hierarchy"`
-}
-
-// SecurityConfig contains security configuration
-type SecurityConfig struct {
-	System string `json:"system"`
-}
-
-// RuntimeConfig contains runtime configuration
-type RuntimeConfig struct {
-	Container      string `json:"container"`
-	Virtualization string `json:"virtualization"`
-}
-
-// TargetConfig contains target environment configuration
-type TargetConfig struct {
-	Type    string         `json:"type"`
-	Desktop *DesktopConfig `json:"desktop,omitempty"`
-}
-
-// DesktopConfig contains desktop environment configuration
-type DesktopConfig struct {
-	Environment   string `json:"environment"`
-	DisplayServer string `json:"displayServer"`
-}
-
-// DistributionStatus represents the status of a distribution
-type DistributionStatus string
-
-const (
-	StatusPending     DistributionStatus = "pending"
-	StatusDownloading DistributionStatus = "downloading"
-	StatusValidating  DistributionStatus = "validating"
-	StatusReady       DistributionStatus = "ready"
-	StatusFailed      DistributionStatus = "failed"
-	StatusDeleted     DistributionStatus = "deleted"
-)
-
-// Visibility represents the visibility level of a distribution
-type Visibility string
-
-const (
-	VisibilityPublic  Visibility = "public"
-	VisibilityPrivate Visibility = "private"
-)
-
-// Distribution represents a distribution record
-type Distribution struct {
-	ID           int64               `json:"id"`
-	Name         string              `json:"name"`
-	Version      string              `json:"version"`
-	Status       DistributionStatus  `json:"status"`
-	Visibility   Visibility          `json:"visibility"`
-	Config       *DistributionConfig `json:"config,omitempty"`
-	SourceURL    string              `json:"source_url,omitempty"`
-	Checksum     string              `json:"checksum,omitempty"`
-	SizeBytes    int64               `json:"size_bytes"`
-	OwnerID      string              `json:"owner_id,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
-	StartedAt    *time.Time          `json:"started_at,omitempty"`
-	CompletedAt  *time.Time          `json:"completed_at,omitempty"`
-	ErrorMessage string              `json:"error_message,omitempty"`
-}
-
-// DistributionLog represents a log entry for a distribution
-type DistributionLog struct {
-	ID             int64     `json:"id"`
-	DistributionID int64     `json:"distribution_id"`
-	Level          string    `json:"level"`
-	Message        string    `json:"message"`
-	CreatedAt      time.Time `json:"created_at"`
+// scanner is an interface that abstracts sql.Row and sql.Rows for scanning
+type scanner interface {
+	Scan(dest ...interface{}) error
 }
 
 // DistributionRepository handles distribution database operations
@@ -179,7 +73,7 @@ func (r *DistributionRepository) GetByID(id int64) (*Distribution, error) {
 		WHERE id = ?
 	`
 	row := r.db.DB().QueryRow(query, id)
-	return r.scanDistribution(row)
+	return r.scanDistributionRow(row)
 }
 
 // GetByName retrieves a distribution by name
@@ -191,7 +85,7 @@ func (r *DistributionRepository) GetByName(name string) (*Distribution, error) {
 		WHERE name = ?
 	`
 	row := r.db.DB().QueryRow(query, name)
-	return r.scanDistribution(row)
+	return r.scanDistributionRow(row)
 }
 
 // List retrieves all distributions with optional status filter (admin use only)
@@ -223,20 +117,7 @@ func (r *DistributionRepository) List(status *DistributionStatus) ([]Distributio
 	}
 	defer rows.Close()
 
-	var distributions []Distribution
-	for rows.Next() {
-		d, err := r.scanDistributionRows(rows)
-		if err != nil {
-			return nil, err
-		}
-		distributions = append(distributions, *d)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating distributions: %w", err)
-	}
-
-	return distributions, nil
+	return r.scanDistributions(rows)
 }
 
 // ListAccessible retrieves distributions accessible to a user
@@ -301,20 +182,7 @@ func (r *DistributionRepository) ListAccessible(userID string, isAdmin bool, sta
 	}
 	defer rows.Close()
 
-	var distributions []Distribution
-	for rows.Next() {
-		d, err := r.scanDistributionRows(rows)
-		if err != nil {
-			return nil, err
-		}
-		distributions = append(distributions, *d)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating distributions: %w", err)
-	}
-
-	return distributions, nil
+	return r.scanDistributions(rows)
 }
 
 // CanUserAccess checks if a user can access a specific distribution
@@ -505,21 +373,18 @@ func (r *DistributionRepository) GetStats() (map[string]int64, error) {
 	return stats, nil
 }
 
-// scanDistribution scans a single row into a Distribution
-func (r *DistributionRepository) scanDistribution(row *sql.Row) (*Distribution, error) {
+// scanDistribution scans a row into a Distribution using the unified scanner interface
+func (r *DistributionRepository) scanDistribution(s scanner) (*Distribution, error) {
 	var d Distribution
 	var configJSON, sourceURL, checksum, ownerID, errorMessage sql.NullString
 	var startedAt, completedAt sql.NullTime
 
-	err := row.Scan(
+	err := s.Scan(
 		&d.ID, &d.Name, &d.Version, &d.Status, &d.Visibility, &configJSON, &sourceURL, &checksum, &d.SizeBytes, &ownerID,
 		&d.CreatedAt, &d.UpdatedAt, &startedAt, &completedAt, &errorMessage,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to scan distribution: %w", err)
+		return nil, err
 	}
 
 	if configJSON.Valid && configJSON.String != "" {
@@ -550,44 +415,32 @@ func (r *DistributionRepository) scanDistribution(row *sql.Row) (*Distribution, 
 	return &d, nil
 }
 
-// scanDistributionRows scans rows into a Distribution
-func (r *DistributionRepository) scanDistributionRows(rows *sql.Rows) (*Distribution, error) {
-	var d Distribution
-	var configJSON, sourceURL, checksum, ownerID, errorMessage sql.NullString
-	var startedAt, completedAt sql.NullTime
-
-	err := rows.Scan(
-		&d.ID, &d.Name, &d.Version, &d.Status, &d.Visibility, &configJSON, &sourceURL, &checksum, &d.SizeBytes, &ownerID,
-		&d.CreatedAt, &d.UpdatedAt, &startedAt, &completedAt, &errorMessage,
-	)
+// scanDistributionRow scans a single sql.Row, handling sql.ErrNoRows specially
+func (r *DistributionRepository) scanDistributionRow(row *sql.Row) (*Distribution, error) {
+	d, err := r.scanDistribution(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan distribution: %w", err)
 	}
+	return d, nil
+}
 
-	if configJSON.Valid && configJSON.String != "" {
-		var config DistributionConfig
-		if err := json.Unmarshal([]byte(configJSON.String), &config); err == nil {
-			d.Config = &config
+// scanDistributions scans multiple rows into a slice of Distribution
+func (r *DistributionRepository) scanDistributions(rows *sql.Rows) ([]Distribution, error) {
+	var distributions []Distribution
+	for rows.Next() {
+		d, err := r.scanDistribution(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan distribution: %w", err)
 		}
-	}
-	if sourceURL.Valid {
-		d.SourceURL = sourceURL.String
-	}
-	if checksum.Valid {
-		d.Checksum = checksum.String
-	}
-	if ownerID.Valid {
-		d.OwnerID = ownerID.String
-	}
-	if errorMessage.Valid {
-		d.ErrorMessage = errorMessage.String
-	}
-	if startedAt.Valid {
-		d.StartedAt = &startedAt.Time
-	}
-	if completedAt.Valid {
-		d.CompletedAt = &completedAt.Time
+		distributions = append(distributions, *d)
 	}
 
-	return &d, nil
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating distributions: %w", err)
+	}
+
+	return distributions, nil
 }
