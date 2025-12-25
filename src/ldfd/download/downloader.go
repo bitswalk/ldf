@@ -42,8 +42,8 @@ func NewDownloader(httpClient *http.Client, storage storage.Backend, jobRepo *db
 
 // Download executes a download job
 func (d *Downloader) Download(ctx context.Context, job *db.DownloadJob, progressCb ProgressCallback) error {
-	// Determine retrieval method from source type
-	if job.SourceType == "git" {
+	// Determine retrieval method
+	if job.RetrievalMethod == "git" {
 		return d.downloadGit(ctx, job, progressCb)
 	}
 	return d.downloadHTTP(ctx, job, progressCb)
@@ -243,16 +243,31 @@ func (d *Downloader) downloadGit(ctx context.Context, job *db.DownloadJob, progr
 }
 
 // buildArtifactPath constructs the storage path for a download artifact
+// Following the artifact module pattern: distribution/{ownerID}/{distributionID}/{path}
+// For release archives: distribution/{ownerID}/{distributionID}/components/{componentName}/{version}/{filename}
+// For git sources: distribution/{ownerID}/{distributionID}/sources/{componentName}/{version}/{filename}
 func (d *Downloader) buildArtifactPath(job *db.DownloadJob) string {
 	// Extract filename from URL or construct one
 	filename := filepath.Base(job.ResolvedURL)
-	if filename == "" || filename == "." {
-		filename = fmt.Sprintf("%s-%s.tar.gz", job.ComponentID, job.Version)
+	if filename == "" || filename == "." || filename == "/" {
+		filename = fmt.Sprintf("%s-%s.tar.gz", job.ComponentName, job.Version)
 	}
 
-	return fmt.Sprintf("distributions/%s/components/%s/%s",
+	// Determine the subdirectory based on retrieval method
+	// Git sources go to "sources/", release archives go to "components/"
+	subdir := "components"
+	if job.RetrievalMethod == "git" {
+		subdir = "sources"
+	}
+
+	// Build path following artifact module pattern:
+	// distribution/{ownerID}/{distributionID}/{subdir}/{componentName}/{version}/{filename}
+	return fmt.Sprintf("distribution/%s/%s/%s/%s/%s/%s",
+		job.OwnerID,
 		job.DistributionID,
-		job.ComponentID,
+		subdir,
+		job.ComponentName,
+		job.Version,
 		filename,
 	)
 }

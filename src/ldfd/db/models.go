@@ -187,24 +187,27 @@ const (
 
 // DownloadJob represents a download task for a component
 type DownloadJob struct {
-	ID             string            `json:"id"`
-	DistributionID string            `json:"distribution_id"`
-	ComponentID    string            `json:"component_id"`
-	SourceID       string            `json:"source_id"`
-	SourceType     string            `json:"source_type"`
-	ResolvedURL    string            `json:"resolved_url"`
-	Version        string            `json:"version"`
-	Status         DownloadJobStatus `json:"status"`
-	ProgressBytes  int64             `json:"progress_bytes"`
-	TotalBytes     int64             `json:"total_bytes"`
-	CreatedAt      time.Time         `json:"created_at"`
-	StartedAt      *time.Time        `json:"started_at,omitempty"`
-	CompletedAt    *time.Time        `json:"completed_at,omitempty"`
-	ArtifactPath   string            `json:"artifact_path,omitempty"`
-	Checksum       string            `json:"checksum,omitempty"`
-	ErrorMessage   string            `json:"error_message,omitempty"`
-	RetryCount     int               `json:"retry_count"`
-	MaxRetries     int               `json:"max_retries"`
+	ID              string            `json:"id"`
+	DistributionID  string            `json:"distribution_id"`
+	OwnerID         string            `json:"owner_id"`
+	ComponentID     string            `json:"component_id"`
+	ComponentName   string            `json:"component_name"`
+	SourceID        string            `json:"source_id"`
+	SourceType      string            `json:"source_type"`
+	RetrievalMethod string            `json:"retrieval_method"` // "release" or "git"
+	ResolvedURL     string            `json:"resolved_url"`
+	Version         string            `json:"version"`
+	Status          DownloadJobStatus `json:"status"`
+	ProgressBytes   int64             `json:"progress_bytes"`
+	TotalBytes      int64             `json:"total_bytes"`
+	CreatedAt       time.Time         `json:"created_at"`
+	StartedAt       *time.Time        `json:"started_at,omitempty"`
+	CompletedAt     *time.Time        `json:"completed_at,omitempty"`
+	ArtifactPath    string            `json:"artifact_path,omitempty"`
+	Checksum        string            `json:"checksum,omitempty"`
+	ErrorMessage    string            `json:"error_message,omitempty"`
+	RetryCount      int               `json:"retry_count"`
+	MaxRetries      int               `json:"max_retries"`
 }
 
 // DistributionSourceOverride represents a per-distribution source binding

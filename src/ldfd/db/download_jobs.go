@@ -33,16 +33,17 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 	}
 
 	query := `
-		INSERT INTO download_jobs (id, distribution_id, component_id, source_id, source_type,
-			resolved_url, version, status, progress_bytes, total_bytes, created_at,
-			started_at, completed_at, artifact_path, checksum, error_message, retry_count, max_retries)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO download_jobs (id, distribution_id, owner_id, component_id, component_name,
+			source_id, source_type, retrieval_method, resolved_url, version, status,
+			progress_bytes, total_bytes, created_at, started_at, completed_at,
+			artifact_path, checksum, error_message, retry_count, max_retries)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
-		job.ID, job.DistributionID, job.ComponentID, job.SourceID, job.SourceType,
-		job.ResolvedURL, job.Version, job.Status, job.ProgressBytes, job.TotalBytes, job.CreatedAt,
-		job.StartedAt, job.CompletedAt, job.ArtifactPath, job.Checksum, job.ErrorMessage,
-		job.RetryCount, job.MaxRetries,
+		job.ID, job.DistributionID, job.OwnerID, job.ComponentID, job.ComponentName,
+		job.SourceID, job.SourceType, job.RetrievalMethod, job.ResolvedURL, job.Version, job.Status,
+		job.ProgressBytes, job.TotalBytes, job.CreatedAt, job.StartedAt, job.CompletedAt,
+		job.ArtifactPath, job.Checksum, job.ErrorMessage, job.RetryCount, job.MaxRetries,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create download job: %w", err)
@@ -54,9 +55,10 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 // GetByID retrieves a download job by ID
 func (r *DownloadJobRepository) GetByID(id string) (*DownloadJob, error) {
 	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type,
-			resolved_url, version, status, progress_bytes, total_bytes, created_at,
-			started_at, completed_at, artifact_path, checksum, error_message, retry_count, max_retries
+		SELECT id, distribution_id, owner_id, component_id, component_name,
+			source_id, source_type, retrieval_method, resolved_url, version, status,
+			progress_bytes, total_bytes, created_at, started_at, completed_at,
+			artifact_path, checksum, error_message, retry_count, max_retries
 		FROM download_jobs
 		WHERE id = ?
 	`
@@ -67,9 +69,10 @@ func (r *DownloadJobRepository) GetByID(id string) (*DownloadJob, error) {
 // ListByDistribution retrieves all download jobs for a distribution
 func (r *DownloadJobRepository) ListByDistribution(distributionID string) ([]DownloadJob, error) {
 	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type,
-			resolved_url, version, status, progress_bytes, total_bytes, created_at,
-			started_at, completed_at, artifact_path, checksum, error_message, retry_count, max_retries
+		SELECT id, distribution_id, owner_id, component_id, component_name,
+			source_id, source_type, retrieval_method, resolved_url, version, status,
+			progress_bytes, total_bytes, created_at, started_at, completed_at,
+			artifact_path, checksum, error_message, retry_count, max_retries
 		FROM download_jobs
 		WHERE distribution_id = ?
 		ORDER BY created_at DESC
@@ -86,9 +89,10 @@ func (r *DownloadJobRepository) ListByDistribution(distributionID string) ([]Dow
 // ListByStatus retrieves all download jobs with a specific status
 func (r *DownloadJobRepository) ListByStatus(status DownloadJobStatus) ([]DownloadJob, error) {
 	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type,
-			resolved_url, version, status, progress_bytes, total_bytes, created_at,
-			started_at, completed_at, artifact_path, checksum, error_message, retry_count, max_retries
+		SELECT id, distribution_id, owner_id, component_id, component_name,
+			source_id, source_type, retrieval_method, resolved_url, version, status,
+			progress_bytes, total_bytes, created_at, started_at, completed_at,
+			artifact_path, checksum, error_message, retry_count, max_retries
 		FROM download_jobs
 		WHERE status = ?
 		ORDER BY created_at ASC
@@ -110,9 +114,10 @@ func (r *DownloadJobRepository) ListPending() ([]DownloadJob, error) {
 // ListActive retrieves all active (pending, verifying, downloading) download jobs
 func (r *DownloadJobRepository) ListActive() ([]DownloadJob, error) {
 	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type,
-			resolved_url, version, status, progress_bytes, total_bytes, created_at,
-			started_at, completed_at, artifact_path, checksum, error_message, retry_count, max_retries
+		SELECT id, distribution_id, owner_id, component_id, component_name,
+			source_id, source_type, retrieval_method, resolved_url, version, status,
+			progress_bytes, total_bytes, created_at, started_at, completed_at,
+			artifact_path, checksum, error_message, retry_count, max_retries
 		FROM download_jobs
 		WHERE status IN (?, ?, ?)
 		ORDER BY created_at ASC
@@ -332,10 +337,10 @@ func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 	var artifactPath, checksum, errorMsg sql.NullString
 
 	err := row.Scan(
-		&job.ID, &job.DistributionID, &job.ComponentID, &job.SourceID, &job.SourceType,
-		&job.ResolvedURL, &job.Version, &job.Status, &job.ProgressBytes, &job.TotalBytes,
-		&job.CreatedAt, &startedAt, &completedAt, &artifactPath, &checksum, &errorMsg,
-		&job.RetryCount, &job.MaxRetries,
+		&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &job.ComponentName,
+		&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
+		&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
+		&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -367,10 +372,10 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 		var artifactPath, checksum, errorMsg sql.NullString
 
 		if err := rows.Scan(
-			&job.ID, &job.DistributionID, &job.ComponentID, &job.SourceID, &job.SourceType,
-			&job.ResolvedURL, &job.Version, &job.Status, &job.ProgressBytes, &job.TotalBytes,
-			&job.CreatedAt, &startedAt, &completedAt, &artifactPath, &checksum, &errorMsg,
-			&job.RetryCount, &job.MaxRetries,
+			&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &job.ComponentName,
+			&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
+			&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
+			&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan download job: %w", err)
 		}

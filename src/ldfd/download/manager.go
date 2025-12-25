@@ -318,16 +318,25 @@ func (m *Manager) createJobForComponent(dist *db.Distribution, componentName str
 		return nil, fmt.Errorf("failed to build URL: %w", err)
 	}
 
+	// Determine retrieval method
+	retrievalMethod := source.RetrievalMethod
+	if retrievalMethod == "" {
+		retrievalMethod = "release"
+	}
+
 	// Create the job
 	job := &db.DownloadJob{
-		DistributionID: dist.ID,
-		ComponentID:    component.ID,
-		SourceID:       source.ID,
-		SourceType:     m.getSourceType(source),
-		ResolvedURL:    resolvedURL,
-		Version:        version,
-		Status:         db.JobStatusPending,
-		MaxRetries:     m.config.MaxRetries,
+		DistributionID:  dist.ID,
+		OwnerID:         dist.OwnerID,
+		ComponentID:     component.ID,
+		ComponentName:   component.Name,
+		SourceID:        source.ID,
+		SourceType:      m.getSourceType(source),
+		RetrievalMethod: retrievalMethod,
+		ResolvedURL:     resolvedURL,
+		Version:         version,
+		Status:          db.JobStatusPending,
+		MaxRetries:      m.config.MaxRetries,
 	}
 
 	if err := m.jobRepo.Create(job); err != nil {

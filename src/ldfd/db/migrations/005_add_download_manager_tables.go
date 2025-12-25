@@ -106,9 +106,12 @@ func migration005Up(tx *sql.Tx) error {
 		CREATE TABLE download_jobs (
 			id TEXT PRIMARY KEY,
 			distribution_id TEXT NOT NULL REFERENCES distributions(id) ON DELETE CASCADE,
+			owner_id TEXT NOT NULL,
 			component_id TEXT NOT NULL REFERENCES components(id),
+			component_name TEXT NOT NULL,
 			source_id TEXT NOT NULL,
 			source_type TEXT NOT NULL,
+			retrieval_method TEXT NOT NULL DEFAULT 'release',
 			resolved_url TEXT NOT NULL,
 			version TEXT NOT NULL,
 			status TEXT NOT NULL DEFAULT 'pending',

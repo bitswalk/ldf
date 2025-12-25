@@ -346,6 +346,73 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy components table (seeded by migrations, but user may have added custom ones)
+	if d.tableExistsInDiskDB("components") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO components
+			SELECT * FROM disk_db.components
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+		}
+	}
+
+	// Copy distribution_source_overrides table
+	if d.tableExistsInDiskDB("distribution_source_overrides") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO distribution_source_overrides
+			SELECT * FROM disk_db.distribution_source_overrides
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("distribution_source_overrides: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("distribution_source_overrides(%d)", rows))
+		}
+	}
+
+	// Copy download_jobs table (handle schema migration for new columns)
+	if d.tableExistsInDiskDB("download_jobs") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO download_jobs
+			(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+			 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
+			 created_at, started_at, completed_at, artifact_path, checksum, error_message,
+			 retry_count, max_retries)
+			SELECT id, distribution_id,
+			       COALESCE(owner_id, '') as owner_id,
+			       component_id,
+			       COALESCE(component_name, component_id) as component_name,
+			       source_id, source_type,
+			       COALESCE(retrieval_method, 'release') as retrieval_method,
+			       resolved_url, version, status, progress_bytes, total_bytes,
+			       created_at, started_at, completed_at, artifact_path, checksum, error_message,
+			       retry_count, max_retries
+			FROM disk_db.download_jobs
+		`)
+		if err != nil {
+			// Fallback: try without new columns
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO download_jobs
+				(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+				 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
+				 created_at, started_at, completed_at, artifact_path, checksum, error_message,
+				 retry_count, max_retries)
+				SELECT id, distribution_id, '', component_id, component_id, source_id, source_type,
+				       'release', resolved_url, version, status, progress_bytes, total_bytes,
+				       created_at, started_at, completed_at, artifact_path, checksum, error_message,
+				       retry_count, max_retries
+				FROM disk_db.download_jobs
+			`)
+		}
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("download_jobs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("download_jobs(%d)", rows))
+		}
+	}
+
 	// Log what was loaded
 	if len(loadedTables) > 0 {
 		fmt.Fprintf(os.Stderr, "INFO: Loaded from disk: %v\n", loadedTables)
