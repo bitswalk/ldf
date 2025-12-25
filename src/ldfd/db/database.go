@@ -280,12 +280,32 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
-	// Copy source_defaults table (no foreign key dependencies)
+	// Copy source_defaults table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("source_defaults") {
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO source_defaults
-			SELECT * FROM disk_db.source_defaults
+			(id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			SELECT id, name, url, priority, enabled, created_at, updated_at,
+			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='component_id')
+			            THEN component_id ELSE NULL END,
+			       COALESCE(
+			           CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='retrieval_method')
+			                THEN retrieval_method ELSE NULL END,
+			           'release'
+			       ),
+			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='url_template')
+			            THEN url_template ELSE NULL END
+			FROM disk_db.source_defaults
 		`)
+		if err != nil {
+			// Fallback: try explicit column selection without new columns
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO source_defaults
+				(id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
+				SELECT id, name, url, priority, enabled, created_at, updated_at, 'release'
+				FROM disk_db.source_defaults
+			`)
+		}
 		if err != nil {
 			loadErrors = append(loadErrors, fmt.Sprintf("source_defaults: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
@@ -293,12 +313,32 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
-	// Copy user_sources table (references users)
+	// Copy user_sources table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("user_sources") {
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO user_sources
-			SELECT * FROM disk_db.user_sources
+			(id, user_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			SELECT id, user_id, name, url, priority, enabled, created_at, updated_at,
+			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='component_id')
+			            THEN component_id ELSE NULL END,
+			       COALESCE(
+			           CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='retrieval_method')
+			                THEN retrieval_method ELSE NULL END,
+			           'release'
+			       ),
+			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='url_template')
+			            THEN url_template ELSE NULL END
+			FROM disk_db.user_sources
 		`)
+		if err != nil {
+			// Fallback: try explicit column selection without new columns
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO user_sources
+				(id, user_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
+				SELECT id, user_id, name, url, priority, enabled, created_at, updated_at, 'release'
+				FROM disk_db.user_sources
+			`)
+		}
 		if err != nil {
 			loadErrors = append(loadErrors, fmt.Sprintf("user_sources: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
