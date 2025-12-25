@@ -1,6 +1,7 @@
 import type { Component as SolidComponent } from "solid-js";
 import { createSignal, createResource, Show, For } from "solid-js";
 import { Spinner } from "../Spinner";
+import { Icon } from "../Icon";
 import type { CreateSourceRequest, Source } from "../../services/sources";
 import {
   listComponents,
@@ -8,6 +9,27 @@ import {
   getCategoryDisplayName,
   type Component,
 } from "../../services/components";
+
+// Template variable definitions for the help tooltip
+const TEMPLATE_VARIABLES = [
+  { name: "{base_url}", example: "(source URL)", desc: "The source base URL" },
+  { name: "{version}", example: "6.12.5", desc: "Full version string" },
+  { name: "{tag}", example: "v6.12.5", desc: "Version with 'v' prefix" },
+  { name: "{tag_short}", example: "v6.12", desc: "Major.minor only" },
+  {
+    name: "{tag_compact}",
+    example: "v6125",
+    desc: "Without dots (systemd style)",
+  },
+  { name: "{major}", example: "6", desc: "Major version number" },
+  { name: "{minor}", example: "12", desc: "Minor version number" },
+  { name: "{patch}", example: "5", desc: "Patch version number" },
+  {
+    name: "{major_x}",
+    example: "6.x",
+    desc: "Major with .x (kernel.org style)",
+  },
+];
 
 interface SourceFormProps {
   onSubmit: (data: CreateSourceRequest) => void;
@@ -75,13 +97,20 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
 
     if (!template) return baseUrl;
 
-    // Apply template with example version
+    // Apply template with example version 6.12.5
     const normalizedBase = baseUrl.replace(/\/$/, "").replace(/\.git$/, "");
+    const exampleVersion = "6.12.5";
+
     return template
-      .replace("{base_url}", normalizedBase)
-      .replace("{version}", "1.0.0")
-      .replace("{tag}", "v1.0.0")
-      .replace("{major}", "1");
+      .replace(/{base_url}/g, normalizedBase)
+      .replace(/{version}/g, exampleVersion)
+      .replace(/{tag}/g, "v" + exampleVersion)
+      .replace(/{tag_short}/g, "v6.12")
+      .replace(/{tag_compact}/g, "v6125")
+      .replace(/{major}/g, "6")
+      .replace(/{minor}/g, "12")
+      .replace(/{patch}/g, "5")
+      .replace(/{major_x}/g, "6.x");
   };
 
   const validateForm = (): boolean => {
@@ -253,9 +282,59 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
       </div>
 
       <div class="space-y-2">
-        <label class="text-sm font-medium" for="source-template">
-          URL Template (optional)
-        </label>
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium" for="source-template">
+            URL Template (optional)
+          </label>
+          <div class="relative group">
+            <button
+              type="button"
+              class="w-5 h-5 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Template variables help"
+            >
+              <Icon name="question" size="xs" />
+            </button>
+            <div class="absolute left-0 top-full mt-2 z-50 hidden group-hover:block">
+              <div class="bg-popover border border-border rounded-lg shadow-lg p-4 w-80">
+                <h4 class="font-semibold text-sm mb-3">Template Variables</h4>
+                <p class="text-xs text-muted-foreground mb-3">
+                  Use these placeholders in your URL template. Example version:
+                  6.12.5
+                </p>
+                <div class="space-y-2">
+                  <For each={TEMPLATE_VARIABLES}>
+                    {(variable) => (
+                      <div class="flex items-start gap-2 text-xs">
+                        <code class="px-1.5 py-0.5 bg-muted rounded font-mono text-primary whitespace-nowrap">
+                          {variable.name}
+                        </code>
+                        <span class="text-muted-foreground flex-1">
+                          {variable.desc}
+                        </span>
+                        <span class="font-mono text-foreground whitespace-nowrap">
+                          {variable.example}
+                        </span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+                <div class="mt-4 pt-3 border-t border-border">
+                  <p class="text-xs font-medium mb-2">Examples:</p>
+                  <div class="space-y-1.5 text-xs font-mono text-muted-foreground">
+                    <p class="break-all">
+                      <span class="text-foreground">kernel.org:</span>{" "}
+                      {"{base_url}/{major_x}/linux-{version}.tar.xz"}
+                    </p>
+                    <p class="break-all">
+                      <span class="text-foreground">systemd:</span>{" "}
+                      {"{base_url}/archive/refs/tags/{tag_compact}.tar.gz"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <input
           id="source-template"
           type="text"
@@ -265,15 +344,15 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           onInput={(e) => setUrlTemplate(e.target.value)}
         />
         <p class="text-xs text-muted-foreground">
-          Custom URL template. Placeholders: {"{base_url}"}, {"{version}"},{" "}
-          {"{tag}"}. Leave empty to use component defaults.
+          Custom URL template. Hover the <span class="font-medium">?</span> icon
+          for available variables. Leave empty to use component defaults.
         </p>
       </div>
 
       <Show when={previewUrl()}>
         <div class="space-y-2 p-3 bg-muted/50 rounded-md border border-border">
           <label class="text-xs font-medium text-muted-foreground">
-            URL Preview (example with version 1.0.0)
+            URL Preview (example with version 6.12.5)
           </label>
           <p class="font-mono text-xs break-all">{previewUrl()}</p>
         </div>

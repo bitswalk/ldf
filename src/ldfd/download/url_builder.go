@@ -68,20 +68,42 @@ func (b *URLBuilder) selectTemplate(source *db.Source, component *db.Component) 
 }
 
 // applyTemplate replaces placeholders in the template with actual values
+// Available placeholders:
+//   - {base_url}    : The source base URL
+//   - {version}     : Full version string (e.g., "1.0.0", "6.12.5")
+//   - {tag}         : Version with 'v' prefix (e.g., "v1.0.0", "v6.12.5")
+//   - {tag_short}   : Short tag with major.minor only (e.g., "v1.0", "v6.12")
+//   - {tag_compact} : Compact tag without dots (e.g., "v100", "v6125")
+//   - {major}       : Major version number only (e.g., "1", "6")
+//   - {minor}       : Minor version number only (e.g., "0", "12")
+//   - {patch}       : Patch version number only (e.g., "0", "5")
+//   - {major_x}     : Major version with .x suffix for kernel.org style (e.g., "6.x")
 func (b *URLBuilder) applyTemplate(template, baseURL, version string) string {
 	result := template
 
-	// Replace placeholders
+	// Parse version components
+	major, minor, patch := parseVersionComponents(version)
+
+	// Replace basic placeholders
 	result = strings.ReplaceAll(result, "{base_url}", baseURL)
 	result = strings.ReplaceAll(result, "{version}", version)
 	result = strings.ReplaceAll(result, "{tag}", "v"+version)
 
-	// Handle major version extraction for kernel-style URLs
-	// e.g., kernel 6.12.0 -> major is 6
-	if strings.Contains(result, "{major}") {
-		major := extractMajorVersion(version)
-		result = strings.ReplaceAll(result, "{major}", major)
-	}
+	// Short tag: v{major}.{minor} (e.g., "v1.0", "v6.12")
+	tagShort := fmt.Sprintf("v%s.%s", major, minor)
+	result = strings.ReplaceAll(result, "{tag_short}", tagShort)
+
+	// Compact tag: v{major}{minor}{patch} without dots (e.g., "v100", "v259")
+	tagCompact := "v" + buildCompactVersion(version)
+	result = strings.ReplaceAll(result, "{tag_compact}", tagCompact)
+
+	// Individual version components
+	result = strings.ReplaceAll(result, "{major}", major)
+	result = strings.ReplaceAll(result, "{minor}", minor)
+	result = strings.ReplaceAll(result, "{patch}", patch)
+
+	// Major with .x suffix for kernel.org style URLs (e.g., "6.x")
+	result = strings.ReplaceAll(result, "{major_x}", major+".x")
 
 	return result
 }
@@ -107,13 +129,36 @@ func (b *URLBuilder) IsGitLabURL(url string) bool {
 	return strings.Contains(url, "gitlab.com") || strings.Contains(url, "gitlab.")
 }
 
-// extractMajorVersion extracts the major version number from a version string
-func extractMajorVersion(version string) string {
+// parseVersionComponents extracts major, minor, and patch from a version string
+// Returns ("0", "0", "0") for invalid versions
+func parseVersionComponents(version string) (major, minor, patch string) {
 	parts := strings.Split(version, ".")
-	if len(parts) > 0 {
-		return parts[0]
+
+	major = "0"
+	minor = "0"
+	patch = "0"
+
+	if len(parts) > 0 && parts[0] != "" {
+		major = parts[0]
 	}
-	return version
+	if len(parts) > 1 && parts[1] != "" {
+		minor = parts[1]
+	}
+	if len(parts) > 2 && parts[2] != "" {
+		patch = parts[2]
+	}
+
+	return major, minor, patch
+}
+
+// buildCompactVersion creates a compact version string without dots
+// Examples:
+//   - "1.0.0" -> "100"
+//   - "6.12.5" -> "6125"
+//   - "259" -> "259" (already compact, like systemd)
+func buildCompactVersion(version string) string {
+	// Remove all dots to create compact version
+	return strings.ReplaceAll(version, ".", "")
 }
 
 // BuildGitCloneURL constructs a URL suitable for git clone operations
