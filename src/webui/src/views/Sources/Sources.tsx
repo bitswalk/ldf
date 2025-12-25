@@ -84,6 +84,9 @@ export const Sources: Component<SourcesProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
+        component_id: formData.component_id,
+        retrieval_method: formData.retrieval_method,
+        url_template: formData.url_template,
         priority: formData.priority,
         enabled: formData.enabled,
       };
@@ -128,7 +131,9 @@ export const Sources: Component<SourcesProps> = (props) => {
   const openDeleteModal = (srcs: Source[]) => {
     const userSources = srcs.filter((s) => !s.is_system);
     if (userSources.length === 0) {
-      setError("Cannot delete system sources. Only user sources can be deleted.");
+      setError(
+        "Cannot delete system sources. Only user sources can be deleted.",
+      );
       return;
     }
     setSourcesToDelete(userSources);
@@ -207,8 +212,8 @@ export const Sources: Component<SourcesProps> = (props) => {
     if (result.success) {
       setSources((prev) =>
         prev.map((s) =>
-          s.id === source.id ? { ...s, enabled: !s.enabled } : s
-        )
+          s.id === source.id ? { ...s, enabled: !s.enabled } : s,
+        ),
       );
     } else {
       setError(result.message);
@@ -242,13 +247,17 @@ export const Sources: Component<SourcesProps> = (props) => {
 
   const ActionsCell: Component<{ value: any; row: Source }> = (cellProps) => {
     const canEdit = () => {
-      return !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin());
+      return (
+        !cellProps.row.is_system &&
+        (props.user?.id === cellProps.row.owner_id || isAdmin())
+      );
     };
 
     const canDelete = () => {
-      return !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin());
+      return (
+        !cellProps.row.is_system &&
+        (props.user?.id === cellProps.row.owner_id || isAdmin())
+      );
     };
 
     return (
@@ -333,7 +342,9 @@ export const Sources: Component<SourcesProps> = (props) => {
               </Show>
               <button
                 onClick={handleDeleteSelected}
-                disabled={selectedSources().filter((s) => !s.is_system).length === 0}
+                disabled={
+                  selectedSources().filter((s) => !s.is_system).length === 0
+                }
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
                   selectedSources().filter((s) => !s.is_system).length > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -341,7 +352,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                 }`}
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete ({selectedSources().filter((s) => !s.is_system).length})</span>
+                <span>
+                  Delete ({selectedSources().filter((s) => !s.is_system).length}
+                  )
+                </span>
               </button>
               <button
                 onClick={handleCreateSource}
@@ -376,7 +390,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                       borderStyle="dashed"
                       header={{ title: "Add your first source" }}
                     >
-                      <button onClick={handleCreateSource} class="cursor-pointer">
+                      <button
+                        onClick={handleCreateSource}
+                        class="cursor-pointer"
+                      >
                         <Icon
                           name="plus"
                           size="2xl"
@@ -449,7 +466,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                 class="px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete Selected ({selectedSources().filter((s) => !s.is_system).length})</span>
+                <span>
+                  Delete Selected (
+                  {selectedSources().filter((s) => !s.is_system).length})
+                </span>
               </button>
             </footer>
           </Show>

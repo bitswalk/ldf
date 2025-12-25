@@ -159,6 +159,9 @@ export const Settings: Component<SettingsProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
+        component_id: formData.component_id,
+        retrieval_method: formData.retrieval_method,
+        url_template: formData.url_template,
         priority: formData.priority,
         enabled: formData.enabled,
       };
