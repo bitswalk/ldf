@@ -3,6 +3,7 @@ import { createSignal, Match, onMount, Switch } from "solid-js";
 import { Transition } from "solid-transition-group";
 import { Header } from "./components/Header";
 import { Distribution } from "./views/Distribution";
+import { DistributionDetail } from "./views/DistributionDetail";
 import { Artifacts } from "./views/Artifacts";
 import { Sources } from "./views/Sources";
 import { Login } from "./views/Login";
@@ -33,6 +34,7 @@ import { syncDevModeFromServer } from "./services/settings";
 type ViewType =
   | "server-connection"
   | "distribution"
+  | "distribution-detail"
   | "artifacts"
   | "sources"
   | "login"
@@ -58,6 +60,9 @@ const App: Component = () => {
   const [connectionError, setConnectionError] = createSignal<string | null>(
     null,
   );
+  const [selectedDistributionId, setSelectedDistributionId] = createSignal<
+    string | null
+  >(null);
 
   onMount(async () => {
     // If we have a server URL but missing endpoints, try to re-discover them
@@ -167,6 +172,16 @@ const App: Component = () => {
     setCurrentView("distribution");
   };
 
+  const handleViewDistribution = (distributionId: string) => {
+    setSelectedDistributionId(distributionId);
+    setCurrentView("distribution-detail");
+  };
+
+  const handleBackFromDistributionDetail = () => {
+    setSelectedDistributionId(null);
+    setCurrentView("distribution");
+  };
+
   const menuItems = (): MenuItem[] => [
     {
       id: "distribution",
@@ -230,6 +245,19 @@ const App: Component = () => {
                 <Match when={currentView() === "distribution"}>
                   <Distribution
                     isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                    onViewDistribution={handleViewDistribution}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "distribution-detail" &&
+                    selectedDistributionId()
+                  }
+                >
+                  <DistributionDetail
+                    distributionId={selectedDistributionId()!}
+                    onBack={handleBackFromDistributionDetail}
                     user={authState().user}
                   />
                 </Match>

@@ -115,36 +115,104 @@ type DistributionLog struct {
 
 // SourceDefault represents a system-wide default source (admin-managed)
 type SourceDefault struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	Priority  int       `json:"priority"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	ComponentID     string    `json:"component_id,omitempty"`
+	RetrievalMethod string    `json:"retrieval_method"`
+	URLTemplate     string    `json:"url_template,omitempty"`
+	Priority        int       `json:"priority"`
+	Enabled         bool      `json:"enabled"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // UserSource represents a user-specific source
 type UserSource struct {
-	ID        string    `json:"id"`
-	OwnerID   string    `json:"owner_id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	Priority  int       `json:"priority"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	OwnerID         string    `json:"owner_id"`
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	ComponentID     string    `json:"component_id,omitempty"`
+	RetrievalMethod string    `json:"retrieval_method"`
+	URLTemplate     string    `json:"url_template,omitempty"`
+	Priority        int       `json:"priority"`
+	Enabled         bool      `json:"enabled"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // Source represents a merged view of sources for API responses
 type Source struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	Priority  int       `json:"priority"`
-	Enabled   bool      `json:"enabled"`
-	IsSystem  bool      `json:"is_system"`
-	OwnerID   string    `json:"owner_id,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	ComponentID     string    `json:"component_id,omitempty"`
+	RetrievalMethod string    `json:"retrieval_method"`
+	URLTemplate     string    `json:"url_template,omitempty"`
+	Priority        int       `json:"priority"`
+	Enabled         bool      `json:"enabled"`
+	IsSystem        bool      `json:"is_system"`
+	OwnerID         string    `json:"owner_id,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// Component represents a downloadable component in the registry
+type Component struct {
+	ID                       string    `json:"id"`
+	Name                     string    `json:"name"`
+	Category                 string    `json:"category"`
+	DisplayName              string    `json:"display_name"`
+	Description              string    `json:"description,omitempty"`
+	ArtifactPattern          string    `json:"artifact_pattern,omitempty"`
+	DefaultURLTemplate       string    `json:"default_url_template,omitempty"`
+	GitHubNormalizedTemplate string    `json:"github_normalized_template,omitempty"`
+	IsOptional               bool      `json:"is_optional"`
+	CreatedAt                time.Time `json:"created_at"`
+	UpdatedAt                time.Time `json:"updated_at"`
+}
+
+// DownloadJobStatus represents the status of a download job
+type DownloadJobStatus string
+
+const (
+	JobStatusPending     DownloadJobStatus = "pending"
+	JobStatusVerifying   DownloadJobStatus = "verifying"
+	JobStatusDownloading DownloadJobStatus = "downloading"
+	JobStatusCompleted   DownloadJobStatus = "completed"
+	JobStatusFailed      DownloadJobStatus = "failed"
+	JobStatusCancelled   DownloadJobStatus = "cancelled"
+)
+
+// DownloadJob represents a download task for a component
+type DownloadJob struct {
+	ID             string            `json:"id"`
+	DistributionID string            `json:"distribution_id"`
+	ComponentID    string            `json:"component_id"`
+	SourceID       string            `json:"source_id"`
+	SourceType     string            `json:"source_type"`
+	ResolvedURL    string            `json:"resolved_url"`
+	Version        string            `json:"version"`
+	Status         DownloadJobStatus `json:"status"`
+	ProgressBytes  int64             `json:"progress_bytes"`
+	TotalBytes     int64             `json:"total_bytes"`
+	CreatedAt      time.Time         `json:"created_at"`
+	StartedAt      *time.Time        `json:"started_at,omitempty"`
+	CompletedAt    *time.Time        `json:"completed_at,omitempty"`
+	ArtifactPath   string            `json:"artifact_path,omitempty"`
+	Checksum       string            `json:"checksum,omitempty"`
+	ErrorMessage   string            `json:"error_message,omitempty"`
+	RetryCount     int               `json:"retry_count"`
+	MaxRetries     int               `json:"max_retries"`
+}
+
+// DistributionSourceOverride represents a per-distribution source binding
+type DistributionSourceOverride struct {
+	ID             string    `json:"id"`
+	DistributionID string    `json:"distribution_id"`
+	ComponentID    string    `json:"component_id"`
+	SourceID       string    `json:"source_id"`
+	SourceType     string    `json:"source_type"`
+	CreatedAt      time.Time `json:"created_at"`
 }

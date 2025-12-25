@@ -38,6 +38,7 @@ func (r *Runner) registerAll() {
 		migration002SeedDefaultRoles(),
 		migration003ConvertDistributionIDToUUID(),
 		migration004AddSourcesTables(),
+		migration005AddDownloadManagerTables(),
 	}
 
 	// Sort by version to ensure correct order
