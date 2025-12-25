@@ -87,7 +87,7 @@ const (
 
 // Distribution represents a distribution record
 type Distribution struct {
-	ID           int64               `json:"id"`
+	ID           string              `json:"id"`
 	Name         string              `json:"name"`
 	Version      string              `json:"version"`
 	Status       DistributionStatus  `json:"status"`
@@ -107,8 +107,44 @@ type Distribution struct {
 // DistributionLog represents a log entry for a distribution
 type DistributionLog struct {
 	ID             int64     `json:"id"`
-	DistributionID int64     `json:"distribution_id"`
+	DistributionID string    `json:"distribution_id"`
 	Level          string    `json:"level"`
 	Message        string    `json:"message"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// SourceDefault represents a system-wide default source (admin-managed)
+type SourceDefault struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Priority  int       `json:"priority"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// UserSource represents a user-specific source
+type UserSource struct {
+	ID        string    `json:"id"`
+	OwnerID   string    `json:"owner_id"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Priority  int       `json:"priority"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Source represents a merged view of sources for API responses
+type Source struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Priority  int       `json:"priority"`
+	Enabled   bool      `json:"enabled"`
+	IsSystem  bool      `json:"is_system"`
+	OwnerID   string    `json:"owner_id,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

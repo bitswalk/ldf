@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // scanner is an interface that abstracts sql.Row and sql.Rows for scanning
@@ -46,26 +48,25 @@ func (r *DistributionRepository) Create(d *Distribution) error {
 		d.Visibility = VisibilityPrivate
 	}
 
+	// Generate UUID for ID if not provided
+	if d.ID == "" {
+		d.ID = uuid.New().String()
+	}
+
 	query := `
-		INSERT INTO distributions (name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO distributions (id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	result, err := r.db.DB().Exec(query, d.Name, d.Version, d.Status, d.Visibility, configJSON, d.SourceURL, d.Checksum, d.SizeBytes, ownerID)
+	_, err = r.db.DB().Exec(query, d.ID, d.Name, d.Version, d.Status, d.Visibility, configJSON, d.SourceURL, d.Checksum, d.SizeBytes, ownerID)
 	if err != nil {
 		return fmt.Errorf("failed to create distribution: %w", err)
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("failed to get last insert id: %w", err)
-	}
-	d.ID = id
-
 	return nil
 }
 
-// GetByID retrieves a distribution by ID
-func (r *DistributionRepository) GetByID(id int64) (*Distribution, error) {
+// GetByID retrieves a distribution by ID (UUID)
+func (r *DistributionRepository) GetByID(id string) (*Distribution, error) {
 	query := `
 		SELECT id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id,
 		       created_at, updated_at, started_at, completed_at, error_message
@@ -186,7 +187,7 @@ func (r *DistributionRepository) ListAccessible(userID string, isAdmin bool, sta
 }
 
 // CanUserAccess checks if a user can access a specific distribution
-func (r *DistributionRepository) CanUserAccess(distributionID int64, userID string, isAdmin bool) (bool, error) {
+func (r *DistributionRepository) CanUserAccess(distributionID string, userID string, isAdmin bool) (bool, error) {
 	if isAdmin {
 		return true, nil
 	}
@@ -213,7 +214,7 @@ func (r *DistributionRepository) CanUserAccess(distributionID int64, userID stri
 }
 
 // UpdateStatus updates the status of a distribution
-func (r *DistributionRepository) UpdateStatus(id int64, status DistributionStatus, errorMsg string) error {
+func (r *DistributionRepository) UpdateStatus(id string, status DistributionStatus, errorMsg string) error {
 	var query string
 	var args []interface{}
 
@@ -260,7 +261,7 @@ func (r *DistributionRepository) UpdateStatus(id int64, status DistributionStatu
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	if affected == 0 {
-		return fmt.Errorf("distribution not found: %d", id)
+		return fmt.Errorf("distribution not found: %s", id)
 	}
 
 	return nil
@@ -286,14 +287,14 @@ func (r *DistributionRepository) Update(d *Distribution) error {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	if affected == 0 {
-		return fmt.Errorf("distribution not found: %d", d.ID)
+		return fmt.Errorf("distribution not found: %s", d.ID)
 	}
 
 	return nil
 }
 
 // Delete removes a distribution by ID
-func (r *DistributionRepository) Delete(id int64) error {
+func (r *DistributionRepository) Delete(id string) error {
 	result, err := r.db.DB().Exec("DELETE FROM distributions WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("failed to delete distribution: %w", err)
@@ -304,14 +305,14 @@ func (r *DistributionRepository) Delete(id int64) error {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	if affected == 0 {
-		return fmt.Errorf("distribution not found: %d", id)
+		return fmt.Errorf("distribution not found: %s", id)
 	}
 
 	return nil
 }
 
 // AddLog adds a log entry for a distribution
-func (r *DistributionRepository) AddLog(distributionID int64, level, message string) error {
+func (r *DistributionRepository) AddLog(distributionID string, level, message string) error {
 	query := `INSERT INTO distribution_logs (distribution_id, level, message) VALUES (?, ?, ?)`
 	_, err := r.db.DB().Exec(query, distributionID, level, message)
 	if err != nil {
@@ -321,7 +322,7 @@ func (r *DistributionRepository) AddLog(distributionID int64, level, message str
 }
 
 // GetLogs retrieves logs for a distribution
-func (r *DistributionRepository) GetLogs(distributionID int64, limit int) ([]DistributionLog, error) {
+func (r *DistributionRepository) GetLogs(distributionID string, limit int) ([]DistributionLog, error) {
 	query := `
 		SELECT id, distribution_id, level, message, created_at
 		FROM distribution_logs

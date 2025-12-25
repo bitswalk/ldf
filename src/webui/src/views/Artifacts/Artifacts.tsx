@@ -54,7 +54,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
   const [uploadModalOpen, setUploadModalOpen] = createSignal(false);
   const [distributions, setDistributions] = createSignal<Distribution[]>([]);
   const [selectedDistribution, setSelectedDistribution] = createSignal<
-    number | null
+    string | null
   >(null);
   const [selectedFile, setSelectedFile] = createSignal<File | null>(null);
   const [customPath, setCustomPath] = createSignal("");
@@ -461,7 +461,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               value={selectedDistribution() ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedDistribution(val ? parseInt(val, 10) : null);
+                setSelectedDistribution(val || null);
               }}
               disabled={isUploading()}
               class="px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"

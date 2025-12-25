@@ -4,6 +4,7 @@ import { Transition } from "solid-transition-group";
 import { Header } from "./components/Header";
 import { Distribution } from "./views/Distribution";
 import { Artifacts } from "./views/Artifacts";
+import { Sources } from "./views/Sources";
 import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
@@ -33,6 +34,7 @@ type ViewType =
   | "server-connection"
   | "distribution"
   | "artifacts"
+  | "sources"
   | "login"
   | "register"
   | "settings";
@@ -178,6 +180,12 @@ const App: Component = () => {
       icon: "package",
       onClick: () => setCurrentView("artifacts"),
     },
+    {
+      id: "sources",
+      label: "Sources",
+      icon: "cloud-arrow-down",
+      onClick: () => setCurrentView("sources"),
+    },
   ];
 
   return (
@@ -230,6 +238,9 @@ const App: Component = () => {
                     isLoggedIn={isLoggedIn()}
                     user={authState().user}
                   />
+                </Match>
+                <Match when={currentView() === "sources"}>
+                  <Sources isLoggedIn={isLoggedIn()} user={authState().user} />
                 </Match>
                 <Match when={currentView() === "login"}>
                   <Login

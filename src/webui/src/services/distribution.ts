@@ -13,7 +13,7 @@ export type DistributionStatus =
 export type DistributionVisibility = "public" | "private";
 
 export interface Distribution {
-  id: number;
+  id: string;
   name: string;
   version: string;
   status: DistributionStatus;
@@ -232,7 +232,7 @@ export async function listDistributions(): Promise<ListResult> {
   }
 }
 
-export async function getDistribution(id: number): Promise<GetResult> {
+export async function getDistribution(id: string): Promise<GetResult> {
   const url = getApiUrl(`/distributions/${id}`);
 
   if (!url) {
@@ -285,7 +285,7 @@ export async function getDistribution(id: number): Promise<GetResult> {
   }
 }
 
-export async function deleteDistribution(id: number): Promise<DeleteResult> {
+export async function deleteDistribution(id: string): Promise<DeleteResult> {
   const url = getApiUrl(`/distributions/${id}`);
 
   if (!url) {
@@ -447,7 +447,7 @@ export async function createDistribution(
 }
 
 export async function updateDistribution(
-  id: number,
+  id: string,
   request: UpdateDistributionRequest,
 ): Promise<UpdateResult> {
   const url = getApiUrl(`/distributions/${id}`);

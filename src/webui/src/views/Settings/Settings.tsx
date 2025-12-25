@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onMount, Show, For } from "solid-js";
 import { Icon } from "../../components/Icon";
 import {
   Summary,
@@ -14,6 +14,9 @@ import {
   SummaryButton,
 } from "../../components/Summary";
 import { ServerSettingsPanel } from "../../components/ServerSettingsPanel";
+import { Modal } from "../../components/Modal";
+import { SourceForm } from "../../components/SourceForm";
+import { Spinner } from "../../components/Spinner";
 import { themeService } from "../../services/theme";
 import { getServerUrl } from "../../services/storage";
 import {
@@ -23,6 +26,15 @@ import {
   setDevMode,
   type ServerSetting,
 } from "../../services/settings";
+import {
+  listDefaultSources,
+  createDefaultSource,
+  updateDefaultSource,
+  deleteDefaultSource,
+  type SourceDefault,
+  type CreateSourceRequest,
+  type UpdateSourceRequest,
+} from "../../services/sources";
 import { isDevMode } from "../../lib/utils";
 
 type ThemePreference = "system" | "light" | "dark";
@@ -47,6 +59,20 @@ export const Settings: Component<SettingsProps> = (props) => {
   const [updatingSettings, setUpdatingSettings] = createSignal<Set<string>>(
     new Set(),
   );
+
+  // Default sources state (for root users)
+  const [defaultSources, setDefaultSources] = createSignal<SourceDefault[]>([]);
+  const [sourcesLoading, setSourcesLoading] = createSignal(false);
+  const [sourcesError, setSourcesError] = createSignal<string | null>(null);
+  const [sourceModalOpen, setSourceModalOpen] = createSignal(false);
+  const [editingSource, setEditingSource] = createSignal<SourceDefault | null>(
+    null,
+  );
+  const [sourceSubmitting, setSourceSubmitting] = createSignal(false);
+  const [deleteSourceModalOpen, setDeleteSourceModalOpen] = createSignal(false);
+  const [sourceToDelete, setSourceToDelete] =
+    createSignal<SourceDefault | null>(null);
+  const [deletingSource, setDeletingSource] = createSignal(false);
 
   const loadServerSettings = async () => {
     if (!isRootUser()) return;
@@ -97,6 +123,105 @@ export const Settings: Component<SettingsProps> = (props) => {
     setDevModeUpdating(false);
   };
 
+  const loadDefaultSources = async () => {
+    if (!isRootUser()) return;
+
+    setSourcesLoading(true);
+    setSourcesError(null);
+
+    const result = await listDefaultSources();
+    if (result.success) {
+      setDefaultSources(result.sources);
+    } else {
+      setSourcesError(result.message);
+    }
+
+    setSourcesLoading(false);
+  };
+
+  const handleAddSource = () => {
+    setEditingSource(null);
+    setSourceModalOpen(true);
+  };
+
+  const handleEditSource = (source: SourceDefault) => {
+    setEditingSource(source);
+    setSourceModalOpen(true);
+  };
+
+  const handleSourceFormSubmit = async (formData: CreateSourceRequest) => {
+    setSourceSubmitting(true);
+    setSourcesError(null);
+
+    const editing = editingSource();
+
+    if (editing) {
+      const updateReq: UpdateSourceRequest = {
+        name: formData.name,
+        url: formData.url,
+        priority: formData.priority,
+        enabled: formData.enabled,
+      };
+      const result = await updateDefaultSource(editing.id, updateReq);
+
+      setSourceSubmitting(false);
+
+      if (result.success) {
+        setSourceModalOpen(false);
+        setEditingSource(null);
+        loadDefaultSources();
+      } else {
+        setSourcesError(result.message);
+      }
+    } else {
+      const result = await createDefaultSource(formData);
+
+      setSourceSubmitting(false);
+
+      if (result.success) {
+        setSourceModalOpen(false);
+        loadDefaultSources();
+      } else {
+        setSourcesError(result.message);
+      }
+    }
+  };
+
+  const handleSourceFormCancel = () => {
+    setSourceModalOpen(false);
+    setEditingSource(null);
+  };
+
+  const openDeleteSourceModal = (source: SourceDefault) => {
+    setSourceToDelete(source);
+    setDeleteSourceModalOpen(true);
+  };
+
+  const confirmDeleteSource = async () => {
+    const source = sourceToDelete();
+    if (!source) return;
+
+    setDeletingSource(true);
+    setSourcesError(null);
+
+    const result = await deleteDefaultSource(source.id);
+
+    setDeletingSource(false);
+
+    if (result.success) {
+      setDeleteSourceModalOpen(false);
+      setSourceToDelete(null);
+      loadDefaultSources();
+    } else {
+      setSourcesError(result.message);
+    }
+  };
+
+  const cancelDeleteSource = () => {
+    setDeleteSourceModalOpen(false);
+    setSourceToDelete(null);
+  };
+
   onMount(() => {
     // Load current theme preference
     const autoMode = localStorage.getItem("theme-auto");
@@ -118,6 +243,9 @@ export const Settings: Component<SettingsProps> = (props) => {
 
     // Load server settings if user is root
     loadServerSettings();
+
+    // Load default sources if user is root
+    loadDefaultSources();
   });
 
   const handleThemeChange = (preference: ThemePreference) => {
@@ -168,6 +296,7 @@ export const Settings: Component<SettingsProps> = (props) => {
             <SummaryNavItem id="server-connection" label="Connection" />
             <Show when={isRootUser()}>
               <SummaryNavItem id="server-settings" label="Settings" />
+              <SummaryNavItem id="default-sources" label="Default Sources" />
             </Show>
           </SummaryCategory>
           <SummaryCategory id="account" label="Account" icon="user">
@@ -305,6 +434,97 @@ export const Settings: Component<SettingsProps> = (props) => {
             />
           </SummarySection>
 
+          {/* Default Sources Section (Root users only) */}
+          <SummarySection
+            id="default-sources"
+            title="Default Sources"
+            description="Manage system-wide default upstream sources available to all users"
+          >
+            <div class="space-y-4">
+              <Show when={sourcesError()}>
+                <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+                  {sourcesError()}
+                </div>
+              </Show>
+
+              <Show
+                when={!sourcesLoading()}
+                fallback={
+                  <div class="flex items-center justify-center py-8">
+                    <Spinner size="lg" />
+                  </div>
+                }
+              >
+                <div class="space-y-2">
+                  <For each={defaultSources()}>
+                    {(source) => (
+                      <div class="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-border">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2">
+                            <span class="font-medium truncate">
+                              {source.name}
+                            </span>
+                            <span
+                              class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                source.enabled
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {source.enabled ? "Enabled" : "Disabled"}
+                            </span>
+                            <span class="text-xs text-muted-foreground">
+                              Priority: {source.priority}
+                            </span>
+                          </div>
+                          <div class="text-sm text-muted-foreground font-mono truncate mt-1">
+                            {source.url}
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 ml-4">
+                          <button
+                            onClick={() => handleEditSource(source)}
+                            class="p-2 rounded-md hover:bg-muted transition-colors"
+                            title="Edit source"
+                          >
+                            <Icon
+                              name="pencil"
+                              size="sm"
+                              class="text-muted-foreground hover:text-foreground"
+                            />
+                          </button>
+                          <button
+                            onClick={() => openDeleteSourceModal(source)}
+                            class="p-2 rounded-md hover:bg-destructive/10 transition-colors"
+                            title="Delete source"
+                          >
+                            <Icon
+                              name="trash"
+                              size="sm"
+                              class="text-muted-foreground hover:text-destructive"
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+
+                  <Show when={defaultSources().length === 0}>
+                    <div class="text-center py-8 text-muted-foreground">
+                      No default sources configured yet.
+                    </div>
+                  </Show>
+                </div>
+
+                <div class="pt-4">
+                  <SummaryButton onClick={handleAddSource}>
+                    Add Default Source
+                  </SummaryButton>
+                </div>
+              </Show>
+            </div>
+          </SummarySection>
+
           {/* Profile Section */}
           <SummarySection
             id="profile"
@@ -354,6 +574,66 @@ export const Settings: Component<SettingsProps> = (props) => {
           </SummarySection>
         </SummaryContent>
       </Summary>
+
+      {/* Source Form Modal */}
+      <Modal
+        isOpen={sourceModalOpen()}
+        onClose={handleSourceFormCancel}
+        title={editingSource() ? "Edit Default Source" : "Add Default Source"}
+      >
+        <SourceForm
+          onSubmit={handleSourceFormSubmit}
+          onCancel={handleSourceFormCancel}
+          initialData={
+            editingSource()
+              ? {
+                  ...editingSource()!,
+                  is_system: true,
+                }
+              : undefined
+          }
+          isSubmitting={sourceSubmitting()}
+        />
+      </Modal>
+
+      {/* Delete Source Confirmation Modal */}
+      <Modal
+        isOpen={deleteSourceModalOpen()}
+        onClose={cancelDeleteSource}
+        title="Delete Default Source"
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            Are you sure you want to delete the default source{" "}
+            <span class="text-foreground font-medium">
+              "{sourceToDelete()?.name}"
+            </span>
+            ? This action cannot be undone and will affect all users.
+          </p>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={cancelDeleteSource}
+              disabled={deletingSource()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteSource}
+              disabled={deletingSource()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={deletingSource()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>{deletingSource() ? "Deleting..." : "Delete"}</span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
     </section>
   );
 };

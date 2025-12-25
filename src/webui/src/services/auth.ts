@@ -268,13 +268,14 @@ export async function logout(): Promise<LogoutResult> {
 
   try {
     const response = await fetch(logoutUrl, {
-      method: "DELETE",
+      method: "POST",
       headers: {
-        "X-Auth-Token": token,
+        "X-Subject-Token": token,
       },
     });
 
-    if (response.ok || response.status === 204) {
+    // Backend returns 498 on successful token revocation
+    if (response.ok || response.status === 498 || response.status === 204) {
       return { success: true };
     }
 

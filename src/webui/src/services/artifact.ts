@@ -10,7 +10,7 @@ export interface Artifact {
   content_type?: string;
   etag?: string;
   last_modified: string;
-  distribution_id: number;
+  distribution_id: string;
   distribution_name: string;
   owner_id?: string;
 }
@@ -167,7 +167,7 @@ export async function listArtifacts(): Promise<ListResult> {
 }
 
 export async function deleteArtifact(
-  distributionId: number,
+  distributionId: string,
   artifactPath: string,
 ): Promise<DeleteResult> {
   const url = getApiUrl(
@@ -224,7 +224,7 @@ export async function deleteArtifact(
 }
 
 export async function getArtifactURL(
-  distributionId: number,
+  distributionId: string,
   artifactPath: string,
   expiry?: number,
 ): Promise<GetURLResult> {
@@ -312,7 +312,7 @@ export type UploadResult =
     };
 
 export async function uploadArtifact(
-  distributionId: number,
+  distributionId: string,
   file: File,
   path?: string,
   onProgress?: (progress: number) => void,

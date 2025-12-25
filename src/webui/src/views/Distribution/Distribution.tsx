@@ -116,7 +116,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
     setIsModalOpen(false);
   };
 
-  const handleEditDistribution = (_id: number) => {
+  const handleEditDistribution = (_id: string) => {
     // TODO: Implement edit distribution
   };
 
@@ -125,7 +125,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
     setDeleteModalOpen(true);
   };
 
-  const handleDeleteDistribution = (id: number) => {
+  const handleDeleteDistribution = (id: string) => {
     const dist = distributions().find((d) => d.id === id);
     if (dist) {
       openDeleteModal([dist]);

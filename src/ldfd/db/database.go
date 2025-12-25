@@ -280,6 +280,32 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy source_defaults table (no foreign key dependencies)
+	if d.tableExistsInDiskDB("source_defaults") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO source_defaults
+			SELECT * FROM disk_db.source_defaults
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("source_defaults: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("source_defaults(%d)", rows))
+		}
+	}
+
+	// Copy user_sources table (references users)
+	if d.tableExistsInDiskDB("user_sources") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO user_sources
+			SELECT * FROM disk_db.user_sources
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("user_sources: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("user_sources(%d)", rows))
+		}
+	}
+
 	// Log what was loaded
 	if len(loadedTables) > 0 {
 		fmt.Fprintf(os.Stderr, "INFO: Loaded from disk: %v\n", loadedTables)

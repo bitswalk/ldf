@@ -36,6 +36,8 @@ func (r *Runner) registerAll() {
 	r.migrations = []Migration{
 		migration001InitialSchema(),
 		migration002SeedDefaultRoles(),
+		migration003ConvertDistributionIDToUUID(),
+		migration004AddSourcesTables(),
 	}
 
 	// Sort by version to ensure correct order
