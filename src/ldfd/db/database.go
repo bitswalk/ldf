@@ -317,8 +317,8 @@ func (d *Database) LoadFromDisk() error {
 	if d.tableExistsInDiskDB("user_sources") {
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO user_sources
-			(id, user_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
-			SELECT id, user_id, name, url, priority, enabled, created_at, updated_at,
+			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
 			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='component_id')
 			            THEN component_id ELSE NULL END,
 			       COALESCE(
@@ -334,8 +334,8 @@ func (d *Database) LoadFromDisk() error {
 			// Fallback: try explicit column selection without new columns
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO user_sources
-				(id, user_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
-				SELECT id, user_id, name, url, priority, enabled, created_at, updated_at, 'release'
+				(id, owner_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
+				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at, 'release'
 				FROM disk_db.user_sources
 			`)
 		}
