@@ -1,0 +1,163 @@
+{
+  "title": "Distributions",
+  "subtitle": "Manage your custom Linux distributions",
+  "welcome": {
+    "title": "Welcome to Linux Distribution Factory",
+    "subtitle": "No distributions configured yet. Get started by creating your first custom Linux distribution."
+  },
+  "create": {
+    "button": "New Distribution",
+    "cardTitle": "Create new distribution",
+    "modalTitle": "Create New Distribution"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "kernelVersion": "Kernel Version",
+      "status": "Status",
+      "visibility": "Visibility",
+      "owner": "Owner",
+      "created": "Created",
+      "actions": "Actions"
+    },
+    "noValue": "—"
+  },
+  "actions": {
+    "viewDetails": "View Details",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteSelected": "Delete Selected ({{ count }})",
+    "deleteCount": "Delete ({{ count }})"
+  },
+  "filter": {
+    "showOnlyMine": "Show only mine"
+  },
+  "delete": {
+    "title": "Confirm Deletion",
+    "confirmSingle": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} distributions? This action cannot be undone.",
+    "deleting": "Deleting..."
+  },
+  "status": {
+    "pending": "Pending",
+    "downloading": "Downloading",
+    "validating": "Validating",
+    "ready": "Ready",
+    "failed": "Failed",
+    "deleted": "Deleted"
+  },
+  "detail": {
+    "title": "Distribution Details",
+    "subtitle": "Manage distribution configuration and downloads",
+    "back": "Back to distributions",
+    "overview": "Overview",
+    "configuration": "Configuration",
+    "artifacts": "Artifacts",
+    "logs": "Logs",
+    "downloads": "Downloads",
+    "components": "Components",
+    "noDescription": "No description provided",
+    "created": "Created",
+    "updated": "Updated",
+    "owner": "Owner",
+    "ownerId": "Owner ID",
+    "version": "Version",
+    "id": "ID",
+    "size": "Size",
+    "checksum": "Checksum",
+    "error": "Error",
+    "info": {
+      "title": "Distribution Info",
+      "save": "Save",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "configSaved": "Configuration saved"
+    },
+    "config": {
+      "coreSystem": "CORE SYSTEM",
+      "kernelVersion": "Kernel Version",
+      "bootloader": "Bootloader",
+      "partitioningType": "Partitioning Type",
+      "partitioningMode": "Partitioning Mode",
+      "systemServices": "SYSTEM SERVICES",
+      "initSystem": "Init System",
+      "filesystem": "Filesystem",
+      "filesystemHierarchy": "Filesystem Hierarchy",
+      "packageManager": "Package Manager",
+      "securityRuntime": "SECURITY & RUNTIME",
+      "securitySystem": "Security System",
+      "containerRuntime": "Container Runtime",
+      "virtualization": "Virtualization",
+      "targetEnvironment": "TARGET ENVIRONMENT",
+      "distributionType": "Distribution Type",
+      "desktopEnvironment": "Desktop Environment",
+      "displayServer": "Display Server",
+      "noConfig": "No configuration available",
+      "selectVersion": "Select version",
+      "searchVersions": "Search kernel versions..."
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "build": "Build Distribution",
+      "buildDesc": "Compile and assemble distribution",
+      "download": "Download Distribution",
+      "downloadDesc": "Download as ISO or archive"
+    },
+    "componentDownloads": {
+      "title": "Component Downloads"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "Distribution Name",
+      "placeholder": "e.g., my-custom-linux, production-server",
+      "optional": "optional",
+      "help": "If not provided, an auto-generated name will be used"
+    },
+    "steps": {
+      "coreSystem": {
+        "title": "Core System",
+        "description": "Configure the fundamental components of your distribution"
+      },
+      "systemServices": {
+        "title": "System Services",
+        "description": "Choose system initialization and storage options"
+      },
+      "securityRuntime": {
+        "title": "Security & Runtime",
+        "description": "Configure security and container/virtualization options"
+      },
+      "distributionType": {
+        "title": "Distribution Type",
+        "description": "Choose your distribution target environment"
+      }
+    },
+    "fields": {
+      "kernelVersion": {
+        "label": "Kernel Version",
+        "placeholder": "Select kernel version"
+      },
+      "bootloader": "Bootloader",
+      "partitioningSystem": "Partitioning System",
+      "initSystem": "Init System",
+      "filesystem": "Filesystem",
+      "partitioning": "Partitioning",
+      "filesystemHierarchy": "Filesystem Hierarchy",
+      "packageManager": "Package Manager",
+      "securitySystem": "Security System",
+      "containerRuntime": "Container Runtime",
+      "virtualizationRuntime": "Virtualization Runtime",
+      "targetEnvironment": "Target Environment",
+      "desktopEnvironment": {
+        "label": "Desktop Environment / Window Manager",
+        "waylandOnly": "Wayland display server only"
+      }
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "previous": "Previous",
+      "next": "Next",
+      "create": "Create Distribution"
+    }
+  }
+}

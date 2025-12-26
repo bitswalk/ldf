@@ -1,0 +1,64 @@
+{
+  "title": "Artefacts",
+  "subtitle": "Gerez vos artefacts de build et paquets",
+  "welcome": {
+    "loginRequired": "Veuillez vous connecter pour consulter et gerer vos artefacts de build."
+  },
+  "filter": {
+    "showOnlyMine": "Afficher uniquement les miens"
+  },
+  "table": {
+    "columns": {
+      "name": "Nom",
+      "distribution": "Distribution",
+      "path": "Chemin",
+      "size": "Taille",
+      "type": "Type",
+      "modified": "Modifie",
+      "actions": "Actions"
+    }
+  },
+  "actions": {
+    "download": "Telecharger",
+    "delete": "Supprimer",
+    "newArtifact": "Nouvel artefact",
+    "deleteSelected": "Supprimer la selection",
+    "preview": "Apercu",
+    "copyUrl": "Copier l'URL"
+  },
+  "upload": {
+    "title": "Envoyer un nouvel artefact",
+    "distribution": "Distribution",
+    "selectDistribution": "Selectionnez une distribution...",
+    "distributionHelp": "Choisissez la distribution a laquelle cet artefact appartient.",
+    "file": "Fichier",
+    "selected": "Selectionne",
+    "customPath": "Chemin personnalise",
+    "customPathPlaceholder": "ex: boot/vmlinuz ou packages/myapp.deb",
+    "customPathHelp": "Laissez vide pour utiliser le nom de fichier original.",
+    "uploading": "Envoi en cours...",
+    "upload": "Envoyer",
+    "success": "Envoi reussi",
+    "error": "Echec de l'envoi"
+  },
+  "delete": {
+    "title": "Confirmer la suppression",
+    "confirmSingle": "Etes-vous sur de vouloir supprimer \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} artefacts ? Cette action est irreversible.",
+    "deleting": "Suppression...",
+    "deleteCount": "Supprimer ({{ count }})"
+  },
+  "empty": {
+    "title": "Aucun artefact trouve",
+    "description": "Cliquez sur \"Nouvel artefact\" pour envoyer votre premier artefact."
+  },
+  "errors": {
+    "storageNotConfigured": "Le service de stockage n'est pas configure sur le serveur."
+  },
+  "size": {
+    "bytes": "o",
+    "kilobytes": "Ko",
+    "megabytes": "Mo",
+    "gigabytes": "Go"
+  }
+}

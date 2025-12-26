@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, Show, For } from "solid-js";
 import { debugLog } from "../../lib/utils";
+import { t } from "../../services/i18n";
 
 // Mock API response structure from LDF server
 interface LDFServerOptions {
@@ -343,33 +344,39 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         <Show when={currentStep() === 1}>
           <article class="space-y-6 w-full">
             <header>
-              <h3 class="text-lg font-semibold mb-1">Core System</h3>
+              <h3 class="text-lg font-semibold mb-1">
+                {t("distribution.form.steps.coreSystem.title")}
+              </h3>
               <p class="text-sm text-muted-foreground">
-                Configure the fundamental components of your distribution
+                {t("distribution.form.steps.coreSystem.description")}
               </p>
             </header>
 
             {/* Distribution Name */}
             <div class="space-y-2">
               <label class="text-sm font-medium">
-                Distribution Name{" "}
-                <span class="text-muted-foreground">(optional)</span>
+                {t("distribution.form.name.label")}{" "}
+                <span class="text-muted-foreground">
+                  ({t("distribution.form.name.optional")})
+                </span>
               </label>
               <input
                 type="text"
                 class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary"
-                placeholder="e.g., my-custom-linux, production-server"
+                placeholder={t("distribution.form.name.placeholder")}
                 value={formData().name}
                 onInput={(e) => updateFormData("name", e.target.value)}
               />
               <p class="text-xs text-muted-foreground">
-                If not provided, an auto-generated name will be used
+                {t("distribution.form.name.help")}
               </p>
             </div>
 
             {/* Kernel Version */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Kernel Version</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.kernelVersion.label")}
+              </label>
               <select
                 class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25rem; padding-right: 2.5rem;"
@@ -378,7 +385,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                   updateFormData("kernelVersion", e.target.value)
                 }
               >
-                <option value="">Select kernel version</option>
+                <option value="">
+                  {t("distribution.form.fields.kernelVersion.placeholder")}
+                </option>
                 <For each={mockLDFServerOptions.kernels}>
                   {(kernel) => (
                     <option value={kernel.version}>
@@ -391,7 +400,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Bootloader */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Bootloader</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.bootloader")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.bootloaders}>
                   {(bootloader) => (
@@ -420,7 +431,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Partitioning Type */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Partitioning System</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.partitioningSystem")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.partitioningTypes}>
                   {(option) => (
@@ -453,15 +466,19 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         <Show when={currentStep() === 2}>
           <article class="space-y-6 w-full">
             <header>
-              <h3 class="text-lg font-semibold mb-1">System Services</h3>
+              <h3 class="text-lg font-semibold mb-1">
+                {t("distribution.form.steps.systemServices.title")}
+              </h3>
               <p class="text-sm text-muted-foreground">
-                Choose system initialization and storage options
+                {t("distribution.form.steps.systemServices.description")}
               </p>
             </header>
 
             {/* Init System */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Init System</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.initSystem")}
+              </label>
               <div class="grid grid-cols-2 gap-2">
                 <For each={mockLDFServerOptions.initSystems}>
                   {(option) => (
@@ -485,7 +502,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Filesystem */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Filesystem</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.filesystem")}
+              </label>
               <div class="grid grid-cols-3 gap-2">
                 <For each={mockLDFServerOptions.filesystems}>
                   {(option) => (
@@ -509,7 +528,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Partitioning */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Partitioning</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.partitioning")}
+              </label>
               <div class="grid grid-cols-2 gap-2">
                 <For each={mockLDFServerOptions.partitioningModes}>
                   {(option) => (
@@ -533,7 +554,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Filesystem Hierarchy */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Filesystem Hierarchy</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.filesystemHierarchy")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.filesystemHierarchies}>
                   {(option) => (
@@ -562,7 +585,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Package Manager */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Package Manager</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.packageManager")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.packageManagers}>
                   {(option) => (
@@ -590,15 +615,19 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         <Show when={currentStep() === 3}>
           <article class="space-y-6 w-full">
             <header>
-              <h3 class="text-lg font-semibold mb-1">Security & Runtime</h3>
+              <h3 class="text-lg font-semibold mb-1">
+                {t("distribution.form.steps.securityRuntime.title")}
+              </h3>
               <p class="text-sm text-muted-foreground">
-                Configure security and container/virtualization options
+                {t("distribution.form.steps.securityRuntime.description")}
               </p>
             </header>
 
             {/* Security System */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Security System</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.securitySystem")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.securitySystems}>
                   {(option) => (
@@ -622,7 +651,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Container Runtime */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Container Runtime</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.containerRuntime")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.containerRuntimes}>
                   {(option) => (
@@ -646,7 +677,9 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Virtualization Runtime */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Virtualization Runtime</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.virtualizationRuntime")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.virtualizationRuntimes}>
                   {(option) => (
@@ -677,15 +710,19 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         <Show when={currentStep() === 4}>
           <article class="space-y-6 w-full">
             <header>
-              <h3 class="text-lg font-semibold mb-1">Distribution Type</h3>
+              <h3 class="text-lg font-semibold mb-1">
+                {t("distribution.form.steps.distributionType.title")}
+              </h3>
               <p class="text-sm text-muted-foreground">
-                Choose your distribution target environment
+                {t("distribution.form.steps.distributionType.description")}
               </p>
             </header>
 
             {/* Distribution Type */}
             <div class="space-y-2">
-              <label class="text-sm font-medium">Target Environment</label>
+              <label class="text-sm font-medium">
+                {t("distribution.form.fields.targetEnvironment")}
+              </label>
               <div class="grid grid-cols-1 gap-2">
                 <For each={mockLDFServerOptions.distributionTypes}>
                   {(option) => (
@@ -716,10 +753,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
             <Show when={formData().distributionType === "desktop"}>
               <div class="space-y-2">
                 <label class="text-sm font-medium">
-                  Desktop Environment / Window Manager
+                  {t("distribution.form.fields.desktopEnvironment.label")}
                 </label>
                 <p class="text-xs text-muted-foreground mb-2">
-                  Wayland display server only
+                  {t("distribution.form.fields.desktopEnvironment.waylandOnly")}
                 </p>
                 <div class="grid grid-cols-1 gap-2">
                   <For each={mockLDFServerOptions.desktopEnvironments}>
@@ -753,7 +790,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
           onClick={props.onCancel}
           class="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors"
         >
-          Cancel
+          {t("distribution.form.actions.cancel")}
         </button>
 
         <div class="flex items-center gap-2">
@@ -763,7 +800,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               onClick={prevStep}
               class="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors"
             >
-              Previous
+              {t("distribution.form.actions.previous")}
             </button>
           </Show>
 
@@ -776,7 +813,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 disabled={!isStepValid(4)}
                 class="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Distribution
+                {t("distribution.form.actions.create")}
               </button>
             }
           >
@@ -786,7 +823,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               disabled={!isStepValid(currentStep())}
               class="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {t("distribution.form.actions.next")}
             </button>
           </Show>
         </div>

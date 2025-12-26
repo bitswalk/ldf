@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import { createSignal, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
 import type { APIInfo } from "../../services/storage";
+import { t } from "../../services/i18n";
 
 interface ConnectionProps {
   onConnect: (serverUrl: string, apiInfo: APIInfo) => void;
@@ -40,15 +41,13 @@ export const Connection: Component<ConnectionProps> = (props) => {
         if (apiInfo.name === "ldfd" && apiInfo.endpoints?.auth) {
           props.onConnect(baseUrl, apiInfo);
         } else {
-          setError("Server responded but does not appear to be an LDF server.");
+          setError(t("auth.connection.errors.notLdfServer"));
         }
       } else {
-        setError("Server responded with an error. Please verify the URL.");
+        setError(t("auth.connection.errors.serverError"));
       }
     } catch {
-      setError(
-        "Unable to connect to server. Please check the URL and try again.",
-      );
+      setError(t("auth.connection.errors.networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -56,10 +55,8 @@ export const Connection: Component<ConnectionProps> = (props) => {
 
   return (
     <section class="h-full flex flex-col items-center justify-center p-8">
-      <h1 class="text-4xl font-bold mb-2">Connect to Server</h1>
-      <p class="text-muted-foreground mb-8">
-        Enter the LDF server URL to get started
-      </p>
+      <h1 class="text-4xl font-bold mb-2">{t("auth.connection.title")}</h1>
+      <p class="text-muted-foreground mb-8">{t("auth.connection.subtitle")}</p>
 
       <form onSubmit={handleSubmit} class="w-full max-w-md flex flex-col gap-4">
         <Show when={error()}>
@@ -69,23 +66,23 @@ export const Connection: Component<ConnectionProps> = (props) => {
         </Show>
 
         <fieldset class="flex flex-col gap-4" disabled={isLoading()}>
-          <legend class="sr-only">Server Connection</legend>
+          <legend class="sr-only">{t("auth.connection.legend")}</legend>
 
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="plugs" size="sm" />
-              Server URL
+              {t("auth.connection.form.serverUrl.label")}
             </span>
             <input
               type="url"
-              placeholder="http://localhost:8443"
+              placeholder={t("auth.connection.form.serverUrl.placeholder")}
               value={serverUrl()}
               onInput={(e) => setServerUrl(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               required
             />
             <span class="text-xs text-muted-foreground">
-              The URL of your LDF server instance
+              {t("auth.connection.form.serverUrl.help")}
             </span>
           </label>
         </fieldset>
@@ -95,9 +92,9 @@ export const Connection: Component<ConnectionProps> = (props) => {
           disabled={isLoading()}
           class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          <Show when={isLoading()} fallback="Connect">
+          <Show when={isLoading()} fallback={t("auth.connection.submit")}>
             <Icon name="spinner" size="sm" class="animate-spin" />
-            Discovering API...
+            {t("auth.connection.submitting")}
           </Show>
         </button>
       </form>

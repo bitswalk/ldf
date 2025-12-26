@@ -1,0 +1,121 @@
+{
+  "title": "Quellen",
+  "subtitle": "Upstream-Datenquellen für Ihre Distributionen verwalten",
+  "welcome": {
+    "loginRequired": "Bitte melden Sie sich an, um Upstream-Quellen anzuzeigen und zu verwalten."
+  },
+  "filter": {
+    "showOnlyMine": "Nur meine anzeigen"
+  },
+  "tabs": {
+    "default": "Standardquellen",
+    "user": "Meine Quellen"
+  },
+  "create": {
+    "button": "Neue Quelle",
+    "modalTitle": "Neue Quelle hinzufügen",
+    "editModalTitle": "Quelle bearbeiten"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "url": "URL",
+      "component": "Komponente",
+      "retrievalMethod": "Abrufmethode",
+      "priority": "Priorität",
+      "status": "Status",
+      "type": "Typ",
+      "created": "Erstellt",
+      "actions": "Aktionen"
+    }
+  },
+  "type": {
+    "system": "System",
+    "user": "Benutzer"
+  },
+  "cardTitle": "Fügen Sie Ihre erste Quelle hinzu",
+  "actions": {
+    "viewDetails": "Details anzeigen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "sync": "Versionen synchronisieren"
+  },
+  "delete": {
+    "title": "Löschen bestätigen",
+    "confirmSingle": "Sind Sie sicher, dass Sie \"{{ name }}\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Quellen löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleting": "Löschen...",
+    "deleteCount": "Löschen ({{ count }})",
+    "deleteSelected": "Ausgewählte löschen ({{ count }})",
+    "systemSourceError": "Systemquellen können nicht gelöscht werden. Nur Benutzerquellen können gelöscht werden."
+  },
+  "detail": {
+    "back": "Zurück zu Quellen",
+    "title": "Quellendetails",
+    "subtitle": "Quellendetails anzeigen und verfügbare Versionen synchronisieren",
+    "overview": "Übersicht",
+    "versions": "Verfügbare Versionen",
+    "syncHistory": "Synchronisierungsverlauf",
+    "noVersions": "Keine Versionen gefunden. Versuchen Sie zu synchronisieren, um verfügbare Versionen zu entdecken.",
+    "lastSync": "Zuletzt synchronisiert",
+    "neverSynced": "Nie synchronisiert",
+    "notAssigned": "Nicht zugewiesen",
+    "sourceDetails": "Quellendetails",
+    "availableVersions": "Verfügbare Versionen",
+    "name": "Name",
+    "url": "URL",
+    "component": "Komponente",
+    "retrievalMethod": "Abrufmethode",
+    "urlTemplate": "URL-Vorlage",
+    "priority": "Priorität",
+    "status": "Status",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "deleteWarning": "Sind Sie sicher, dass Sie \"{{ name }}\" löschen möchten? Dies entfernt auch alle zwischengespeicherten Versionen. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "updateSuccess": "Quelle erfolgreich aktualisiert",
+    "deleteSuccess": "Quelle erfolgreich gelöscht"
+  },
+  "form": {
+    "name": {
+      "label": "Quellenname",
+      "placeholder": "Meine Quelle"
+    },
+    "url": {
+      "label": "Quellen-URL",
+      "placeholder": "https://beispiel.com/releases"
+    },
+    "component": {
+      "label": "Komponente",
+      "placeholder": "Komponente auswählen..."
+    },
+    "retrievalMethod": {
+      "label": "Abrufmethode",
+      "options": {
+        "release": "Release",
+        "git": "Git"
+      }
+    },
+    "urlTemplate": {
+      "label": "URL-Vorlage",
+      "placeholder": "{{ version }}/datei.tar.gz",
+      "help": "Verwenden Sie {{ version }} als Platzhalter für die Versionsnummer"
+    },
+    "priority": {
+      "label": "Priorität",
+      "help": "Niedrigere Zahlen haben höhere Priorität"
+    },
+    "enabled": {
+      "label": "Aktiviert"
+    }
+  },
+  "retrievalMethod": {
+    "release": "Release",
+    "git": "Git"
+  },
+  "empty": {
+    "default": "Keine Standardquellen konfiguriert.",
+    "user": "Sie haben noch keine Quellen erstellt."
+  }
+}

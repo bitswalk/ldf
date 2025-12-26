@@ -1,0 +1,149 @@
+{
+  "title": "Distributionen",
+  "subtitle": "Ihre benutzerdefinierten Linux-Distributionen verwalten",
+  "welcome": {
+    "title": "Willkommen bei Linux Distribution Factory",
+    "subtitle": "Noch keine Distributionen konfiguriert. Beginnen Sie mit der Erstellung Ihrer ersten benutzerdefinierten Linux-Distribution."
+  },
+  "create": {
+    "button": "Neue Distribution",
+    "cardTitle": "Neue Distribution erstellen",
+    "modalTitle": "Neue Distribution erstellen"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "kernelVersion": "Kernel-Version",
+      "status": "Status",
+      "visibility": "Sichtbarkeit",
+      "owner": "Besitzer",
+      "created": "Erstellt",
+      "actions": "Aktionen"
+    },
+    "noValue": "—"
+  },
+  "actions": {
+    "viewDetails": "Details anzeigen",
+    "edit": "Bearbeiten",
+    "delete": "Loschen",
+    "deleteSelected": "Auswahl loschen ({{ count }})",
+    "deleteCount": "Loschen ({{ count }})"
+  },
+  "filter": {
+    "showOnlyMine": "Nur meine anzeigen"
+  },
+  "delete": {
+    "title": "Loschung bestatigen",
+    "confirmSingle": "Sind Sie sicher, dass Sie \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Distributionen loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "deleting": "Loschen..."
+  },
+  "status": {
+    "pending": "Ausstehend",
+    "downloading": "Herunterladen",
+    "validating": "Validieren",
+    "ready": "Bereit",
+    "failed": "Fehlgeschlagen",
+    "deleted": "Geloscht"
+  },
+  "detail": {
+    "title": "Distributionsdetails",
+    "subtitle": "Distributionskonfiguration und Downloads verwalten",
+    "back": "Zuruck zu Distributionen",
+    "overview": "Ubersicht",
+    "configuration": "Konfiguration",
+    "artifacts": "Artefakte",
+    "logs": "Protokolle",
+    "downloads": "Downloads",
+    "components": "Komponenten",
+    "noDescription": "Keine Beschreibung vorhanden",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "owner": "Besitzer",
+    "ownerId": "Besitzer-ID",
+    "version": "Version",
+    "id": "ID",
+    "size": "Grosse",
+    "checksum": "Prufsumme",
+    "error": "Fehler",
+    "info": {
+      "title": "Distributionsinformationen",
+      "save": "Speichern",
+      "edit": "Bearbeiten",
+      "cancel": "Abbrechen",
+      "configSaved": "Konfiguration gespeichert"
+    },
+    "config": {
+      "coreSystem": "KERNSYSTEM",
+      "kernelVersion": "Kernel-Version",
+      "bootloader": "Bootloader",
+      "partitioningType": "Partitionierungstyp",
+      "partitioningMode": "Partitionierungsmodus",
+      "systemServices": "SYSTEMDIENSTE",
+      "initSystem": "Init-System",
+      "filesystem": "Dateisystem",
+      "filesystemHierarchy": "Dateisystemhierarchie",
+      "packageManager": "Paketverwaltung",
+      "securityRuntime": "SICHERHEIT UND LAUFZEIT",
+      "securitySystem": "Sicherheitssystem",
+      "containerRuntime": "Container-Laufzeit",
+      "virtualization": "Virtualisierung",
+      "targetEnvironment": "ZIELUMGEBUNG",
+      "distributionType": "Distributionstyp",
+      "desktopEnvironment": "Desktop-Umgebung",
+      "displayServer": "Anzeigeserver",
+      "noConfig": "Keine Konfiguration verfugbar",
+      "selectVersion": "Version auswahlen",
+      "searchVersions": "Kernel-Versionen suchen..."
+    },
+    "quickActions": {
+      "title": "Schnellaktionen",
+      "build": "Distribution erstellen",
+      "buildDesc": "Distribution kompilieren und zusammenstellen",
+      "download": "Distribution herunterladen",
+      "downloadDesc": "Als ISO oder Archiv herunterladen"
+    },
+    "componentDownloads": {
+      "title": "Komponenten-Downloads"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "Distributionsname",
+      "placeholder": "Meine benutzerdefinierte Distribution"
+    },
+    "description": {
+      "label": "Beschreibung",
+      "placeholder": "Optionale Beschreibung..."
+    },
+    "core": {
+      "title": "Kernkonfiguration",
+      "kernel": {
+        "label": "Kernel",
+        "version": "Version"
+      },
+      "bootloader": {
+        "label": "Bootloader",
+        "type": "Typ"
+      }
+    },
+    "system": {
+      "title": "Systemkonfiguration",
+      "init": {
+        "label": "Init-System"
+      }
+    },
+    "security": {
+      "title": "Sicherheitskonfiguration",
+      "framework": {
+        "label": "Sicherheits-Framework"
+      }
+    },
+    "runtime": {
+      "title": "Laufzeitkonfiguration"
+    },
+    "target": {
+      "title": "Zielkonfiguration"
+    }
+  }
+}

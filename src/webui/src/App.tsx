@@ -232,7 +232,7 @@ const App: Component = () => {
     {
       id: "sources",
       label: "Sources",
-      icon: "cloud-arrow-down",
+      icon: "git-branch",
       onClick: () => setCurrentView("sources"),
     },
   ];

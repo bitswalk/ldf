@@ -15,6 +15,7 @@ import {
   getCategoryDisplayName,
   type Component,
 } from "../../services/components";
+import { t } from "../../services/i18n";
 
 // Template variable definitions for the help tooltip
 const TEMPLATE_VARIABLES = [
@@ -136,16 +137,16 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     const newErrors: { name?: string; url?: string } = {};
 
     if (!name().trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t("sources.form.name.required");
     }
 
     if (!url().trim()) {
-      newErrors.url = "URL is required";
+      newErrors.url = t("sources.form.url.required");
     } else {
       try {
         new URL(url());
       } catch {
-        newErrors.url = "Invalid URL format";
+        newErrors.url = t("sources.form.url.invalid");
       }
     }
 
@@ -186,7 +187,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     <form onSubmit={handleSubmit} class="flex flex-col gap-6">
       <div class="space-y-2">
         <label class="text-sm font-medium" for="source-name">
-          Name <span class="text-destructive">*</span>
+          {t("sources.form.name.label")} <span class="text-destructive">*</span>
         </label>
         <input
           id="source-name"
@@ -196,7 +197,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
               ? "border-destructive focus:border-destructive"
               : "border-border focus:border-primary"
           }`}
-          placeholder="e.g., Linux Kernel Official"
+          placeholder={t("sources.form.name.placeholder")}
           value={name()}
           onInput={(e) => {
             setName(e.target.value);
@@ -212,7 +213,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
 
       <div class="space-y-2">
         <label class="text-sm font-medium" for="source-component">
-          Component
+          {t("sources.form.component.label")}
         </label>
         <select
           ref={selectRef}
@@ -221,7 +222,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           value={componentId()}
           onChange={(e) => setComponentId(e.target.value)}
         >
-          <option value="">-- Select Component --</option>
+          <option value="">{t("sources.form.component.placeholder")}</option>
           <For each={Object.entries(groupedComponents())}>
             {([category, comps]) => (
               <optgroup label={getCategoryDisplayName(category)}>
@@ -238,14 +239,13 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           </For>
         </select>
         <p class="text-xs text-muted-foreground">
-          Select the component this source provides. Leave empty for generic
-          sources.
+          {t("sources.form.component.help")}
         </p>
       </div>
 
       <div class="space-y-2">
         <label class="text-sm font-medium" for="source-url">
-          Base URL <span class="text-destructive">*</span>
+          {t("sources.form.url.label")} <span class="text-destructive">*</span>
         </label>
         <input
           id="source-url"
@@ -255,7 +255,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
               ? "border-destructive focus:border-destructive"
               : "border-border focus:border-primary"
           }`}
-          placeholder="https://github.com/torvalds/linux"
+          placeholder={t("sources.form.url.placeholder")}
           value={url()}
           onInput={(e) => {
             setUrl(e.target.value);
@@ -270,7 +270,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
       </div>
 
       <div class="space-y-2">
-        <label class="text-sm font-medium">Retrieval Method</label>
+        <label class="text-sm font-medium">
+          {t("sources.form.retrievalMethod.label")}
+        </label>
         <div class="flex gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
             <input
@@ -281,7 +283,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
               onChange={() => setRetrievalMethod("release")}
               class="w-4 h-4 text-primary border-border focus:ring-primary"
             />
-            <span class="text-sm">Release Archive</span>
+            <span class="text-sm">
+              {t("sources.form.retrievalMethod.release")}
+            </span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input
@@ -292,12 +296,11 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
               onChange={() => setRetrievalMethod("git")}
               class="w-4 h-4 text-primary border-border focus:ring-primary"
             />
-            <span class="text-sm">Git Clone</span>
+            <span class="text-sm">{t("sources.form.retrievalMethod.git")}</span>
           </label>
         </div>
         <p class="text-xs text-muted-foreground">
-          Choose how to retrieve the source: download a release archive or clone
-          the git repository.
+          {t("sources.form.retrievalMethod.help")}
         </p>
       </div>
 

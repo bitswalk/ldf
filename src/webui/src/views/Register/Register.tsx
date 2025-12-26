@@ -2,6 +2,7 @@ import type { Component } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
 import { createUser } from "../../services/auth";
+import { t } from "../../services/i18n";
 
 type UserRole = "root" | "developer" | "anonymous";
 
@@ -53,12 +54,12 @@ export const Register: Component<RegisterProps> = (props) => {
     setError(null);
 
     if (password() !== confirmPassword()) {
-      setError("Passwords do not match");
+      setError(t("auth.register.errors.passwordMismatch"));
       return;
     }
 
     if (password().length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("auth.register.errors.weakPassword"));
       return;
     }
 
@@ -73,28 +74,26 @@ export const Register: Component<RegisterProps> = (props) => {
     } else {
       switch (result.error) {
         case "email_exists":
-          setError("An account with this email already exists");
+          setError(t("auth.register.errors.emailExists"));
           break;
         case "user_exists":
-          setError("This username is already taken");
+          setError(t("auth.register.errors.userExists"));
           break;
         case "root_exists":
-          setError(
-            "A root user already exists. Only one root account is allowed.",
-          );
+          setError(t("auth.register.errors.userExists"));
           break;
         case "network_error":
-          setError("Unable to connect to server. Please check the server URL.");
+          setError(t("auth.register.errors.networkError"));
           break;
         default:
-          setError(result.message || "Registration failed. Please try again.");
+          setError(result.message || t("auth.register.errors.generic"));
       }
     }
   };
 
   return (
     <section class="h-full flex flex-col items-center justify-center p-8">
-      <h1 class="text-4xl font-bold mb-2">Create Account</h1>
+      <h1 class="text-4xl font-bold mb-2">{t("auth.register.title")}</h1>
       <p class="text-muted-foreground mb-8 flex items-center gap-2">
         <Icon name="plugs" size="sm" />
         {props.serverUrl}
@@ -108,16 +107,16 @@ export const Register: Component<RegisterProps> = (props) => {
         </Show>
 
         <fieldset class="flex flex-col gap-4" disabled={isLoading()}>
-          <legend class="sr-only">Account Information</legend>
+          <legend class="sr-only">{t("auth.register.title")}</legend>
 
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="user" size="sm" />
-              Username
+              {t("auth.register.form.username.label")}
             </span>
             <input
               type="text"
-              placeholder="Username"
+              placeholder={t("auth.register.form.username.placeholder")}
               value={username()}
               onInput={(e) => setUsername(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -129,11 +128,11 @@ export const Register: Component<RegisterProps> = (props) => {
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="envelope" size="sm" />
-              Email
+              {t("auth.register.form.email.label")}
             </span>
             <input
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.register.form.email.placeholder")}
               value={email()}
               onInput={(e) => setEmail(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -167,11 +166,11 @@ export const Register: Component<RegisterProps> = (props) => {
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="lock" size="sm" />
-              Password
+              {t("auth.register.form.password.label")}
             </span>
             <input
               type="password"
-              placeholder="Password (min 8 characters)"
+              placeholder={t("auth.register.form.password.placeholder")}
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -184,11 +183,11 @@ export const Register: Component<RegisterProps> = (props) => {
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="lock" size="sm" />
-              Confirm Password
+              {t("auth.register.form.confirmPassword.label")}
             </span>
             <input
               type="password"
-              placeholder="Confirm password"
+              placeholder={t("auth.register.form.confirmPassword.placeholder")}
               value={confirmPassword()}
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -204,9 +203,9 @@ export const Register: Component<RegisterProps> = (props) => {
           disabled={isLoading()}
           class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          <Show when={isLoading()} fallback="Create Account">
+          <Show when={isLoading()} fallback={t("auth.register.submit")}>
             <Icon name="spinner" size="sm" class="animate-spin" />
-            Creating account...
+            {t("auth.register.submitting")}
           </Show>
         </button>
 
@@ -216,7 +215,7 @@ export const Register: Component<RegisterProps> = (props) => {
           disabled={isLoading()}
           class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
-          Already have an account? Back to login
+          {t("auth.register.hasAccount")}
         </button>
       </form>
     </section>

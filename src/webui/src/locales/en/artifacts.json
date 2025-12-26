@@ -1,0 +1,64 @@
+{
+  "title": "Artifacts",
+  "subtitle": "Manage your build artifacts and packages",
+  "welcome": {
+    "loginRequired": "Please log in to view and manage your build artifacts."
+  },
+  "filter": {
+    "showOnlyMine": "Show only mine"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "distribution": "Distribution",
+      "path": "Path",
+      "size": "Size",
+      "type": "Type",
+      "modified": "Modified",
+      "actions": "Actions"
+    }
+  },
+  "actions": {
+    "download": "Download",
+    "delete": "Delete",
+    "newArtifact": "New Artifact",
+    "deleteSelected": "Delete Selected ({{ count }})",
+    "preview": "Preview",
+    "copyUrl": "Copy URL"
+  },
+  "upload": {
+    "title": "Upload New Artifact",
+    "distribution": "Distribution",
+    "selectDistribution": "Select a distribution...",
+    "distributionHelp": "Choose the distribution this artifact belongs to.",
+    "file": "File",
+    "selected": "Selected",
+    "customPath": "Custom Path",
+    "customPathPlaceholder": "e.g., boot/vmlinuz or packages/myapp.deb",
+    "customPathHelp": "Leave empty to use the original filename.",
+    "uploading": "Uploading...",
+    "upload": "Upload",
+    "success": "Upload successful",
+    "error": "Upload failed"
+  },
+  "delete": {
+    "title": "Confirm Deletion",
+    "confirmSingle": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} artifacts? This action cannot be undone.",
+    "deleting": "Deleting...",
+    "deleteCount": "Delete ({{ count }})"
+  },
+  "empty": {
+    "title": "No artifacts found",
+    "description": "Click \"New Artifact\" to upload your first artifact."
+  },
+  "errors": {
+    "storageNotConfigured": "Storage service is not configured on the server."
+  },
+  "size": {
+    "bytes": "B",
+    "kilobytes": "KB",
+    "megabytes": "MB",
+    "gigabytes": "GB"
+  }
+}

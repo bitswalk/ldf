@@ -1,0 +1,151 @@
+{
+  "title": "Einstellungen",
+  "back": "Zuruck",
+  "categories": {
+    "general": "Allgemein",
+    "appearance": "Erscheinungsbild",
+    "server": "Server",
+    "account": "Konto"
+  },
+  "general": {
+    "title": "Allgemein",
+    "description": "Allgemeine Anwendungseinstellungen",
+    "language": {
+      "title": "Sprache",
+      "description": "Wahlen Sie Ihre bevorzugte Sprache.",
+      "options": {
+        "system": "System",
+        "en": "English",
+        "fr": "Francais",
+        "de": "Deutsch"
+      }
+    },
+    "languagePacks": {
+      "title": "Sprachpakete",
+      "description": "Benutzerdefinierte Sprachpakete verwalten (nur Root)",
+      "upload": "Sprachpaket hochladen",
+      "uploadDescription": "Laden Sie ein .tar.xz, .tar.gz oder .xz Sprachpaket-Archiv hoch",
+      "noPacksInstalled": "Keine benutzerdefinierten Sprachpakete installiert",
+      "table": {
+        "locale": "Locale",
+        "name": "Name",
+        "version": "Version",
+        "author": "Autor",
+        "actions": "Aktionen"
+      },
+      "delete": {
+        "title": "Sprachpaket löschen",
+        "confirm": "Sind Sie sicher, dass Sie das Sprachpaket \"{{ name }}\" ({{ locale }}) löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "uploadSuccess": "Sprachpaket erfolgreich hochgeladen",
+      "uploadError": "Fehler beim Hochladen des Sprachpakets",
+      "deleteSuccess": "Sprachpaket erfolgreich gelöscht",
+      "deleteError": "Fehler beim Löschen des Sprachpakets",
+      "selectFile": "Datei auswählen...",
+      "dragDrop": "oder per Drag & Drop",
+      "supportedFormats": "Unterstützte Formate: .tar.xz, .tar.gz, .xz"
+    },
+    "systemPrompts": {
+      "title": "Systemaufforderungen verwenden",
+      "description": "Native Betriebssystem-Dialoge fur Bestatigungen verwenden."
+    },
+    "devMode": {
+      "title": "Entwicklermodus",
+      "description": "Debug-Konsole und ausfuhrliche Protokollierung aktivieren."
+    }
+  },
+  "privacy": {
+    "title": "Datenschutz",
+    "description": "Datenschutz- und Dateneinstellungen",
+    "redactValues": {
+      "title": "Private Werte verbergen",
+      "description": "Die Werte sensibler Variablen ausblenden."
+    },
+    "privateFiles": {
+      "title": "Private Dateien",
+      "description": "Konfigurieren Sie, welche Dateien als privat gelten.",
+      "editButton": "Einstellungen bearbeiten"
+    }
+  },
+  "theme": {
+    "title": "Design",
+    "description": "Das Erscheinungsbild der Anwendung anpassen",
+    "colorScheme": {
+      "title": "Farbschema",
+      "description": "Wahlen Sie das Erscheinungsbild der Anwendung.",
+      "options": {
+        "system": "System",
+        "light": "Hell",
+        "dark": "Dunkel"
+      }
+    }
+  },
+  "server": {
+    "connection": {
+      "title": "Verbindung",
+      "description": "Serververbindungseinstellungen",
+      "connectedServer": {
+        "title": "Verbundener Server",
+        "noServer": "Kein Server verbunden",
+        "changeButton": "Server wechseln"
+      },
+      "status": {
+        "title": "Verbindungsstatus",
+        "description": "Den aktuellen Verbindungsstatus uberprufen.",
+        "testButton": "Verbindung testen"
+      }
+    },
+    "settings": {
+      "title": "Servereinstellungen",
+      "description": "Server-Laufzeiteinstellungen konfigurieren (Root-Zugriff erforderlich)"
+    },
+    "defaultSources": {
+      "title": "Standardquellen",
+      "description": "Systemweite Standardquellen fur alle Benutzer verwalten",
+      "addButton": "Standardquelle hinzufugen",
+      "noSources": "Noch keine Standardquellen konfiguriert.",
+      "priority": "Prioritat",
+      "editSource": "Standardquelle bearbeiten",
+      "addSource": "Standardquelle hinzufugen",
+      "deleteSource": {
+        "title": "Standardquelle loschen",
+        "confirm": "Sind Sie sicher, dass Sie die Standardquelle \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden und betrifft alle Benutzer."
+      }
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profil",
+      "description": "Ihre Profilinformationen verwalten",
+      "displayName": {
+        "title": "Anzeigename",
+        "description": "Ihr offentlicher Anzeigename.",
+        "editButton": "Profil bearbeiten"
+      },
+      "avatar": {
+        "title": "Avatar",
+        "description": "Ihr Profilbild.",
+        "changeButton": "Avatar andern"
+      }
+    },
+    "security": {
+      "title": "Sicherheit",
+      "description": "Kontosicherheitseinstellungen",
+      "changePassword": {
+        "title": "Passwort andern",
+        "description": "Ihr Kontopasswort aktualisieren.",
+        "button": "Passwort andern"
+      },
+      "sessions": {
+        "title": "Aktive Sitzungen",
+        "description": "Ihre aktiven Anmeldesitzungen verwalten.",
+        "viewButton": "Sitzungen anzeigen"
+      },
+      "deleteAccount": {
+        "title": "Konto loschen",
+        "description": "Ihr Konto und alle Daten dauerhaft loschen.",
+        "button": "Konto loschen"
+      }
+    }
+  }
+}

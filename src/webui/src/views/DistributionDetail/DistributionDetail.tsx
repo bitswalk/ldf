@@ -20,6 +20,7 @@ import {
   listSourceVersions,
   type SourceVersion,
 } from "../../services/sourceVersions";
+import { t } from "../../services/i18n";
 
 interface UserInfo {
   id: string;
@@ -283,7 +284,10 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
       setDistribution(result.distribution);
       setEditedConfig(JSON.parse(JSON.stringify(result.distribution.config)));
       setIsEditing(false);
-      setNotification({ type: "success", message: "Configuration saved" });
+      setNotification({
+        type: "success",
+        message: t("distribution.detail.info.configSaved"),
+      });
     } else {
       setNotification({ type: "error", message: result.message });
     }
@@ -346,16 +350,16 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
           <button
             onClick={props.onBack}
             class="p-2 rounded-md hover:bg-muted transition-colors"
-            title="Back to distributions"
+            title={t("distribution.detail.back")}
           >
             <Icon name="arrow-left" size="lg" />
           </button>
           <div class="flex-1">
             <h1 class="text-4xl font-bold">
-              {distribution()?.name || "Distribution Details"}
+              {distribution()?.name || t("distribution.detail.title")}
             </h1>
             <p class="text-muted-foreground mt-1">
-              Manage distribution configuration and downloads
+              {t("distribution.detail.subtitle")}
             </p>
           </div>
         </header>
@@ -406,7 +410,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             {/* Distribution Info & Configuration */}
             <Card
               header={{
-                title: "Distribution Info",
+                title: t("distribution.detail.info.title"),
                 actions: (
                   <div class="flex items-center gap-2">
                     <Show when={isEditing()}>
@@ -422,7 +426,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                             class="animate-spin"
                           />
                         </Show>
-                        <span>Save</span>
+                        <span>{t("distribution.detail.info.save")}</span>
                       </button>
                     </Show>
                     <button
@@ -434,7 +438,11 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       }`}
                     >
                       <Icon name={isEditing() ? "x" : "pencil"} size="sm" />
-                      <span>{isEditing() ? "Cancel" : "Edit"}</span>
+                      <span>
+                        {isEditing()
+                          ? t("distribution.detail.info.cancel")
+                          : t("distribution.detail.info.edit")}
+                      </span>
                     </button>
                   </div>
                 ),
@@ -443,7 +451,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               <div class="space-y-4">
                 {/* Status & Basic Info */}
                 <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">Status</span>
+                  <span class="text-muted-foreground">
+                    {t("distribution.table.columns.status")}
+                  </span>
                   <span
                     class={`flex items-center gap-2 ${getStatusColor(distribution()!.status)}`}
                   >
@@ -463,7 +473,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                 </div>
 
                 <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">Visibility</span>
+                  <span class="text-muted-foreground">
+                    {t("distribution.table.columns.visibility")}
+                  </span>
                   <span class="flex items-center gap-2">
                     <Icon
                       name={
@@ -473,13 +485,17 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       }
                       size="sm"
                     />
-                    <span class="capitalize">{distribution()!.visibility}</span>
+                    <span class="capitalize">
+                      {t(`common.visibility.${distribution()!.visibility}`)}
+                    </span>
                   </span>
                 </div>
 
                 <Show when={distribution()!.size_bytes > 0}>
                   <div class="flex items-center justify-between">
-                    <span class="text-muted-foreground">Size</span>
+                    <span class="text-muted-foreground">
+                      {t("distribution.detail.size")}
+                    </span>
                     <span class="font-mono">
                       {formatBytes(distribution()!.size_bytes)}
                     </span>
@@ -488,7 +504,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
                 <Show when={distribution()!.checksum}>
                   <div class="flex items-center justify-between">
-                    <span class="text-muted-foreground">Checksum</span>
+                    <span class="text-muted-foreground">
+                      {t("distribution.detail.checksum")}
+                    </span>
                     <span
                       class="font-mono text-xs truncate max-w-[200px]"
                       title={distribution()!.checksum}
@@ -502,12 +520,12 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                 <Show when={config()}>
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
-                      CORE SYSTEM
+                      {t("distribution.detail.config.coreSystem")}
                     </h4>
                     <div class="space-y-1">
                       <div class="flex items-center justify-between py-2">
                         <span class="text-muted-foreground text-sm">
-                          Kernel Version
+                          {t("distribution.detail.config.kernelVersion")}
                         </span>
                         <Show
                           when={isEditing()}
@@ -523,27 +541,31 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                             onChange={(value) =>
                               updateConfig("core.kernel.version", value)
                             }
-                            placeholder="Select version"
-                            searchPlaceholder="Search kernel versions..."
+                            placeholder={t(
+                              "distribution.detail.config.selectVersion",
+                            )}
+                            searchPlaceholder={t(
+                              "distribution.detail.config.searchVersions",
+                            )}
                             loading={kernelVersionsLoading()}
                             maxDisplayed={10}
                           />
                         </Show>
                       </div>
                       <ConfigSelect
-                        label="Bootloader"
+                        label={t("distribution.detail.config.bootloader")}
                         value={config()!.core.bootloader}
                         options={configOptions.bootloaders}
                         path="core.bootloader"
                       />
                       <ConfigSelect
-                        label="Partitioning Type"
+                        label={t("distribution.detail.config.partitioningType")}
                         value={config()!.core.partitioning.type}
                         options={configOptions.partitioningTypes}
                         path="core.partitioning.type"
                       />
                       <ConfigSelect
-                        label="Partitioning Mode"
+                        label={t("distribution.detail.config.partitioningMode")}
                         value={config()!.core.partitioning.mode}
                         options={configOptions.partitioningModes}
                         path="core.partitioning.mode"
@@ -553,29 +575,31 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
-                      SYSTEM SERVICES
+                      {t("distribution.detail.config.systemServices")}
                     </h4>
                     <div class="space-y-1">
                       <ConfigSelect
-                        label="Init System"
+                        label={t("distribution.detail.config.initSystem")}
                         value={config()!.system.init}
                         options={configOptions.initSystems}
                         path="system.init"
                       />
                       <ConfigSelect
-                        label="Filesystem"
+                        label={t("distribution.detail.config.filesystem")}
                         value={config()!.system.filesystem.type}
                         options={configOptions.filesystems}
                         path="system.filesystem.type"
                       />
                       <ConfigSelect
-                        label="Filesystem Hierarchy"
+                        label={t(
+                          "distribution.detail.config.filesystemHierarchy",
+                        )}
                         value={config()!.system.filesystem.hierarchy}
                         options={configOptions.filesystemHierarchies}
                         path="system.filesystem.hierarchy"
                       />
                       <ConfigSelect
-                        label="Package Manager"
+                        label={t("distribution.detail.config.packageManager")}
                         value={config()!.system.packageManager}
                         options={configOptions.packageManagers}
                         path="system.packageManager"
@@ -585,23 +609,23 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
-                      SECURITY & RUNTIME
+                      {t("distribution.detail.config.securityRuntime")}
                     </h4>
                     <div class="space-y-1">
                       <ConfigSelect
-                        label="Security System"
+                        label={t("distribution.detail.config.securitySystem")}
                         value={config()!.security.system}
                         options={configOptions.securitySystems}
                         path="security.system"
                       />
                       <ConfigSelect
-                        label="Container Runtime"
+                        label={t("distribution.detail.config.containerRuntime")}
                         value={config()!.runtime.container}
                         options={configOptions.containerRuntimes}
                         path="runtime.container"
                       />
                       <ConfigSelect
-                        label="Virtualization"
+                        label={t("distribution.detail.config.virtualization")}
                         value={config()!.runtime.virtualization}
                         options={configOptions.virtualizationRuntimes}
                         path="runtime.virtualization"
@@ -611,25 +635,27 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
-                      TARGET ENVIRONMENT
+                      {t("distribution.detail.config.targetEnvironment")}
                     </h4>
                     <div class="space-y-1">
                       <ConfigSelect
-                        label="Distribution Type"
+                        label={t("distribution.detail.config.distributionType")}
                         value={config()!.target.type}
                         options={configOptions.distributionTypes}
                         path="target.type"
                       />
                       <Show when={config()!.target.desktop}>
                         <ConfigSelect
-                          label="Desktop Environment"
+                          label={t(
+                            "distribution.detail.config.desktopEnvironment",
+                          )}
                           value={config()!.target.desktop?.environment}
                           options={configOptions.desktopEnvironments}
                           path="target.desktop.environment"
                         />
                         <div class="flex items-center justify-between py-2">
                           <span class="text-muted-foreground text-sm">
-                            Display Server
+                            {t("distribution.detail.config.displayServer")}
                           </span>
                           <span class="text-sm font-medium">
                             {config()!.target.desktop?.displayServer ||
@@ -650,7 +676,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                         size="xl"
                         class="mx-auto mb-2 opacity-50"
                       />
-                      <p class="text-sm">No configuration available</p>
+                      <p class="text-sm">
+                        {t("distribution.detail.config.noConfig")}
+                      </p>
                     </div>
                   </div>
                 </Show>
@@ -658,20 +686,26 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                 {/* Timestamps */}
                 <div class="border-t border-border pt-4 mt-4 space-y-2">
                   <div class="flex items-center justify-between text-sm">
-                    <span class="text-muted-foreground">Created</span>
+                    <span class="text-muted-foreground">
+                      {t("distribution.detail.created")}
+                    </span>
                     <span class="font-mono">
                       {formatDate(distribution()!.created_at)}
                     </span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
-                    <span class="text-muted-foreground">Updated</span>
+                    <span class="text-muted-foreground">
+                      {t("distribution.detail.updated")}
+                    </span>
                     <span class="font-mono">
                       {formatDate(distribution()!.updated_at)}
                     </span>
                   </div>
                   <Show when={distribution()!.owner_id}>
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-muted-foreground">Owner ID</span>
+                      <span class="text-muted-foreground">
+                        {t("distribution.detail.ownerId")}
+                      </span>
                       <span class="font-mono text-xs">
                         {distribution()!.owner_id}
                       </span>
@@ -684,7 +718,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     <div class="text-sm text-red-500">
                       <div class="flex items-center gap-1 mb-1">
                         <Icon name="warning" size="sm" />
-                        <span class="font-medium">Error</span>
+                        <span class="font-medium">
+                          {t("distribution.detail.error")}
+                        </span>
                       </div>
                       <p>{distribution()!.error_message}</p>
                     </div>
@@ -696,14 +732,18 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             {/* Right Column: Quick Actions + Component Downloads */}
             <div class="flex flex-col gap-6">
               {/* Quick Actions */}
-              <Card header={{ title: "Quick Actions" }}>
+              <Card
+                header={{ title: t("distribution.detail.quickActions.title") }}
+              >
                 <div class="space-y-3">
                   <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
                     <Icon name="hammer" size="md" class="text-primary" />
                     <div>
-                      <div class="font-medium">Build Distribution</div>
+                      <div class="font-medium">
+                        {t("distribution.detail.quickActions.build")}
+                      </div>
                       <div class="text-sm text-muted-foreground">
-                        Compile and assemble distribution
+                        {t("distribution.detail.quickActions.buildDesc")}
                       </div>
                     </div>
                   </button>
@@ -715,9 +755,11 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       class="text-primary"
                     />
                     <div>
-                      <div class="font-medium">Download Distribution</div>
+                      <div class="font-medium">
+                        {t("distribution.detail.quickActions.download")}
+                      </div>
                       <div class="text-sm text-muted-foreground">
-                        Download as ISO or archive
+                        {t("distribution.detail.quickActions.downloadDesc")}
                       </div>
                     </div>
                   </button>
@@ -725,7 +767,11 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               </Card>
 
               {/* Component Downloads */}
-              <Card header={{ title: "Component Downloads" }}>
+              <Card
+                header={{
+                  title: t("distribution.detail.componentDownloads.title"),
+                }}
+              >
                 <DownloadStatus
                   distributionId={props.distributionId}
                   onSuccess={handleDownloadSuccess}

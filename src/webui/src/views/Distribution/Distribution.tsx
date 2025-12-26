@@ -23,6 +23,7 @@ import {
   type DistributionVisibility,
   type DistributionConfig,
 } from "../../services/distribution";
+import { t } from "../../services/i18n";
 
 interface UserInfo {
   id: string;
@@ -195,7 +196,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
         class={`flex items-center gap-2 ${isPublic ? "text-primary" : "text-muted-foreground"}`}
       >
         <Icon name={isPublic ? "globe" : "lock"} size="sm" />
-        <span class="capitalize">{visibility}</span>
+        <span>{t(`common.visibility.${visibility}`)}</span>
       </span>
     );
   };
@@ -259,7 +260,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
         >
           <Spinner size="sm" />
         </Show>
-        <span class="capitalize">{status}</span>
+        <span>{t(`distribution.status.${status}`)}</span>
       </span>
     );
   };
@@ -287,14 +288,14 @@ export const Distribution: Component<DistributionProps> = (props) => {
             class="gap-2"
           >
             <Icon name="eye" size="sm" />
-            <span>View Details</span>
+            <span>{t("distribution.actions.viewDetails")}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => handleEditDistribution(cellProps.row.id)}
             class="gap-2"
           >
             <Icon name="pencil" size="sm" />
-            <span>Edit</span>
+            <span>{t("distribution.actions.edit")}</span>
           </DropdownMenuItem>
           <Show when={canToggleVisibility()}>
             <DropdownMenuItem
@@ -306,8 +307,9 @@ export const Distribution: Component<DistributionProps> = (props) => {
                 size="sm"
               />
               <span>
-                Make{" "}
-                {cellProps.row.visibility === "public" ? "Private" : "Public"}
+                {cellProps.row.visibility === "public"
+                  ? t("common.visibility.makePrivate")
+                  : t("common.visibility.makePublic")}
               </span>
             </DropdownMenuItem>
           </Show>
@@ -316,7 +318,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
             class="gap-2 text-destructive focus:text-destructive"
           >
             <Icon name="trash" size="sm" />
-            <span>Delete</span>
+            <span>{t("distribution.actions.delete")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -330,15 +332,14 @@ export const Distribution: Component<DistributionProps> = (props) => {
         fallback={
           <section class="h-full flex flex-col items-center justify-center text-center p-8">
             <h1 class="text-4xl font-bold mb-4">
-              Welcome to Linux Distribution Factory
+              {t("distribution.welcome.title")}
             </h1>
             <p class="text-lg text-muted-foreground mb-8">
-              No distributions configured yet. Get started by creating your
-              first custom Linux distribution.
+              {t("distribution.welcome.subtitle")}
             </p>
             <Card
               borderStyle="dashed"
-              header={{ title: "Create new distribution" }}
+              header={{ title: t("distribution.create.cardTitle") }}
             >
               <button onClick={handleCreateDistribution} class="cursor-pointer">
                 <Icon
@@ -354,15 +355,15 @@ export const Distribution: Component<DistributionProps> = (props) => {
         <section class="h-full flex flex-col p-8 gap-6">
           <header class="flex items-center justify-between">
             <article>
-              <h1 class="text-4xl font-bold">Distributions</h1>
+              <h1 class="text-4xl font-bold">{t("distribution.title")}</h1>
               <p class="text-muted-foreground mt-2">
-                Manage your custom Linux distributions
+                {t("distribution.subtitle")}
               </p>
             </article>
             <nav class="flex items-center gap-4">
               <Show when={isAdmin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <span>Show only mine</span>
+                  <span>{t("distribution.filter.showOnlyMine")}</span>
                   <SummaryToggle
                     checked={showOnlyMine()}
                     onChange={setShowOnlyMine}
@@ -379,14 +380,17 @@ export const Distribution: Component<DistributionProps> = (props) => {
                 }`}
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete ({selectedDistributions().length})</span>
+                <span>
+                  {t("common.actions.delete")} ({selectedDistributions().length}
+                  )
+                </span>
               </button>
               <button
                 onClick={handleCreateDistribution}
                 class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
               >
                 <Icon name="plus" size="sm" />
-                <span>New Distribution</span>
+                <span>{t("distribution.create.button")}</span>
               </button>
             </nav>
           </header>
@@ -410,7 +414,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
                 columns={[
                   {
                     key: "name",
-                    label: "Name",
+                    label: t("distribution.table.columns.name"),
                     sortable: true,
                     class: "font-medium",
                     render: (name: string, row: DistributionType) => (
@@ -424,43 +428,46 @@ export const Distribution: Component<DistributionProps> = (props) => {
                   },
                   {
                     key: "config",
-                    label: "Kernel Version",
+                    label: t("distribution.table.columns.kernelVersion"),
                     sortable: true,
                     class: "font-mono",
                     render: (
                       _config: DistributionConfig | undefined,
                       row: DistributionType,
-                    ) => row.config?.core?.kernel?.version || "—",
+                    ) =>
+                      row.config?.core?.kernel?.version ||
+                      t("distribution.table.noValue"),
                   },
                   {
                     key: "status",
-                    label: "Status",
+                    label: t("distribution.table.columns.status"),
                     sortable: true,
                     render: renderStatus,
                   },
                   {
                     key: "visibility",
-                    label: "Visibility",
+                    label: t("distribution.table.columns.visibility"),
                     sortable: true,
                     render: renderVisibility,
                   },
                   {
                     key: "owner_id",
-                    label: "Owner",
+                    label: t("distribution.table.columns.owner"),
                     sortable: true,
                     class: "font-mono text-xs",
-                    render: (ownerId: string) => ownerId || "—",
+                    render: (ownerId: string) =>
+                      ownerId || t("distribution.table.noValue"),
                   },
                   {
                     key: "created_at",
-                    label: "Created",
+                    label: t("distribution.table.columns.created"),
                     sortable: true,
                     class: "font-mono",
                     render: formatDate,
                   },
                   {
                     key: "id",
-                    label: "Actions",
+                    label: t("distribution.table.columns.actions"),
                     class: "text-right relative",
                     component: ActionsCell,
                   },
@@ -480,7 +487,11 @@ export const Distribution: Component<DistributionProps> = (props) => {
                 class="px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete Selected ({selectedDistributions().length})</span>
+                <span>
+                  {t("distribution.actions.deleteSelected", {
+                    count: selectedDistributions().length,
+                  })}
+                </span>
               </button>
             </footer>
           </Show>
@@ -490,7 +501,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
       <Modal
         isOpen={isModalOpen()}
         onClose={handleFormCancel}
-        title="Create New Distribution"
+        title={t("distribution.create.modalTitle")}
       >
         <DistributionForm
           onSubmit={handleFormSubmit}
@@ -501,24 +512,24 @@ export const Distribution: Component<DistributionProps> = (props) => {
       <Modal
         isOpen={deleteModalOpen()}
         onClose={cancelDelete}
-        title="Confirm Deletion"
+        title={t("distribution.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
-            Are you sure you want to delete{" "}
             <Show
               when={distributionsToDelete().length === 1}
               fallback={
-                <span class="text-foreground font-medium">
-                  {distributionsToDelete().length} distributions
-                </span>
+                <>
+                  {t("distribution.delete.confirmMultiple", {
+                    count: distributionsToDelete().length,
+                  })}
+                </>
               }
             >
-              <span class="text-foreground font-medium">
-                "{distributionsToDelete()[0]?.name}"
-              </span>
+              {t("distribution.delete.confirmSingle", {
+                name: distributionsToDelete()[0]?.name || "",
+              })}
             </Show>
-            ? This action cannot be undone.
           </p>
 
           <Show when={distributionsToDelete().length > 1}>
@@ -536,7 +547,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
               disabled={isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -549,8 +560,12 @@ export const Distribution: Component<DistributionProps> = (props) => {
               </Show>
               <span>
                 {isDeleting()
-                  ? "Deleting..."
-                  : `Delete${distributionsToDelete().length > 1 ? ` (${distributionsToDelete().length})` : ""}`}
+                  ? t("distribution.delete.deleting")
+                  : distributionsToDelete().length > 1
+                    ? t("distribution.actions.deleteCount", {
+                        count: distributionsToDelete().length,
+                      })
+                    : t("common.actions.delete")}
               </span>
             </button>
           </nav>

@@ -1,0 +1,103 @@
+{
+  "app": {
+    "name": "Linux Distribution Factory",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Creer",
+    "back": "Retour",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "retry": "Reessayer",
+    "submit": "Soumettre",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "view": "Voir",
+    "viewDetails": "Voir les details",
+    "refresh": "Actualiser",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "clear": "Effacer",
+    "reset": "Reinitialiser",
+    "download": "Telecharger",
+    "upload": "Envoyer",
+    "copy": "Copier",
+    "copied": "Copie !",
+    "change": "Changer",
+    "test": "Tester",
+    "configure": "Configurer"
+  },
+  "status": {
+    "enabled": "Active",
+    "disabled": "Desactive",
+    "pending": "En attente",
+    "ready": "Pret",
+    "failed": "Echoue",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "loading": "Chargement...",
+    "saving": "Enregistrement...",
+    "deleting": "Suppression...",
+    "uploading": "Envoi...",
+    "downloading": "Telechargement...",
+    "validating": "Validation...",
+    "completed": "Termine",
+    "cancelled": "Annule",
+    "verifying": "Verification..."
+  },
+  "visibility": {
+    "public": "Public",
+    "private": "Prive",
+    "makePublic": "Rendre public",
+    "makePrivate": "Rendre prive"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire",
+    "invalidEmail": "Adresse email invalide",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "minLength": "Doit contenir au moins {{ min }} caracteres",
+    "maxLength": "Doit contenir au maximum {{ max }} caracteres"
+  },
+  "errors": {
+    "networkError": "Impossible de se connecter au serveur. Veuillez verifier l'URL du serveur.",
+    "serverError": "Erreur du serveur. Veuillez reessayer plus tard.",
+    "unknownError": "Une erreur inconnue est survenue. Veuillez reessayer.",
+    "notFound": "La ressource demandee est introuvable.",
+    "unauthorized": "Vous n'etes pas autorise a effectuer cette action.",
+    "forbidden": "Acces refuse."
+  },
+  "confirm": {
+    "delete": "Etes-vous sur de vouloir supprimer cet element ?",
+    "deleteMultiple": "Etes-vous sur de vouloir supprimer {{ count }} elements ?",
+    "unsavedChanges": "Vous avez des modifications non enregistrees. Etes-vous sur de vouloir quitter ?",
+    "irreversible": "Cette action est irreversible."
+  },
+  "pagination": {
+    "previous": "Precedent",
+    "next": "Suivant",
+    "page": "Page",
+    "of": "sur",
+    "showing": "Affichage de",
+    "to": "a",
+    "entries": "entrees"
+  },
+  "table": {
+    "noData": "Aucune donnee disponible",
+    "loading": "Chargement des donnees...",
+    "actions": "Actions",
+    "selectAll": "Tout selectionner",
+    "selected": "{{ count }} selectionne(s)"
+  },
+  "time": {
+    "justNow": "A l'instant",
+    "minutesAgo": "Il y a {{ count }} minute(s)",
+    "hoursAgo": "Il y a {{ count }} heure(s)",
+    "daysAgo": "Il y a {{ count }} jour(s)"
+  },
+  "optional": "optionnel"
+}

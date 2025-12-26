@@ -6,10 +6,7 @@ import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { SourceForm } from "../../components/SourceForm";
 import { VersionList } from "../../components/VersionList";
-import {
-  getSource,
-  type SourceType,
-} from "../../services/sourceVersions";
+import { getSource, type SourceType } from "../../services/sourceVersions";
 import {
   updateSource,
   updateDefaultSource,
@@ -20,7 +17,11 @@ import {
   type SourceDefault,
   type UserSource,
 } from "../../services/sources";
-import { listComponents, type Component as ComponentType } from "../../services/components";
+import {
+  listComponents,
+  type Component as ComponentType,
+} from "../../services/components";
+import { t } from "../../services/i18n";
 
 interface UserInfo {
   id: string;
@@ -38,7 +39,9 @@ interface SourceDetailsProps {
 }
 
 export const SourceDetails: Component<SourceDetailsProps> = (props) => {
-  const [source, setSource] = createSignal<SourceDefault | UserSource | null>(null);
+  const [source, setSource] = createSignal<SourceDefault | UserSource | null>(
+    null,
+  );
   const [components, setComponents] = createSignal<ComponentType[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -91,7 +94,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
   });
 
   const getComponentName = (componentId: string | undefined): string => {
-    if (!componentId) return "Not assigned";
+    if (!componentId) return t("sources.detail.notAssigned");
     const component = components().find((c) => c.id === componentId);
     return component?.display_name || componentId;
   };
@@ -139,7 +142,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     if (result.success) {
       setEditModalOpen(false);
       fetchSource();
-      showNotification("success", "Source updated successfully");
+      showNotification("success", t("sources.detail.updateSuccess"));
     } else {
       setError(result.message);
     }
@@ -165,7 +168,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
     if (result.success) {
       setDeleteModalOpen(false);
-      showNotification("success", "Source deleted successfully");
+      showNotification("success", t("sources.detail.deleteSuccess"));
       props.onDeleted?.();
       props.onBack();
     } else {
@@ -210,14 +213,14 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
           <button
             onClick={props.onBack}
             class="p-2 rounded-md hover:bg-muted transition-colors"
-            title="Back to sources"
+            title={t("sources.detail.back")}
           >
             <Icon name="arrow-left" size="lg" />
           </button>
           <div class="flex-1">
             <div class="flex items-center gap-3">
               <h1 class="text-4xl font-bold">
-                {source()?.name || "Source Details"}
+                {source()?.name || t("sources.detail.title")}
               </h1>
               <Show when={source()}>
                 <span
@@ -227,7 +230,9 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {isDefaultSource() ? "System" : "User"}
+                  {isDefaultSource()
+                    ? t("sources.type.system")
+                    : t("sources.type.user")}
                 </span>
               </Show>
             </div>
@@ -244,7 +249,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                 </span>
               </Show>
               <Show when={!source()?.component_id}>
-                View source details and sync available versions
+                {t("sources.detail.subtitle")}
               </Show>
             </p>
           </div>
@@ -255,14 +260,14 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                 class="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
               >
                 <Icon name="pencil" size="sm" />
-                <span>Edit</span>
+                <span>{t("sources.actions.edit")}</span>
               </button>
               <button
                 onClick={handleDeleteClick}
                 class="flex items-center gap-2 px-4 py-2 border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors"
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete</span>
+                <span>{t("sources.actions.delete")}</span>
               </button>
             </div>
           </Show>
@@ -313,20 +318,26 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Source Info - Left column */}
             <div class="lg:col-span-1 space-y-6">
-              <Card header={{ title: "Source Details" }}>
+              <Card header={{ title: t("sources.detail.sourceDetails") }}>
                 <div class="space-y-4">
                   <div>
-                    <span class="text-sm text-muted-foreground">Name</span>
+                    <span class="text-sm text-muted-foreground">
+                      {t("sources.detail.name")}
+                    </span>
                     <p class="font-medium">{source()!.name}</p>
                   </div>
 
                   <div>
-                    <span class="text-sm text-muted-foreground">URL</span>
+                    <span class="text-sm text-muted-foreground">
+                      {t("sources.detail.url")}
+                    </span>
                     <p class="font-mono text-sm break-all">{source()!.url}</p>
                   </div>
 
                   <div>
-                    <span class="text-sm text-muted-foreground">Component</span>
+                    <span class="text-sm text-muted-foreground">
+                      {t("sources.detail.component")}
+                    </span>
                     <p class="font-medium">
                       {getComponentName(source()!.component_id)}
                     </p>
@@ -334,7 +345,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
                   <div>
                     <span class="text-sm text-muted-foreground">
-                      Retrieval Method
+                      {t("sources.detail.retrievalMethod")}
                     </span>
                     <p class="font-medium capitalize">
                       {source()!.retrieval_method || "release"}
@@ -344,7 +355,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                   <Show when={source()!.url_template}>
                     <div>
                       <span class="text-sm text-muted-foreground">
-                        URL Template
+                        {t("sources.detail.urlTemplate")}
                       </span>
                       <p class="font-mono text-sm break-all">
                         {source()!.url_template}
@@ -353,12 +364,16 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                   </Show>
 
                   <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted-foreground">Priority</span>
+                    <span class="text-sm text-muted-foreground">
+                      {t("sources.detail.priority")}
+                    </span>
                     <span class="font-mono">{source()!.priority}</span>
                   </div>
 
                   <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted-foreground">Status</span>
+                    <span class="text-sm text-muted-foreground">
+                      {t("sources.detail.status")}
+                    </span>
                     <span
                       class={`flex items-center gap-2 ${source()!.enabled ? "text-green-500" : "text-muted-foreground"}`}
                     >
@@ -366,19 +381,25 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                         name={source()!.enabled ? "check-circle" : "x-circle"}
                         size="sm"
                       />
-                      {source()!.enabled ? "Enabled" : "Disabled"}
+                      {source()!.enabled
+                        ? t("common.status.enabled")
+                        : t("common.status.disabled")}
                     </span>
                   </div>
 
                   <div class="border-t border-border pt-4 mt-4 space-y-2">
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-muted-foreground">Created</span>
+                      <span class="text-muted-foreground">
+                        {t("sources.detail.created")}
+                      </span>
                       <span class="font-mono text-xs">
                         {formatDate(source()!.created_at)}
                       </span>
                     </div>
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-muted-foreground">Updated</span>
+                      <span class="text-muted-foreground">
+                        {t("sources.detail.updated")}
+                      </span>
                       <span class="font-mono text-xs">
                         {formatDate(source()!.updated_at)}
                       </span>
@@ -390,7 +411,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
             {/* Versions - Right columns */}
             <div class="lg:col-span-2">
-              <Card header={{ title: "Available Versions" }}>
+              <Card header={{ title: t("sources.detail.availableVersions") }}>
                 <VersionList
                   sourceId={props.sourceId}
                   sourceType={props.sourceType}
@@ -409,7 +430,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       <Modal
         isOpen={editModalOpen()}
         onClose={handleEditCancel}
-        title="Edit Source"
+        title={t("sources.create.editModalTitle")}
       >
         <SourceForm
           key={source()?.id || "edit"}
@@ -424,16 +445,11 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       <Modal
         isOpen={deleteModalOpen()}
         onClose={cancelDelete}
-        title="Confirm Deletion"
+        title={t("sources.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
-            Are you sure you want to delete{" "}
-            <span class="text-foreground font-medium">
-              "{source()?.name}"
-            </span>
-            ? This will also remove all cached versions. This action cannot be
-            undone.
+            {t("sources.detail.deleteWarning", { name: source()?.name || "" })}
           </p>
 
           <nav class="flex justify-end gap-3">
@@ -443,7 +459,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
               disabled={isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -454,7 +470,11 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
               <Show when={isDeleting()}>
                 <Spinner size="sm" />
               </Show>
-              <span>{isDeleting() ? "Deleting..." : "Delete"}</span>
+              <span>
+                {isDeleting()
+                  ? t("sources.delete.deleting")
+                  : t("common.actions.delete")}
+              </span>
             </button>
           </nav>
         </section>

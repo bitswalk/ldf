@@ -25,6 +25,7 @@
   "dependencies": {
     "@phosphor-icons/core": "^2.1.1",
     "@phosphor-icons/web": "^2.1.2",
+    "@solid-primitives/i18n": "^2.2.1",
     "solid-js": "^1.9.9",
     "solid-transition-group": "^0.3.0"
   }

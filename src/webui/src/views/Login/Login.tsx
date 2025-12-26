@@ -3,6 +3,7 @@ import { createSignal, Show } from "solid-js";
 import { Icon } from "../../components/Icon";
 import { login } from "../../services/auth";
 import type { UserInfo } from "../../services/auth";
+import { t } from "../../services/i18n";
 
 interface LoginProps {
   serverUrl: string;
@@ -33,20 +34,20 @@ export const Login: Component<LoginProps> = (props) => {
           props.onShowRegister(username());
           break;
         case "network_error":
-          setError("Unable to connect to server. Please check the server URL.");
+          setError(t("auth.login.errors.networkError"));
           break;
         case "internal_error":
-          setError("Server error. Please try again later.");
+          setError(t("auth.login.errors.serverError"));
           break;
         default:
-          setError(result.message || "Login failed. Please try again.");
+          setError(result.message || t("auth.login.errors.generic"));
       }
     }
   };
 
   return (
     <section class="h-full flex flex-col items-center justify-center p-8">
-      <h1 class="text-4xl font-bold mb-2">Login</h1>
+      <h1 class="text-4xl font-bold mb-2">{t("auth.login.title")}</h1>
       <p class="text-muted-foreground mb-8 flex items-center gap-2">
         <Icon name="plugs" size="sm" />
         {props.serverUrl}
@@ -60,16 +61,16 @@ export const Login: Component<LoginProps> = (props) => {
         </Show>
 
         <fieldset class="flex flex-col gap-4" disabled={isLoading()}>
-          <legend class="sr-only">Credentials</legend>
+          <legend class="sr-only">{t("auth.login.form.username.label")}</legend>
 
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="user" size="sm" />
-              Username
+              {t("auth.login.form.username.label")}
             </span>
             <input
               type="text"
-              placeholder="Username"
+              placeholder={t("auth.login.form.username.placeholder")}
               value={username()}
               onInput={(e) => setUsername(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -81,11 +82,11 @@ export const Login: Component<LoginProps> = (props) => {
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="lock" size="sm" />
-              Password
+              {t("auth.login.form.password.label")}
             </span>
             <input
               type="password"
-              placeholder="Password"
+              placeholder={t("auth.login.form.password.placeholder")}
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
@@ -100,9 +101,9 @@ export const Login: Component<LoginProps> = (props) => {
           disabled={isLoading()}
           class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          <Show when={isLoading()} fallback="Login">
+          <Show when={isLoading()} fallback={t("auth.login.submit")}>
             <Icon name="spinner" size="sm" class="animate-spin" />
-            Logging in...
+            {t("auth.login.submitting")}
           </Show>
         </button>
 
@@ -112,7 +113,7 @@ export const Login: Component<LoginProps> = (props) => {
           disabled={isLoading()}
           class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
-          Don't have an account? Create one
+          {t("auth.login.noAccount")}
         </button>
       </form>
     </section>

@@ -1,0 +1,103 @@
+{
+  "app": {
+    "name": "Linux Distribution Factory",
+    "loading": "Laden...",
+    "error": "Ein Fehler ist aufgetreten"
+  },
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Loschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "back": "Zuruck",
+    "confirm": "Bestatigen",
+    "close": "Schliessen",
+    "retry": "Erneut versuchen",
+    "submit": "Absenden",
+    "add": "Hinzufugen",
+    "remove": "Entfernen",
+    "view": "Ansehen",
+    "viewDetails": "Details anzeigen",
+    "refresh": "Aktualisieren",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "clear": "Loschen",
+    "reset": "Zurucksetzen",
+    "download": "Herunterladen",
+    "upload": "Hochladen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "change": "Andern",
+    "test": "Testen",
+    "configure": "Konfigurieren"
+  },
+  "status": {
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "pending": "Ausstehend",
+    "ready": "Bereit",
+    "failed": "Fehlgeschlagen",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "loading": "Laden...",
+    "saving": "Speichern...",
+    "deleting": "Loschen...",
+    "uploading": "Hochladen...",
+    "downloading": "Herunterladen...",
+    "validating": "Validieren...",
+    "completed": "Abgeschlossen",
+    "cancelled": "Abgebrochen",
+    "verifying": "Uberprufen..."
+  },
+  "visibility": {
+    "public": "Offentlich",
+    "private": "Privat",
+    "makePublic": "Offentlich machen",
+    "makePrivate": "Privat machen"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "invalidEmail": "Ungultige E-Mail-Adresse",
+    "passwordMismatch": "Passworter stimmen nicht uberein",
+    "minLength": "Muss mindestens {{ min }} Zeichen enthalten",
+    "maxLength": "Darf hochstens {{ max }} Zeichen enthalten"
+  },
+  "errors": {
+    "networkError": "Verbindung zum Server nicht moglich. Bitte uberprufen Sie die Server-URL.",
+    "serverError": "Serverfehler. Bitte versuchen Sie es spater erneut.",
+    "unknownError": "Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszufuhren.",
+    "forbidden": "Zugriff verweigert."
+  },
+  "confirm": {
+    "delete": "Sind Sie sicher, dass Sie dieses Element loschen mochten?",
+    "deleteMultiple": "Sind Sie sicher, dass Sie {{ count }} Elemente loschen mochten?",
+    "unsavedChanges": "Sie haben ungespeicherte Anderungen. Sind Sie sicher, dass Sie die Seite verlassen mochten?",
+    "irreversible": "Diese Aktion kann nicht ruckgangig gemacht werden."
+  },
+  "pagination": {
+    "previous": "Zuruck",
+    "next": "Weiter",
+    "page": "Seite",
+    "of": "von",
+    "showing": "Zeige",
+    "to": "bis",
+    "entries": "Eintrage"
+  },
+  "table": {
+    "noData": "Keine Daten verfugbar",
+    "loading": "Daten werden geladen...",
+    "actions": "Aktionen",
+    "selectAll": "Alle auswahlen",
+    "selected": "{{ count }} ausgewahlt"
+  },
+  "time": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "Vor {{ count }} Minute(n)",
+    "hoursAgo": "Vor {{ count }} Stunde(n)",
+    "daysAgo": "Vor {{ count }} Tag(en)"
+  },
+  "optional": "optional"
+}

@@ -22,6 +22,7 @@ import {
   type CreateSourceRequest,
   type UpdateSourceRequest,
 } from "../../services/sources";
+import { t } from "../../services/i18n";
 
 interface UserInfo {
   id: string;
@@ -135,9 +136,7 @@ export const Sources: Component<SourcesProps> = (props) => {
   const openDeleteModal = (srcs: Source[]) => {
     const userSources = srcs.filter((s) => !s.is_system);
     if (userSources.length === 0) {
-      setError(
-        "Cannot delete system sources. Only user sources can be deleted.",
-      );
+      setError(t("sources.delete.systemSourceError"));
       return;
     }
     setSourcesToDelete(userSources);
@@ -230,7 +229,9 @@ export const Sources: Component<SourcesProps> = (props) => {
         class={`flex items-center gap-2 ${enabled ? "text-primary" : "text-muted-foreground"}`}
       >
         <Icon name={enabled ? "check-circle" : "x-circle"} size="sm" />
-        <span>{enabled ? "Enabled" : "Disabled"}</span>
+        <span>
+          {enabled ? t("common.status.enabled") : t("common.status.disabled")}
+        </span>
       </span>
     );
   };
@@ -244,7 +245,7 @@ export const Sources: Component<SourcesProps> = (props) => {
             : "bg-muted text-muted-foreground"
         }`}
       >
-        {isSystem ? "System" : "User"}
+        {isSystem ? t("sources.type.system") : t("sources.type.user")}
       </span>
     );
   };
@@ -283,7 +284,7 @@ export const Sources: Component<SourcesProps> = (props) => {
             class="gap-2"
           >
             <Icon name="eye" size="sm" />
-            <span>View Details</span>
+            <span>{t("sources.actions.viewDetails")}</span>
           </DropdownMenuItem>
           <Show when={canEdit() || canEditSystem()}>
             <DropdownMenuItem
@@ -291,7 +292,7 @@ export const Sources: Component<SourcesProps> = (props) => {
               class="gap-2"
             >
               <Icon name="pencil" size="sm" />
-              <span>Edit</span>
+              <span>{t("sources.actions.edit")}</span>
             </DropdownMenuItem>
           </Show>
           <Show when={canEdit()}>
@@ -303,7 +304,11 @@ export const Sources: Component<SourcesProps> = (props) => {
                 name={cellProps.row.enabled ? "x-circle" : "check-circle"}
                 size="sm"
               />
-              <span>{cellProps.row.enabled ? "Disable" : "Enable"}</span>
+              <span>
+                {cellProps.row.enabled
+                  ? t("sources.actions.disable")
+                  : t("sources.actions.enable")}
+              </span>
             </DropdownMenuItem>
           </Show>
           <Show when={canDelete()}>
@@ -312,7 +317,7 @@ export const Sources: Component<SourcesProps> = (props) => {
               class="gap-2 text-destructive focus:text-destructive"
             >
               <Icon name="trash" size="sm" />
-              <span>Delete</span>
+              <span>{t("sources.actions.delete")}</span>
             </DropdownMenuItem>
           </Show>
         </DropdownMenuContent>
@@ -326,9 +331,9 @@ export const Sources: Component<SourcesProps> = (props) => {
         when={props.isLoggedIn}
         fallback={
           <section class="h-full flex flex-col items-center justify-center text-center p-8">
-            <h1 class="text-4xl font-bold mb-4">Sources</h1>
+            <h1 class="text-4xl font-bold mb-4">{t("sources.title")}</h1>
             <p class="text-lg text-muted-foreground mb-8">
-              Please log in to view and manage upstream sources.
+              {t("sources.welcome.loginRequired")}
             </p>
           </section>
         }
@@ -336,15 +341,13 @@ export const Sources: Component<SourcesProps> = (props) => {
         <section class="h-full flex flex-col p-8 gap-6">
           <header class="flex items-center justify-between">
             <article>
-              <h1 class="text-4xl font-bold">Sources</h1>
-              <p class="text-muted-foreground mt-2">
-                Manage upstream data sources for your distributions
-              </p>
+              <h1 class="text-4xl font-bold">{t("sources.title")}</h1>
+              <p class="text-muted-foreground mt-2">{t("sources.subtitle")}</p>
             </article>
             <nav class="flex items-center gap-4">
               <Show when={isAdmin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <span>Show only mine</span>
+                  <span>{t("sources.filter.showOnlyMine")}</span>
                   <SummaryToggle
                     checked={showOnlyMine()}
                     onChange={setShowOnlyMine}
@@ -364,8 +367,8 @@ export const Sources: Component<SourcesProps> = (props) => {
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  Delete ({selectedSources().filter((s) => !s.is_system).length}
-                  )
+                  {t("common.actions.delete")} (
+                  {selectedSources().filter((s) => !s.is_system).length})
                 </span>
               </button>
               <button
@@ -373,7 +376,7 @@ export const Sources: Component<SourcesProps> = (props) => {
                 class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
               >
                 <Icon name="plus" size="sm" />
-                <span>New Source</span>
+                <span>{t("sources.create.button")}</span>
               </button>
             </nav>
           </header>
@@ -399,7 +402,7 @@ export const Sources: Component<SourcesProps> = (props) => {
                   <section class="h-full flex flex-col items-center justify-center text-center">
                     <Card
                       borderStyle="dashed"
-                      header={{ title: "Add your first source" }}
+                      header={{ title: t("sources.cardTitle") }}
                     >
                       <button
                         onClick={handleCreateSource}
@@ -419,7 +422,7 @@ export const Sources: Component<SourcesProps> = (props) => {
                   columns={[
                     {
                       key: "name",
-                      label: "Name",
+                      label: t("sources.table.columns.name"),
                       sortable: true,
                       class: "font-medium",
                       render: (name: string, row: Source) => (
@@ -433,38 +436,38 @@ export const Sources: Component<SourcesProps> = (props) => {
                     },
                     {
                       key: "url",
-                      label: "URL",
+                      label: t("sources.table.columns.url"),
                       sortable: true,
                       class: "font-mono text-sm",
                     },
                     {
                       key: "priority",
-                      label: "Priority",
+                      label: t("sources.table.columns.priority"),
                       sortable: true,
                       class: "font-mono text-center",
                     },
                     {
                       key: "enabled",
-                      label: "Status",
+                      label: t("sources.table.columns.status"),
                       sortable: true,
                       render: renderEnabled,
                     },
                     {
                       key: "is_system",
-                      label: "Type",
+                      label: t("sources.table.columns.type"),
                       sortable: true,
                       render: renderSourceType,
                     },
                     {
                       key: "created_at",
-                      label: "Created",
+                      label: t("sources.table.columns.created"),
                       sortable: true,
                       class: "font-mono",
                       render: formatDate,
                     },
                     {
                       key: "id",
-                      label: "Actions",
+                      label: t("sources.table.columns.actions"),
                       class: "text-right relative",
                       component: ActionsCell,
                     },
@@ -486,8 +489,9 @@ export const Sources: Component<SourcesProps> = (props) => {
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  Delete Selected (
-                  {selectedSources().filter((s) => !s.is_system).length})
+                  {t("sources.delete.deleteSelected", {
+                    count: selectedSources().filter((s) => !s.is_system).length,
+                  })}
                 </span>
               </button>
             </footer>
@@ -498,7 +502,11 @@ export const Sources: Component<SourcesProps> = (props) => {
       <Modal
         isOpen={isModalOpen()}
         onClose={handleFormCancel}
-        title={editingSource() ? "Edit Source" : "Add New Source"}
+        title={
+          editingSource()
+            ? t("sources.create.editModalTitle")
+            : t("sources.create.modalTitle")
+        }
       >
         <SourceForm
           key={editingSource()?.id || "new"}
@@ -512,24 +520,24 @@ export const Sources: Component<SourcesProps> = (props) => {
       <Modal
         isOpen={deleteModalOpen()}
         onClose={cancelDelete}
-        title="Confirm Deletion"
+        title={t("sources.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
-            Are you sure you want to delete{" "}
             <Show
               when={sourcesToDelete().length === 1}
               fallback={
-                <span class="text-foreground font-medium">
-                  {sourcesToDelete().length} sources
-                </span>
+                <>
+                  {t("sources.delete.confirmMultiple", {
+                    count: sourcesToDelete().length,
+                  })}
+                </>
               }
             >
-              <span class="text-foreground font-medium">
-                "{sourcesToDelete()[0]?.name}"
-              </span>
+              {t("sources.delete.confirmSingle", {
+                name: sourcesToDelete()[0]?.name || "",
+              })}
             </Show>
-            ? This action cannot be undone.
           </p>
 
           <Show when={sourcesToDelete().length > 1}>
@@ -547,7 +555,7 @@ export const Sources: Component<SourcesProps> = (props) => {
               disabled={isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -560,8 +568,12 @@ export const Sources: Component<SourcesProps> = (props) => {
               </Show>
               <span>
                 {isDeleting()
-                  ? "Deleting..."
-                  : `Delete${sourcesToDelete().length > 1 ? ` (${sourcesToDelete().length})` : ""}`}
+                  ? t("sources.delete.deleting")
+                  : sourcesToDelete().length > 1
+                    ? t("sources.delete.deleteCount", {
+                        count: sourcesToDelete().length,
+                      })
+                    : t("common.actions.delete")}
               </span>
             </button>
           </nav>

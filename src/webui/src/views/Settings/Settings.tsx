@@ -18,6 +18,7 @@ import { Modal } from "../../components/Modal";
 import { SourceForm } from "../../components/SourceForm";
 import { Spinner } from "../../components/Spinner";
 import { themeService } from "../../services/theme";
+import { i18nService, t, type LocalePreference } from "../../services/i18n";
 import { getServerUrl } from "../../services/storage";
 import {
   getServerSettings,
@@ -47,6 +48,8 @@ interface SettingsProps {
 export const Settings: Component<SettingsProps> = (props) => {
   const [themePreference, setThemePreference] =
     createSignal<ThemePreference>("system");
+  const [languagePreference, setLanguagePreference] =
+    createSignal<LocalePreference>("system");
   const [serverUrl, setServerUrl] = createSignal("");
   const [useSystemPrompts, setUseSystemPrompts] = createSignal(true);
   const [redactPrivateValues, setRedactPrivateValues] = createSignal(false);
@@ -74,6 +77,21 @@ export const Settings: Component<SettingsProps> = (props) => {
   const [sourceToDelete, setSourceToDelete] =
     createSignal<SourceDefault | null>(null);
   const [deletingSource, setDeletingSource] = createSignal(false);
+
+  // Language packs state (for root users)
+  const [languagePacks, setLanguagePacks] = createSignal<
+    Array<{ locale: string; name: string; version: string; author?: string }>
+  >([]);
+  const [langPacksLoading, setLangPacksLoading] = createSignal(false);
+  const [langPacksError, setLangPacksError] = createSignal<string | null>(null);
+  const [uploadingLangPack, setUploadingLangPack] = createSignal(false);
+  const [deleteLangPackModalOpen, setDeleteLangPackModalOpen] =
+    createSignal(false);
+  const [langPackToDelete, setLangPackToDelete] = createSignal<{
+    locale: string;
+    name: string;
+  } | null>(null);
+  const [deletingLangPack, setDeletingLangPack] = createSignal(false);
 
   const loadServerSettings = async () => {
     if (!isRootUser()) return;
@@ -138,6 +156,79 @@ export const Settings: Component<SettingsProps> = (props) => {
     }
 
     setSourcesLoading(false);
+  };
+
+  const loadLanguagePacks = async () => {
+    if (!isRootUser()) return;
+
+    setLangPacksLoading(true);
+    setLangPacksError(null);
+
+    const result = await i18nService.listLanguagePacksFromServer();
+    if (result.success && result.packs) {
+      setLanguagePacks(result.packs);
+    } else {
+      setLangPacksError(result.error || "Failed to load language packs");
+    }
+
+    setLangPacksLoading(false);
+  };
+
+  const handleLangPackUpload = async (
+    event: Event & { currentTarget: HTMLInputElement },
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    setUploadingLangPack(true);
+    setLangPacksError(null);
+
+    const result = await i18nService.installLanguagePack(file);
+
+    setUploadingLangPack(false);
+
+    if (result.success) {
+      loadLanguagePacks();
+    } else {
+      setLangPacksError(
+        result.error || t("settings.general.languagePacks.uploadError"),
+      );
+    }
+
+    // Reset the input
+    event.currentTarget.value = "";
+  };
+
+  const openDeleteLangPackModal = (pack: { locale: string; name: string }) => {
+    setLangPackToDelete(pack);
+    setDeleteLangPackModalOpen(true);
+  };
+
+  const confirmDeleteLangPack = async () => {
+    const pack = langPackToDelete();
+    if (!pack) return;
+
+    setDeletingLangPack(true);
+    setLangPacksError(null);
+
+    const result = await i18nService.deleteLanguagePack(pack.locale);
+
+    setDeletingLangPack(false);
+
+    if (result.success) {
+      setDeleteLangPackModalOpen(false);
+      setLangPackToDelete(null);
+      loadLanguagePacks();
+    } else {
+      setLangPacksError(
+        result.error || t("settings.general.languagePacks.deleteError"),
+      );
+    }
+  };
+
+  const cancelDeleteLangPack = () => {
+    setDeleteLangPackModalOpen(false);
+    setLangPackToDelete(null);
   };
 
   const handleAddSource = () => {
@@ -236,6 +327,9 @@ export const Settings: Component<SettingsProps> = (props) => {
       setThemePreference(savedMode === "1" ? "light" : "dark");
     }
 
+    // Load current language preference from i18n service
+    setLanguagePreference(i18nService.getPreference());
+
     // Load server URL
     const url = getServerUrl();
     if (url) {
@@ -250,6 +344,9 @@ export const Settings: Component<SettingsProps> = (props) => {
 
     // Load default sources if user is root
     loadDefaultSources();
+
+    // Load language packs if user is root
+    loadLanguagePacks();
   });
 
   const handleThemeChange = (preference: ThemePreference) => {
@@ -268,6 +365,11 @@ export const Settings: Component<SettingsProps> = (props) => {
     }
   };
 
+  const handleLanguageChange = async (preference: LocalePreference) => {
+    setLanguagePreference(preference);
+    await i18nService.setPreference(preference);
+  };
+
   return (
     <section class="h-full flex flex-col">
       {/* Header */}
@@ -277,9 +379,9 @@ export const Settings: Component<SettingsProps> = (props) => {
           class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-2"
         >
           <Icon name="arrow-left" size="sm" />
-          <span>Back</span>
+          <span>{t("common.actions.back")}</span>
         </button>
-        <h1 class="text-2xl font-bold">Settings</h1>
+        <h1 class="text-2xl font-bold">{t("settings.title")}</h1>
       </header>
 
       {/* Summary Layout */}
@@ -289,23 +391,60 @@ export const Settings: Component<SettingsProps> = (props) => {
         class="flex-1"
       >
         <SummaryNav>
-          <SummaryCategory id="general" label="General" icon="gear">
-            <SummaryNavItem id="general" label="General" />
-            <SummaryNavItem id="privacy" label="Privacy" />
-          </SummaryCategory>
-          <SummaryCategory id="appearance" label="Appearance" icon="palette">
-            <SummaryNavItem id="theme" label="Theme" />
-          </SummaryCategory>
-          <SummaryCategory id="server" label="Server" icon="plugs-connected">
-            <SummaryNavItem id="server-connection" label="Connection" />
+          <SummaryCategory
+            id="general"
+            label={t("settings.categories.general")}
+            icon="gear"
+          >
+            <SummaryNavItem id="general" label={t("settings.general.title")} />
+            <SummaryNavItem id="privacy" label={t("settings.privacy.title")} />
             <Show when={isRootUser()}>
-              <SummaryNavItem id="server-settings" label="Settings" />
-              <SummaryNavItem id="default-sources" label="Default Sources" />
+              <SummaryNavItem
+                id="language-packs"
+                label={t("settings.general.languagePacks.title")}
+              />
             </Show>
           </SummaryCategory>
-          <SummaryCategory id="account" label="Account" icon="user">
-            <SummaryNavItem id="profile" label="Profile" />
-            <SummaryNavItem id="security" label="Security" />
+          <SummaryCategory
+            id="appearance"
+            label={t("settings.categories.appearance")}
+            icon="palette"
+          >
+            <SummaryNavItem id="theme" label={t("settings.theme.title")} />
+          </SummaryCategory>
+          <SummaryCategory
+            id="server"
+            label={t("settings.categories.server")}
+            icon="plugs-connected"
+          >
+            <SummaryNavItem
+              id="server-connection"
+              label={t("settings.server.connection.title")}
+            />
+            <Show when={isRootUser()}>
+              <SummaryNavItem
+                id="server-settings"
+                label={t("settings.server.settings.title")}
+              />
+              <SummaryNavItem
+                id="default-sources"
+                label={t("settings.server.defaultSources.title")}
+              />
+            </Show>
+          </SummaryCategory>
+          <SummaryCategory
+            id="account"
+            label={t("settings.categories.account")}
+            icon="user"
+          >
+            <SummaryNavItem
+              id="profile"
+              label={t("settings.account.profile.title")}
+            />
+            <SummaryNavItem
+              id="security"
+              label={t("settings.account.security.title")}
+            />
           </SummaryCategory>
         </SummaryNav>
 
@@ -313,12 +452,12 @@ export const Settings: Component<SettingsProps> = (props) => {
           {/* General Section */}
           <SummarySection
             id="general"
-            title="General"
-            description="General application settings"
+            title={t("settings.general.title")}
+            description={t("settings.general.description")}
           >
             <SummaryItem
-              title="Use System Prompts"
-              description="Use native OS dialogs for confirmations."
+              title={t("settings.general.systemPrompts.title")}
+              description={t("settings.general.systemPrompts.description")}
             >
               <SummaryToggle
                 checked={useSystemPrompts()}
@@ -326,23 +465,38 @@ export const Settings: Component<SettingsProps> = (props) => {
               />
             </SummaryItem>
             <SummaryItem
-              title="Language"
-              description="Select your preferred language."
+              title={t("settings.general.language.title")}
+              description={t("settings.general.language.description")}
             >
               <SummarySelect
-                value="en"
+                value={languagePreference()}
                 options={[
-                  { value: "en", label: "English" },
-                  { value: "fr", label: "Français" },
-                  { value: "de", label: "Deutsch" },
+                  {
+                    value: "system",
+                    label: t("settings.general.language.options.system"),
+                  },
+                  {
+                    value: "en",
+                    label: t("settings.general.language.options.en"),
+                  },
+                  {
+                    value: "fr",
+                    label: t("settings.general.language.options.fr"),
+                  },
+                  {
+                    value: "de",
+                    label: t("settings.general.language.options.de"),
+                  },
                 ]}
-                onChange={() => {}}
+                onChange={(value) =>
+                  handleLanguageChange(value as LocalePreference)
+                }
               />
             </SummaryItem>
             <Show when={isRootUser()}>
               <SummaryItem
-                title="Developer Mode"
-                description="Enable debug console and verbose logging."
+                title={t("settings.general.devMode.title")}
+                description={t("settings.general.devMode.description")}
               >
                 <SummaryToggle
                   checked={devModeEnabled()}
@@ -356,12 +510,12 @@ export const Settings: Component<SettingsProps> = (props) => {
           {/* Privacy Section */}
           <SummarySection
             id="privacy"
-            title="Privacy"
-            description="Privacy and data settings"
+            title={t("settings.privacy.title")}
+            description={t("settings.privacy.description")}
           >
             <SummaryItem
-              title="Redact Private Values"
-              description="Hide the values of sensitive variables."
+              title={t("settings.privacy.redactValues.title")}
+              description={t("settings.privacy.redactValues.description")}
             >
               <SummaryToggle
                 checked={redactPrivateValues()}
@@ -369,29 +523,160 @@ export const Settings: Component<SettingsProps> = (props) => {
               />
             </SummaryItem>
             <SummaryItem
-              title="Private Files"
-              description="Configure which files are considered private."
+              title={t("settings.privacy.privateFiles.title")}
+              description={t("settings.privacy.privateFiles.description")}
             >
-              <SummaryButton onClick={() => {}}>Edit settings</SummaryButton>
+              <SummaryButton onClick={() => {}}>
+                {t("settings.privacy.privateFiles.editButton")}
+              </SummaryButton>
             </SummaryItem>
+          </SummarySection>
+
+          {/* Language Packs Section (Root users only) */}
+          <SummarySection
+            id="language-packs"
+            title={t("settings.general.languagePacks.title")}
+            description={t("settings.general.languagePacks.description")}
+          >
+            <div class="space-y-4">
+              <Show when={langPacksError()}>
+                <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+                  {langPacksError()}
+                </div>
+              </Show>
+
+              <Show
+                when={!langPacksLoading()}
+                fallback={
+                  <div class="flex items-center justify-center py-8">
+                    <Spinner size="lg" />
+                  </div>
+                }
+              >
+                {/* Language packs table */}
+                <Show
+                  when={languagePacks().length > 0}
+                  fallback={
+                    <div class="text-center py-8 text-muted-foreground">
+                      {t("settings.general.languagePacks.noPacksInstalled")}
+                    </div>
+                  }
+                >
+                  <div class="border border-border rounded-md overflow-hidden">
+                    <table class="w-full text-sm">
+                      <thead class="bg-muted/50">
+                        <tr>
+                          <th class="px-4 py-2 text-left font-medium">
+                            {t("settings.general.languagePacks.table.locale")}
+                          </th>
+                          <th class="px-4 py-2 text-left font-medium">
+                            {t("settings.general.languagePacks.table.name")}
+                          </th>
+                          <th class="px-4 py-2 text-left font-medium">
+                            {t("settings.general.languagePacks.table.version")}
+                          </th>
+                          <th class="px-4 py-2 text-left font-medium">
+                            {t("settings.general.languagePacks.table.author")}
+                          </th>
+                          <th class="px-4 py-2 text-right font-medium">
+                            {t("settings.general.languagePacks.table.actions")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={languagePacks()}>
+                          {(pack) => (
+                            <tr class="border-t border-border">
+                              <td class="px-4 py-2 font-mono">{pack.locale}</td>
+                              <td class="px-4 py-2">{pack.name}</td>
+                              <td class="px-4 py-2 font-mono text-muted-foreground">
+                                {pack.version}
+                              </td>
+                              <td class="px-4 py-2 text-muted-foreground">
+                                {pack.author || "—"}
+                              </td>
+                              <td class="px-4 py-2 text-right">
+                                <button
+                                  onClick={() => openDeleteLangPackModal(pack)}
+                                  class="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                                  title={t("common.actions.delete")}
+                                >
+                                  <Icon
+                                    name="trash"
+                                    size="sm"
+                                    class="text-muted-foreground hover:text-destructive"
+                                  />
+                                </button>
+                              </td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
+                </Show>
+
+                {/* Upload section */}
+                <div class="pt-4 border-t border-border mt-4">
+                  <label class="block">
+                    <span class="text-sm font-medium">
+                      {t("settings.general.languagePacks.upload")}
+                    </span>
+                    <p class="text-xs text-muted-foreground mb-2">
+                      {t("settings.general.languagePacks.supportedFormats")}
+                    </p>
+                    <div class="relative">
+                      <input
+                        type="file"
+                        accept=".tar.xz,.tar.gz,.tgz,.xz"
+                        onChange={handleLangPackUpload}
+                        disabled={uploadingLangPack()}
+                        class="block w-full text-sm text-muted-foreground
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border file:border-border
+                          file:text-sm file:font-medium
+                          file:bg-muted file:text-foreground
+                          hover:file:bg-muted/80
+                          file:cursor-pointer cursor-pointer
+                          disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <Show when={uploadingLangPack()}>
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Spinner size="sm" />
+                        </div>
+                      </Show>
+                    </div>
+                  </label>
+                </div>
+              </Show>
+            </div>
           </SummarySection>
 
           {/* Theme Section */}
           <SummarySection
             id="theme"
-            title="Theme"
-            description="Customize the application appearance"
+            title={t("settings.theme.title")}
+            description={t("settings.theme.description")}
           >
             <SummaryItem
-              title="Color Scheme"
-              description="Choose how the application looks."
+              title={t("settings.theme.colorScheme.title")}
+              description={t("settings.theme.colorScheme.description")}
             >
               <SummarySelect
                 value={themePreference()}
                 options={[
-                  { value: "system", label: "System" },
-                  { value: "light", label: "Light" },
-                  { value: "dark", label: "Dark" },
+                  {
+                    value: "system",
+                    label: t("settings.theme.colorScheme.options.system"),
+                  },
+                  {
+                    value: "light",
+                    label: t("settings.theme.colorScheme.options.light"),
+                  },
+                  {
+                    value: "dark",
+                    label: t("settings.theme.colorScheme.options.dark"),
+                  },
                 ]}
                 onChange={(value) =>
                   handleThemeChange(value as ThemePreference)
@@ -403,30 +688,35 @@ export const Settings: Component<SettingsProps> = (props) => {
           {/* Server Connection Section */}
           <SummarySection
             id="server-connection"
-            title="Connection"
-            description="Server connection settings"
+            title={t("settings.server.connection.title")}
+            description={t("settings.server.connection.description")}
           >
             <SummaryItem
-              title="Connected Server"
-              description={serverUrl() || "No server connected"}
+              title={t("settings.server.connection.connectedServer.title")}
+              description={
+                serverUrl() ||
+                t("settings.server.connection.connectedServer.noServer")
+              }
             >
               <SummaryButton onClick={() => {}} disabled>
-                Change server
+                {t("settings.server.connection.connectedServer.changeButton")}
               </SummaryButton>
             </SummaryItem>
             <SummaryItem
-              title="Connection Status"
-              description="Check the current connection status."
+              title={t("settings.server.connection.status.title")}
+              description={t("settings.server.connection.status.description")}
             >
-              <SummaryButton onClick={() => {}}>Test connection</SummaryButton>
+              <SummaryButton onClick={() => {}}>
+                {t("settings.server.connection.status.testButton")}
+              </SummaryButton>
             </SummaryItem>
           </SummarySection>
 
           {/* Server Settings Section (Root users only) */}
           <SummarySection
             id="server-settings"
-            title="Server Settings"
-            description="Configure server runtime settings (requires root access)"
+            title={t("settings.server.settings.title")}
+            description={t("settings.server.settings.description")}
           >
             <ServerSettingsPanel
               settings={serverSettings()}
@@ -441,8 +731,8 @@ export const Settings: Component<SettingsProps> = (props) => {
           {/* Default Sources Section (Root users only) */}
           <SummarySection
             id="default-sources"
-            title="Default Sources"
-            description="Manage system-wide default upstream sources available to all users"
+            title={t("settings.server.defaultSources.title")}
+            description={t("settings.server.defaultSources.description")}
           >
             <div class="space-y-4">
               <Show when={sourcesError()}>
@@ -480,10 +770,13 @@ export const Settings: Component<SettingsProps> = (props) => {
                                   : "bg-muted text-muted-foreground"
                               }`}
                             >
-                              {source.enabled ? "Enabled" : "Disabled"}
+                              {source.enabled
+                                ? t("common.status.enabled")
+                                : t("common.status.disabled")}
                             </span>
                             <span class="text-xs text-muted-foreground">
-                              Priority: {source.priority}
+                              {t("settings.server.defaultSources.priority")}:{" "}
+                              {source.priority}
                             </span>
                           </div>
                           <div class="text-sm text-muted-foreground font-mono truncate mt-1">
@@ -494,7 +787,7 @@ export const Settings: Component<SettingsProps> = (props) => {
                           <button
                             onClick={() => handleEditSource(source)}
                             class="p-2 rounded-md hover:bg-muted transition-colors"
-                            title="Edit source"
+                            title={t("common.actions.edit")}
                           >
                             <Icon
                               name="pencil"
@@ -505,7 +798,7 @@ export const Settings: Component<SettingsProps> = (props) => {
                           <button
                             onClick={() => openDeleteSourceModal(source)}
                             class="p-2 rounded-md hover:bg-destructive/10 transition-colors"
-                            title="Delete source"
+                            title={t("common.actions.delete")}
                           >
                             <Icon
                               name="trash"
@@ -520,14 +813,14 @@ export const Settings: Component<SettingsProps> = (props) => {
 
                   <Show when={defaultSources().length === 0}>
                     <div class="text-center py-8 text-muted-foreground">
-                      No default sources configured yet.
+                      {t("settings.server.defaultSources.noSources")}
                     </div>
                   </Show>
                 </div>
 
                 <div class="pt-4">
                   <SummaryButton onClick={handleAddSource}>
-                    Add Default Source
+                    {t("settings.server.defaultSources.addButton")}
                   </SummaryButton>
                 </div>
               </Show>
@@ -537,47 +830,64 @@ export const Settings: Component<SettingsProps> = (props) => {
           {/* Profile Section */}
           <SummarySection
             id="profile"
-            title="Profile"
-            description="Manage your profile information"
+            title={t("settings.account.profile.title")}
+            description={t("settings.account.profile.description")}
           >
             <SummaryItem
-              title="Display Name"
-              description="Your public display name."
+              title={t("settings.account.profile.displayName.title")}
+              description={t(
+                "settings.account.profile.displayName.description",
+              )}
             >
-              <SummaryButton onClick={() => {}}>Edit profile</SummaryButton>
+              <SummaryButton onClick={() => {}}>
+                {t("settings.account.profile.displayName.editButton")}
+              </SummaryButton>
             </SummaryItem>
-            <SummaryItem title="Avatar" description="Your profile picture.">
-              <SummaryButton onClick={() => {}}>Change avatar</SummaryButton>
+            <SummaryItem
+              title={t("settings.account.profile.avatar.title")}
+              description={t("settings.account.profile.avatar.description")}
+            >
+              <SummaryButton onClick={() => {}}>
+                {t("settings.account.profile.avatar.changeButton")}
+              </SummaryButton>
             </SummaryItem>
           </SummarySection>
 
           {/* Security Section */}
           <SummarySection
             id="security"
-            title="Security"
-            description="Account security settings"
+            title={t("settings.account.security.title")}
+            description={t("settings.account.security.description")}
           >
             <SummaryItem
-              title="Change Password"
-              description="Update your account password."
+              title={t("settings.account.security.changePassword.title")}
+              description={t(
+                "settings.account.security.changePassword.description",
+              )}
             >
-              <SummaryButton onClick={() => {}}>Change password</SummaryButton>
+              <SummaryButton onClick={() => {}}>
+                {t("settings.account.security.changePassword.button")}
+              </SummaryButton>
             </SummaryItem>
             <SummaryItem
-              title="Active Sessions"
-              description="Manage your active login sessions."
+              title={t("settings.account.security.sessions.title")}
+              description={t("settings.account.security.sessions.description")}
             >
-              <SummaryButton onClick={() => {}}>View sessions</SummaryButton>
+              <SummaryButton onClick={() => {}}>
+                {t("settings.account.security.sessions.viewButton")}
+              </SummaryButton>
             </SummaryItem>
             <SummaryItem
-              title="Delete Account"
-              description="Permanently delete your account and all data."
+              title={t("settings.account.security.deleteAccount.title")}
+              description={t(
+                "settings.account.security.deleteAccount.description",
+              )}
             >
               <SummaryButton
                 onClick={() => {}}
                 class="text-destructive border-destructive hover:bg-destructive/10"
               >
-                Delete account
+                {t("settings.account.security.deleteAccount.button")}
               </SummaryButton>
             </SummaryItem>
           </SummarySection>
@@ -588,7 +898,11 @@ export const Settings: Component<SettingsProps> = (props) => {
       <Modal
         isOpen={sourceModalOpen()}
         onClose={handleSourceFormCancel}
-        title={editingSource() ? "Edit Default Source" : "Add Default Source"}
+        title={
+          editingSource()
+            ? t("settings.server.defaultSources.editSource")
+            : t("settings.server.defaultSources.addSource")
+        }
       >
         <SourceForm
           key={editingSource()?.id || "new"}
@@ -610,15 +924,13 @@ export const Settings: Component<SettingsProps> = (props) => {
       <Modal
         isOpen={deleteSourceModalOpen()}
         onClose={cancelDeleteSource}
-        title="Delete Default Source"
+        title={t("settings.server.defaultSources.deleteSource.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
-            Are you sure you want to delete the default source{" "}
-            <span class="text-foreground font-medium">
-              "{sourceToDelete()?.name}"
-            </span>
-            ? This action cannot be undone and will affect all users.
+            {t("settings.server.defaultSources.deleteSource.confirm", {
+              name: sourceToDelete()?.name || "",
+            })}
           </p>
 
           <nav class="flex justify-end gap-3">
@@ -628,7 +940,7 @@ export const Settings: Component<SettingsProps> = (props) => {
               disabled={deletingSource()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -639,7 +951,53 @@ export const Settings: Component<SettingsProps> = (props) => {
               <Show when={deletingSource()}>
                 <Spinner size="sm" />
               </Show>
-              <span>{deletingSource() ? "Deleting..." : "Delete"}</span>
+              <span>
+                {deletingSource()
+                  ? t("common.status.deleting")
+                  : t("common.actions.delete")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
+
+      {/* Delete Language Pack Confirmation Modal */}
+      <Modal
+        isOpen={deleteLangPackModalOpen()}
+        onClose={cancelDeleteLangPack}
+        title={t("settings.general.languagePacks.delete.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            {t("settings.general.languagePacks.delete.confirm", {
+              name: langPackToDelete()?.name || "",
+              locale: langPackToDelete()?.locale || "",
+            })}
+          </p>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={cancelDeleteLangPack}
+              disabled={deletingLangPack()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteLangPack}
+              disabled={deletingLangPack()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={deletingLangPack()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {deletingLangPack()
+                  ? t("common.status.deleting")
+                  : t("common.actions.delete")}
+              </span>
             </button>
           </nav>
         </section>

@@ -258,3 +258,24 @@ type VersionSyncJob struct {
 	ErrorMessage  string            `json:"error_message,omitempty"`
 	CreatedAt     time.Time         `json:"created_at"`
 }
+
+// LanguagePack represents a custom language pack for i18n
+type LanguagePack struct {
+	Locale     string    `json:"locale"`
+	Name       string    `json:"name"`
+	Version    string    `json:"version"`
+	Author     string    `json:"author,omitempty"`
+	Dictionary string    `json:"dictionary"` // JSON blob
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// LanguagePackMeta represents metadata about a language pack (without full dictionary)
+type LanguagePackMeta struct {
+	Locale    string    `json:"locale"`
+	Name      string    `json:"name"`
+	Version   string    `json:"version"`
+	Author    string    `json:"author,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

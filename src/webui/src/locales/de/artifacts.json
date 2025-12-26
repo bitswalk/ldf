@@ -1,0 +1,64 @@
+{
+  "title": "Artefakte",
+  "subtitle": "Verwalten Sie Ihre Build-Artefakte und Pakete",
+  "welcome": {
+    "loginRequired": "Bitte melden Sie sich an, um Ihre Build-Artefakte anzuzeigen und zu verwalten."
+  },
+  "filter": {
+    "showOnlyMine": "Nur meine anzeigen"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "distribution": "Distribution",
+      "path": "Pfad",
+      "size": "Grosse",
+      "type": "Typ",
+      "modified": "Geandert",
+      "actions": "Aktionen"
+    }
+  },
+  "actions": {
+    "download": "Herunterladen",
+    "delete": "Loschen",
+    "newArtifact": "Neues Artefakt",
+    "deleteSelected": "Auswahl loschen",
+    "preview": "Vorschau",
+    "copyUrl": "URL kopieren"
+  },
+  "upload": {
+    "title": "Neues Artefakt hochladen",
+    "distribution": "Distribution",
+    "selectDistribution": "Distribution auswahlen...",
+    "distributionHelp": "Wahlen Sie die Distribution, zu der dieses Artefakt gehort.",
+    "file": "Datei",
+    "selected": "Ausgewahlt",
+    "customPath": "Benutzerdefinierter Pfad",
+    "customPathPlaceholder": "z.B. boot/vmlinuz oder packages/myapp.deb",
+    "customPathHelp": "Leer lassen, um den Originaldateinamen zu verwenden.",
+    "uploading": "Hochladen...",
+    "upload": "Hochladen",
+    "success": "Hochladen erfolgreich",
+    "error": "Hochladen fehlgeschlagen"
+  },
+  "delete": {
+    "title": "Loschen bestatigen",
+    "confirmSingle": "Sind Sie sicher, dass Sie \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Artefakte loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "deleting": "Loschen...",
+    "deleteCount": "Loschen ({{ count }})"
+  },
+  "empty": {
+    "title": "Keine Artefakte gefunden",
+    "description": "Klicken Sie auf \"Neues Artefakt\", um Ihr erstes Artefakt hochzuladen."
+  },
+  "errors": {
+    "storageNotConfigured": "Der Speicherdienst ist auf dem Server nicht konfiguriert."
+  },
+  "size": {
+    "bytes": "B",
+    "kilobytes": "KB",
+    "megabytes": "MB",
+    "gigabytes": "GB"
+  }
+}

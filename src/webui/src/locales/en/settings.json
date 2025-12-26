@@ -1,0 +1,151 @@
+{
+  "title": "Settings",
+  "back": "Back",
+  "categories": {
+    "general": "General",
+    "appearance": "Appearance",
+    "server": "Server",
+    "account": "Account"
+  },
+  "general": {
+    "title": "General",
+    "description": "General application settings",
+    "language": {
+      "title": "Language",
+      "description": "Select your preferred language.",
+      "options": {
+        "system": "System",
+        "en": "English",
+        "fr": "Francais",
+        "de": "Deutsch"
+      }
+    },
+    "languagePacks": {
+      "title": "Language Packs",
+      "description": "Manage custom language packs (root only)",
+      "upload": "Upload Language Pack",
+      "uploadDescription": "Upload a .tar.xz, .tar.gz, or .xz language pack archive",
+      "noPacksInstalled": "No custom language packs installed",
+      "table": {
+        "locale": "Locale",
+        "name": "Name",
+        "version": "Version",
+        "author": "Author",
+        "actions": "Actions"
+      },
+      "delete": {
+        "title": "Delete Language Pack",
+        "confirm": "Are you sure you want to delete the language pack \"{{ name }}\" ({{ locale }})? This action cannot be undone."
+      },
+      "uploadSuccess": "Language pack uploaded successfully",
+      "uploadError": "Failed to upload language pack",
+      "deleteSuccess": "Language pack deleted successfully",
+      "deleteError": "Failed to delete language pack",
+      "selectFile": "Select file...",
+      "dragDrop": "or drag and drop",
+      "supportedFormats": "Supported formats: .tar.xz, .tar.gz, .xz"
+    },
+    "systemPrompts": {
+      "title": "Use System Prompts",
+      "description": "Use native OS dialogs for confirmations."
+    },
+    "devMode": {
+      "title": "Developer Mode",
+      "description": "Enable debug console and verbose logging."
+    }
+  },
+  "privacy": {
+    "title": "Privacy",
+    "description": "Privacy and data settings",
+    "redactValues": {
+      "title": "Redact Private Values",
+      "description": "Hide the values of sensitive variables."
+    },
+    "privateFiles": {
+      "title": "Private Files",
+      "description": "Configure which files are considered private.",
+      "editButton": "Edit settings"
+    }
+  },
+  "theme": {
+    "title": "Theme",
+    "description": "Customize the application appearance",
+    "colorScheme": {
+      "title": "Color Scheme",
+      "description": "Choose how the application looks.",
+      "options": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    }
+  },
+  "server": {
+    "connection": {
+      "title": "Connection",
+      "description": "Server connection settings",
+      "connectedServer": {
+        "title": "Connected Server",
+        "noServer": "No server connected",
+        "changeButton": "Change server"
+      },
+      "status": {
+        "title": "Connection Status",
+        "description": "Check the current connection status.",
+        "testButton": "Test connection"
+      }
+    },
+    "settings": {
+      "title": "Server Settings",
+      "description": "Configure server runtime settings (requires root access)"
+    },
+    "defaultSources": {
+      "title": "Default Sources",
+      "description": "Manage system-wide default upstream sources available to all users",
+      "addButton": "Add Default Source",
+      "noSources": "No default sources configured yet.",
+      "priority": "Priority",
+      "editSource": "Edit Default Source",
+      "addSource": "Add Default Source",
+      "deleteSource": {
+        "title": "Delete Default Source",
+        "confirm": "Are you sure you want to delete the default source \"{{ name }}\"? This action cannot be undone and will affect all users."
+      }
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your profile information",
+      "displayName": {
+        "title": "Display Name",
+        "description": "Your public display name.",
+        "editButton": "Edit profile"
+      },
+      "avatar": {
+        "title": "Avatar",
+        "description": "Your profile picture.",
+        "changeButton": "Change avatar"
+      }
+    },
+    "security": {
+      "title": "Security",
+      "description": "Account security settings",
+      "changePassword": {
+        "title": "Change Password",
+        "description": "Update your account password.",
+        "button": "Change password"
+      },
+      "sessions": {
+        "title": "Active Sessions",
+        "description": "Manage your active login sessions.",
+        "viewButton": "View sessions"
+      },
+      "deleteAccount": {
+        "title": "Delete Account",
+        "description": "Permanently delete your account and all data.",
+        "button": "Delete account"
+      }
+    }
+  }
+}

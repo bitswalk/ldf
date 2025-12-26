@@ -1,0 +1,121 @@
+{
+  "title": "Sources",
+  "subtitle": "Gérer les sources de données amont pour vos distributions",
+  "welcome": {
+    "loginRequired": "Veuillez vous connecter pour voir et gérer les sources amont."
+  },
+  "filter": {
+    "showOnlyMine": "Afficher uniquement les miennes"
+  },
+  "tabs": {
+    "default": "Sources par défaut",
+    "user": "Mes sources"
+  },
+  "create": {
+    "button": "Nouvelle source",
+    "modalTitle": "Ajouter une nouvelle source",
+    "editModalTitle": "Modifier la source"
+  },
+  "table": {
+    "columns": {
+      "name": "Nom",
+      "url": "URL",
+      "component": "Composant",
+      "retrievalMethod": "Méthode de récupération",
+      "priority": "Priorité",
+      "status": "Statut",
+      "type": "Type",
+      "created": "Créé",
+      "actions": "Actions"
+    }
+  },
+  "type": {
+    "system": "Système",
+    "user": "Utilisateur"
+  },
+  "cardTitle": "Ajoutez votre première source",
+  "actions": {
+    "viewDetails": "Voir les détails",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "sync": "Synchroniser les versions"
+  },
+  "delete": {
+    "title": "Confirmer la suppression",
+    "confirmSingle": "Êtes-vous sûr de vouloir supprimer \"{{ name }}\" ? Cette action est irréversible.",
+    "confirmMultiple": "Êtes-vous sûr de vouloir supprimer {{ count }} sources ? Cette action est irréversible.",
+    "deleting": "Suppression...",
+    "deleteCount": "Supprimer ({{ count }})",
+    "deleteSelected": "Supprimer la sélection ({{ count }})",
+    "systemSourceError": "Impossible de supprimer les sources système. Seules les sources utilisateur peuvent être supprimées."
+  },
+  "detail": {
+    "back": "Retour aux sources",
+    "title": "Détails de la source",
+    "subtitle": "Voir les détails de la source et synchroniser les versions disponibles",
+    "overview": "Aperçu",
+    "versions": "Versions disponibles",
+    "syncHistory": "Historique de synchronisation",
+    "noVersions": "Aucune version trouvée. Essayez de synchroniser pour découvrir les versions disponibles.",
+    "lastSync": "Dernière synchronisation",
+    "neverSynced": "Jamais synchronisé",
+    "notAssigned": "Non assigné",
+    "sourceDetails": "Détails de la source",
+    "availableVersions": "Versions disponibles",
+    "name": "Nom",
+    "url": "URL",
+    "component": "Composant",
+    "retrievalMethod": "Méthode de récupération",
+    "urlTemplate": "Modèle d'URL",
+    "priority": "Priorité",
+    "status": "Statut",
+    "created": "Créé",
+    "updated": "Mis à jour",
+    "deleteWarning": "Êtes-vous sûr de vouloir supprimer \"{{ name }}\" ? Cela supprimera également toutes les versions en cache. Cette action est irréversible.",
+    "updateSuccess": "Source mise à jour avec succès",
+    "deleteSuccess": "Source supprimée avec succès"
+  },
+  "form": {
+    "name": {
+      "label": "Nom de la source",
+      "placeholder": "Ma source"
+    },
+    "url": {
+      "label": "URL de la source",
+      "placeholder": "https://exemple.com/releases"
+    },
+    "component": {
+      "label": "Composant",
+      "placeholder": "Sélectionnez un composant..."
+    },
+    "retrievalMethod": {
+      "label": "Méthode de récupération",
+      "options": {
+        "release": "Release",
+        "git": "Git"
+      }
+    },
+    "urlTemplate": {
+      "label": "Modèle d'URL",
+      "placeholder": "{{ version }}/fichier.tar.gz",
+      "help": "Utilisez {{ version }} comme espace réservé pour le numéro de version"
+    },
+    "priority": {
+      "label": "Priorité",
+      "help": "Les numéros plus bas ont une priorité plus élevée"
+    },
+    "enabled": {
+      "label": "Activé"
+    }
+  },
+  "retrievalMethod": {
+    "release": "Release",
+    "git": "Git"
+  },
+  "empty": {
+    "default": "Aucune source par défaut configurée.",
+    "user": "Vous n'avez pas encore créé de sources."
+  }
+}

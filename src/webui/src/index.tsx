@@ -4,6 +4,7 @@ import { render } from "solid-js/web";
 
 import App from "./App";
 import { themeService } from "./services/theme";
+import { i18nService } from "./services/i18n";
 import { defaultTheme } from "./themes/default";
 
 const root = document.getElementById("root");
@@ -17,5 +18,8 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 // Initialize theme system
 themeService.initialize();
 themeService.loadTheme(defaultTheme);
+
+// Initialize i18n system
+i18nService.initialize();
 
 render(() => <App />, root!);

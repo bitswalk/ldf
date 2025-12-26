@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { Show } from "solid-js";
 import { Icon } from "../Icon";
+import { t } from "../../services/i18n";
 import { Badge } from "../Badge";
 import {
   DropdownMenu,
@@ -33,7 +34,7 @@ export const Header: Component<HeaderProps> = (props) => {
         <section class="w-12 h-full bg-muted flex items-center justify-center border-r border-border shrink-0">
           <span class="text-muted-foreground text-xs font-mono">LOGO</span>
         </section>
-        <h1 class="text-2xl font-bold px-6">Linux Distribution Factory</h1>
+        <h1 class="text-2xl font-bold px-6">{t("common.app.name")}</h1>
       </section>
       <section class="px-6">
         <Show
@@ -60,14 +61,14 @@ export const Header: Component<HeaderProps> = (props) => {
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={props.onSettings} class="gap-2">
                 <Icon name="gear" size="sm" />
-                <span>Settings</span>
+                <span>{t("auth.header.settings")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={props.onLogout}
                 class="gap-2 text-destructive focus:text-destructive"
               >
                 <Icon name="sign-out" size="sm" />
-                <span>Logout</span>
+                <span>{t("auth.header.logout")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

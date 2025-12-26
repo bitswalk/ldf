@@ -1,0 +1,138 @@
+{
+  "title": "Sources",
+  "subtitle": "Manage upstream data sources for your distributions",
+  "welcome": {
+    "loginRequired": "Please log in to view and manage upstream sources."
+  },
+  "filter": {
+    "showOnlyMine": "Show only mine"
+  },
+  "tabs": {
+    "default": "Default Sources",
+    "user": "My Sources"
+  },
+  "create": {
+    "button": "New Source",
+    "modalTitle": "Add New Source",
+    "editModalTitle": "Edit Source"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "url": "URL",
+      "component": "Component",
+      "retrievalMethod": "Retrieval Method",
+      "priority": "Priority",
+      "status": "Status",
+      "type": "Type",
+      "created": "Created",
+      "actions": "Actions"
+    }
+  },
+  "type": {
+    "system": "System",
+    "user": "User"
+  },
+  "cardTitle": "Add your first source",
+  "actions": {
+    "viewDetails": "View Details",
+    "edit": "Edit",
+    "delete": "Delete",
+    "enable": "Enable",
+    "disable": "Disable",
+    "sync": "Sync Versions"
+  },
+  "delete": {
+    "title": "Confirm Deletion",
+    "confirmSingle": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} sources? This action cannot be undone.",
+    "deleting": "Deleting...",
+    "deleteCount": "Delete ({{ count }})",
+    "deleteSelected": "Delete Selected ({{ count }})",
+    "systemSourceError": "Cannot delete system sources. Only user sources can be deleted."
+  },
+  "detail": {
+    "back": "Back to Sources",
+    "title": "Source Details",
+    "subtitle": "View source details and sync available versions",
+    "overview": "Overview",
+    "versions": "Available Versions",
+    "syncHistory": "Sync History",
+    "noVersions": "No versions found. Try syncing to discover available versions.",
+    "lastSync": "Last synced",
+    "neverSynced": "Never synced",
+    "notAssigned": "Not assigned",
+    "sourceDetails": "Source Details",
+    "availableVersions": "Available Versions",
+    "name": "Name",
+    "url": "URL",
+    "component": "Component",
+    "retrievalMethod": "Retrieval Method",
+    "urlTemplate": "URL Template",
+    "priority": "Priority",
+    "status": "Status",
+    "created": "Created",
+    "updated": "Updated",
+    "deleteWarning": "Are you sure you want to delete \"{{ name }}\"? This will also remove all cached versions. This action cannot be undone.",
+    "updateSuccess": "Source updated successfully",
+    "deleteSuccess": "Source deleted successfully"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "placeholder": "e.g., Linux Kernel Official",
+      "required": "Name is required"
+    },
+    "url": {
+      "label": "Base URL",
+      "placeholder": "https://github.com/torvalds/linux",
+      "required": "URL is required",
+      "invalid": "Invalid URL format"
+    },
+    "component": {
+      "label": "Component",
+      "placeholder": "-- Select Component --",
+      "help": "Select the component this source provides. Leave empty for generic sources."
+    },
+    "retrievalMethod": {
+      "label": "Retrieval Method",
+      "release": "Release Archive",
+      "git": "Git Clone",
+      "help": "Choose how to retrieve the source: download a release archive or clone the git repository."
+    },
+    "urlTemplate": {
+      "label": "URL Template (optional)",
+      "placeholder": "{base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "Custom URL template. Hover the ? icon for available variables. Leave empty to use component defaults.",
+      "templateHelp": {
+        "title": "Template Variables",
+        "description": "Use these placeholders in your URL template. Example version: 6.12.5",
+        "examples": "Examples:"
+      }
+    },
+    "urlPreview": {
+      "label": "URL Preview (example with version 6.12.5)"
+    },
+    "priority": {
+      "label": "Priority",
+      "placeholder": "0",
+      "help": "Lower values have higher priority. Sources are sorted by priority ascending."
+    },
+    "enabled": {
+      "label": "Enabled"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "add": "Add Source",
+      "update": "Update Source"
+    }
+  },
+  "retrievalMethod": {
+    "release": "Release",
+    "git": "Git"
+  },
+  "empty": {
+    "default": "No default sources configured.",
+    "user": "You haven't created any sources yet."
+  }
+}

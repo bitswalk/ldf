@@ -1,0 +1,151 @@
+{
+  "title": "Parametres",
+  "back": "Retour",
+  "categories": {
+    "general": "General",
+    "appearance": "Apparence",
+    "server": "Serveur",
+    "account": "Compte"
+  },
+  "general": {
+    "title": "General",
+    "description": "Parametres generaux de l'application",
+    "language": {
+      "title": "Langue",
+      "description": "Selectionnez votre langue preferee.",
+      "options": {
+        "system": "Systeme",
+        "en": "English",
+        "fr": "Francais",
+        "de": "Deutsch"
+      }
+    },
+    "languagePacks": {
+      "title": "Packs de langue",
+      "description": "Gérer les packs de langue personnalisés (root uniquement)",
+      "upload": "Téléverser un pack de langue",
+      "uploadDescription": "Téléversez une archive .tar.xz, .tar.gz ou .xz de pack de langue",
+      "noPacksInstalled": "Aucun pack de langue personnalisé installé",
+      "table": {
+        "locale": "Locale",
+        "name": "Nom",
+        "version": "Version",
+        "author": "Auteur",
+        "actions": "Actions"
+      },
+      "delete": {
+        "title": "Supprimer le pack de langue",
+        "confirm": "Êtes-vous sûr de vouloir supprimer le pack de langue \"{{ name }}\" ({{ locale }}) ? Cette action est irréversible."
+      },
+      "uploadSuccess": "Pack de langue téléversé avec succès",
+      "uploadError": "Échec du téléversement du pack de langue",
+      "deleteSuccess": "Pack de langue supprimé avec succès",
+      "deleteError": "Échec de la suppression du pack de langue",
+      "selectFile": "Sélectionner un fichier...",
+      "dragDrop": "ou glisser-déposer",
+      "supportedFormats": "Formats supportés : .tar.xz, .tar.gz, .xz"
+    },
+    "systemPrompts": {
+      "title": "Utiliser les invites systeme",
+      "description": "Utiliser les dialogues natifs du systeme pour les confirmations."
+    },
+    "devMode": {
+      "title": "Mode developpeur",
+      "description": "Activer la console de debogage et la journalisation detaillee."
+    }
+  },
+  "privacy": {
+    "title": "Confidentialite",
+    "description": "Parametres de confidentialite et de donnees",
+    "redactValues": {
+      "title": "Masquer les valeurs privees",
+      "description": "Cacher les valeurs des variables sensibles."
+    },
+    "privateFiles": {
+      "title": "Fichiers prives",
+      "description": "Configurer les fichiers consideres comme prives.",
+      "editButton": "Modifier les parametres"
+    }
+  },
+  "theme": {
+    "title": "Theme",
+    "description": "Personnaliser l'apparence de l'application",
+    "colorScheme": {
+      "title": "Schema de couleurs",
+      "description": "Choisissez l'apparence de l'application.",
+      "options": {
+        "system": "Systeme",
+        "light": "Clair",
+        "dark": "Sombre"
+      }
+    }
+  },
+  "server": {
+    "connection": {
+      "title": "Connexion",
+      "description": "Parametres de connexion au serveur",
+      "connectedServer": {
+        "title": "Serveur connecte",
+        "noServer": "Aucun serveur connecte",
+        "changeButton": "Changer de serveur"
+      },
+      "status": {
+        "title": "Etat de la connexion",
+        "description": "Verifier l'etat actuel de la connexion.",
+        "testButton": "Tester la connexion"
+      }
+    },
+    "settings": {
+      "title": "Parametres du serveur",
+      "description": "Configurer les parametres d'execution du serveur (acces root requis)"
+    },
+    "defaultSources": {
+      "title": "Sources par defaut",
+      "description": "Gerer les sources amont par defaut disponibles pour tous les utilisateurs",
+      "addButton": "Ajouter une source par defaut",
+      "noSources": "Aucune source par defaut configuree.",
+      "priority": "Priorite",
+      "editSource": "Modifier la source par defaut",
+      "addSource": "Ajouter une source par defaut",
+      "deleteSource": {
+        "title": "Supprimer la source par defaut",
+        "confirm": "Etes-vous sur de vouloir supprimer la source par defaut \"{{ name }}\" ? Cette action est irreversible et affectera tous les utilisateurs."
+      }
+    }
+  },
+  "account": {
+    "profile": {
+      "title": "Profil",
+      "description": "Gerer les informations de votre profil",
+      "displayName": {
+        "title": "Nom d'affichage",
+        "description": "Votre nom public.",
+        "editButton": "Modifier le profil"
+      },
+      "avatar": {
+        "title": "Avatar",
+        "description": "Votre photo de profil.",
+        "changeButton": "Changer l'avatar"
+      }
+    },
+    "security": {
+      "title": "Securite",
+      "description": "Parametres de securite du compte",
+      "changePassword": {
+        "title": "Changer le mot de passe",
+        "description": "Mettre a jour le mot de passe de votre compte.",
+        "button": "Changer le mot de passe"
+      },
+      "sessions": {
+        "title": "Sessions actives",
+        "description": "Gerer vos sessions de connexion actives.",
+        "viewButton": "Voir les sessions"
+      },
+      "deleteAccount": {
+        "title": "Supprimer le compte",
+        "description": "Supprimer definitivement votre compte et toutes vos donnees.",
+        "button": "Supprimer le compte"
+      }
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "title": "Distributions",
+  "subtitle": "Gerer vos distributions Linux personnalisees",
+  "welcome": {
+    "title": "Bienvenue sur Linux Distribution Factory",
+    "subtitle": "Aucune distribution configuree. Commencez par creer votre premiere distribution Linux personnalisee."
+  },
+  "create": {
+    "button": "Nouvelle distribution",
+    "cardTitle": "Creer une nouvelle distribution",
+    "modalTitle": "Creer une nouvelle distribution"
+  },
+  "table": {
+    "columns": {
+      "name": "Nom",
+      "kernelVersion": "Version du noyau",
+      "status": "Statut",
+      "visibility": "Visibilite",
+      "owner": "Proprietaire",
+      "created": "Creation",
+      "actions": "Actions"
+    },
+    "noValue": "—"
+  },
+  "actions": {
+    "viewDetails": "Voir les details",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "deleteSelected": "Supprimer la selection ({{ count }})",
+    "deleteCount": "Supprimer ({{ count }})"
+  },
+  "filter": {
+    "showOnlyMine": "Afficher uniquement les miennes"
+  },
+  "delete": {
+    "title": "Confirmer la suppression",
+    "confirmSingle": "Etes-vous sur de vouloir supprimer \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} distributions ? Cette action est irreversible.",
+    "deleting": "Suppression..."
+  },
+  "status": {
+    "pending": "En attente",
+    "downloading": "Telechargement",
+    "validating": "Validation",
+    "ready": "Pret",
+    "failed": "Echoue",
+    "deleted": "Supprime"
+  },
+  "detail": {
+    "title": "Details de la distribution",
+    "subtitle": "Gerer la configuration et les telechargements de la distribution",
+    "back": "Retour aux distributions",
+    "overview": "Apercu",
+    "configuration": "Configuration",
+    "artifacts": "Artefacts",
+    "logs": "Journaux",
+    "downloads": "Telechargements",
+    "components": "Composants",
+    "noDescription": "Aucune description fournie",
+    "created": "Creation",
+    "updated": "Mise a jour",
+    "owner": "Proprietaire",
+    "ownerId": "ID du proprietaire",
+    "version": "Version",
+    "id": "ID",
+    "size": "Taille",
+    "checksum": "Somme de controle",
+    "error": "Erreur",
+    "info": {
+      "title": "Informations de la distribution",
+      "save": "Enregistrer",
+      "edit": "Modifier",
+      "cancel": "Annuler",
+      "configSaved": "Configuration enregistree"
+    },
+    "config": {
+      "coreSystem": "SYSTEME PRINCIPAL",
+      "kernelVersion": "Version du noyau",
+      "bootloader": "Chargeur de demarrage",
+      "partitioningType": "Type de partitionnement",
+      "partitioningMode": "Mode de partitionnement",
+      "systemServices": "SERVICES SYSTEME",
+      "initSystem": "Systeme d'initialisation",
+      "filesystem": "Systeme de fichiers",
+      "filesystemHierarchy": "Hierarchie du systeme de fichiers",
+      "packageManager": "Gestionnaire de paquets",
+      "securityRuntime": "SECURITE ET EXECUTION",
+      "securitySystem": "Systeme de securite",
+      "containerRuntime": "Moteur de conteneurs",
+      "virtualization": "Virtualisation",
+      "targetEnvironment": "ENVIRONNEMENT CIBLE",
+      "distributionType": "Type de distribution",
+      "desktopEnvironment": "Environnement de bureau",
+      "displayServer": "Serveur d'affichage",
+      "noConfig": "Aucune configuration disponible",
+      "selectVersion": "Selectionner une version",
+      "searchVersions": "Rechercher des versions du noyau..."
+    },
+    "quickActions": {
+      "title": "Actions rapides",
+      "build": "Construire la distribution",
+      "buildDesc": "Compiler et assembler la distribution",
+      "download": "Telecharger la distribution",
+      "downloadDesc": "Telecharger en ISO ou archive"
+    },
+    "componentDownloads": {
+      "title": "Telechargements des composants"
+    }
+  },
+  "form": {
+    "name": {
+      "label": "Nom de la distribution",
+      "placeholder": "Ma distribution personnalisee"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "Description optionnelle..."
+    },
+    "core": {
+      "title": "Configuration du noyau",
+      "kernel": {
+        "label": "Noyau",
+        "version": "Version"
+      },
+      "bootloader": {
+        "label": "Chargeur de demarrage",
+        "type": "Type"
+      }
+    },
+    "system": {
+      "title": "Configuration systeme",
+      "init": {
+        "label": "Systeme d'initialisation"
+      }
+    },
+    "security": {
+      "title": "Configuration de securite",
+      "framework": {
+        "label": "Framework de securite"
+      }
+    },
+    "runtime": {
+      "title": "Configuration d'execution"
+    },
+    "target": {
+      "title": "Configuration cible"
+    }
+  }
+}

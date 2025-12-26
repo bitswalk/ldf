@@ -40,6 +40,7 @@ func (r *Runner) registerAll() {
 		migration004AddSourcesTables(),
 		migration005AddDownloadManagerTables(),
 		migration006AddVersionSyncTables(),
+		migration007AddLanguagePacksTable(),
 	}
 
 	// Sort by version to ensure correct order

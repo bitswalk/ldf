@@ -23,6 +23,7 @@ import {
   listDistributions,
   type Distribution,
 } from "../../services/distribution";
+import { t } from "../../services/i18n";
 
 interface UserInfo {
   id: string;
@@ -74,7 +75,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
       setArtifacts(result.artifacts);
     } else {
       if (result.error === "service_unavailable") {
-        setError("Storage service is not configured on the server.");
+        setError(t("artifacts.errors.storageNotConfigured"));
       } else {
         setError(result.message);
       }
@@ -265,21 +266,21 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             class="gap-2"
           >
             <Icon name="download" size="sm" />
-            <span>Download</span>
+            <span>{t("artifacts.actions.download")}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => handleCopyUrl(cellProps.row)}
             class="gap-2"
           >
             <Icon name="link" size="sm" />
-            <span>Copy URL</span>
+            <span>{t("artifacts.actions.copyUrl")}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => handleDeleteArtifact(cellProps.row)}
             class="gap-2 text-destructive focus:text-destructive"
           >
             <Icon name="trash" size="sm" />
-            <span>Delete</span>
+            <span>{t("common.actions.delete")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -297,9 +298,9 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               size="2xl"
               class="text-muted-foreground mb-4"
             />
-            <h1 class="text-4xl font-bold mb-4">Artifacts</h1>
+            <h1 class="text-4xl font-bold mb-4">{t("artifacts.title")}</h1>
             <p class="text-lg text-muted-foreground">
-              Please log in to view and manage your build artifacts.
+              {t("artifacts.welcome.loginRequired")}
             </p>
           </section>
         }
@@ -307,15 +308,15 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
         <section class="h-full flex flex-col p-8 gap-6">
           <header class="flex items-center justify-between">
             <article>
-              <h1 class="text-4xl font-bold">Artifacts</h1>
+              <h1 class="text-4xl font-bold">{t("artifacts.title")}</h1>
               <p class="text-muted-foreground mt-2">
-                Manage your build artifacts and packages
+                {t("artifacts.subtitle")}
               </p>
             </article>
             <nav class="flex items-center gap-4">
               <Show when={isAdmin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <span>Show only mine</span>
+                  <span>{t("artifacts.filter.showOnlyMine")}</span>
                   <SummaryToggle
                     checked={showOnlyMine()}
                     onChange={setShowOnlyMine}
@@ -332,14 +333,16 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                 }`}
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete ({selectedArtifacts().length})</span>
+                <span>
+                  {t("common.actions.delete")} ({selectedArtifacts().length})
+                </span>
               </button>
               <button
                 onClick={openUploadModal}
                 class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
               >
                 <Icon name="plus" size="sm" />
-                <span>New Artifact</span>
+                <span>{t("artifacts.actions.newArtifact")}</span>
               </button>
             </nav>
           </header>
@@ -369,10 +372,10 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                       class="text-muted-foreground mb-4"
                     />
                     <h2 class="text-xl font-medium text-muted-foreground">
-                      No artifacts found
+                      {t("artifacts.empty.title")}
                     </h2>
                     <p class="text-sm text-muted-foreground mt-2">
-                      Click "New Artifact" to upload your first artifact.
+                      {t("artifacts.empty.description")}
                     </p>
                   </section>
                 }
@@ -381,39 +384,39 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                   columns={[
                     {
                       key: "key",
-                      label: "Name",
+                      label: t("artifacts.table.columns.name"),
                       sortable: true,
                       class: "font-medium font-mono",
                     },
                     {
                       key: "distribution_name",
-                      label: "Distribution",
+                      label: t("artifacts.table.columns.distribution"),
                       sortable: true,
                       render: renderDistribution,
                     },
                     {
                       key: "size",
-                      label: "Size",
+                      label: t("artifacts.table.columns.size"),
                       sortable: true,
                       render: renderSize,
                     },
                     {
                       key: "content_type",
-                      label: "Type",
+                      label: t("artifacts.table.columns.type"),
                       sortable: true,
                       class: "font-mono text-xs",
                       render: (type: string) => type || "—",
                     },
                     {
                       key: "last_modified",
-                      label: "Modified",
+                      label: t("artifacts.table.columns.modified"),
                       sortable: true,
                       class: "font-mono",
                       render: formatDate,
                     },
                     {
                       key: "full_key",
-                      label: "Actions",
+                      label: t("artifacts.table.columns.actions"),
                       class: "text-right relative",
                       component: ActionsCell,
                     },
@@ -434,7 +437,10 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                 class="px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete Selected ({selectedArtifacts().length})</span>
+                <span>
+                  {t("artifacts.actions.deleteSelected")} (
+                  {selectedArtifacts().length})
+                </span>
               </button>
             </footer>
           </Show>
@@ -445,7 +451,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
       <Modal
         isOpen={uploadModalOpen()}
         onClose={cancelUpload}
-        title="Upload New Artifact"
+        title={t("artifacts.upload.title")}
       >
         <section class="flex flex-col gap-6">
           <Show when={uploadError()}>
@@ -456,7 +462,9 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
 
           {/* Distribution Select */}
           <article class="flex flex-col gap-2">
-            <label class="text-sm font-medium">Distribution</label>
+            <label class="text-sm font-medium">
+              {t("artifacts.upload.distribution")}
+            </label>
             <select
               value={selectedDistribution() ?? ""}
               onChange={(e) => {
@@ -466,19 +474,23 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               disabled={isUploading()}
               class="px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             >
-              <option value="">Select a distribution...</option>
+              <option value="">
+                {t("artifacts.upload.selectDistribution")}
+              </option>
               <For each={distributions()}>
                 {(dist) => <option value={dist.id}>{dist.name}</option>}
               </For>
             </select>
             <p class="text-xs text-muted-foreground">
-              Choose the distribution this artifact belongs to.
+              {t("artifacts.upload.distributionHelp")}
             </p>
           </article>
 
           {/* File Input */}
           <article class="flex flex-col gap-2">
-            <label class="text-sm font-medium">File</label>
+            <label class="text-sm font-medium">
+              {t("artifacts.upload.file")}
+            </label>
             <input
               type="file"
               onChange={handleFileSelect}
@@ -487,7 +499,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             />
             <Show when={selectedFile()}>
               <p class="text-xs text-muted-foreground">
-                Selected: {selectedFile()?.name} (
+                {t("artifacts.upload.selected")}: {selectedFile()?.name} (
                 {formatFileSize(selectedFile()?.size || 0)})
               </p>
             </Show>
@@ -496,19 +508,21 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
           {/* Custom Path (optional) */}
           <article class="flex flex-col gap-2">
             <label class="text-sm font-medium">
-              Custom Path{" "}
-              <span class="text-muted-foreground font-normal">(optional)</span>
+              {t("artifacts.upload.customPath")}{" "}
+              <span class="text-muted-foreground font-normal">
+                ({t("common.optional")})
+              </span>
             </label>
             <input
               type="text"
               value={customPath()}
               onInput={(e) => setCustomPath(e.currentTarget.value)}
-              placeholder="e.g., boot/vmlinuz or packages/myapp.deb"
+              placeholder={t("artifacts.upload.customPathPlaceholder")}
               disabled={isUploading()}
               class="px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 font-mono text-sm"
             />
             <p class="text-xs text-muted-foreground">
-              Leave empty to use the original filename.
+              {t("artifacts.upload.customPathHelp")}
             </p>
           </article>
 
@@ -516,7 +530,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
           <Show when={isUploading()}>
             <article class="flex flex-col gap-2">
               <section class="flex justify-between text-sm">
-                <span>Uploading...</span>
+                <span>{t("artifacts.upload.uploading")}</span>
                 <span>{uploadProgress()}%</span>
               </section>
               <section class="w-full h-2 bg-muted rounded-full overflow-hidden">
@@ -536,7 +550,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               disabled={isUploading()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -552,7 +566,11 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               >
                 <Spinner size="sm" />
               </Show>
-              <span>{isUploading() ? "Uploading..." : "Upload"}</span>
+              <span>
+                {isUploading()
+                  ? t("artifacts.upload.uploading")
+                  : t("artifacts.upload.upload")}
+              </span>
             </button>
           </nav>
         </section>
@@ -562,24 +580,24 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
       <Modal
         isOpen={deleteModalOpen()}
         onClose={cancelDelete}
-        title="Confirm Deletion"
+        title={t("artifacts.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
-            Are you sure you want to delete{" "}
             <Show
               when={artifactsToDelete().length === 1}
               fallback={
-                <span class="text-foreground font-medium">
-                  {artifactsToDelete().length} artifacts
-                </span>
+                <>
+                  {t("artifacts.delete.confirmMultiple", {
+                    count: artifactsToDelete().length,
+                  })}
+                </>
               }
             >
-              <span class="text-foreground font-medium font-mono">
-                "{artifactsToDelete()[0]?.key}"
-              </span>
+              {t("artifacts.delete.confirmSingle", {
+                name: artifactsToDelete()[0]?.key || "",
+              })}
             </Show>
-            ? This action cannot be undone.
           </p>
 
           <Show when={artifactsToDelete().length > 1}>
@@ -597,7 +615,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               disabled={isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t("common.actions.cancel")}
             </button>
             <button
               type="button"
@@ -610,8 +628,8 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               </Show>
               <span>
                 {isDeleting()
-                  ? "Deleting..."
-                  : `Delete${artifactsToDelete().length > 1 ? ` (${artifactsToDelete().length})` : ""}`}
+                  ? t("artifacts.delete.deleting")
+                  : `${t("common.actions.delete")}${artifactsToDelete().length > 1 ? ` (${artifactsToDelete().length})` : ""}`}
               </span>
             </button>
           </nav>
