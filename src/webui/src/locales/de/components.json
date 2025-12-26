@@ -12,7 +12,7 @@
   "table": {
     "columns": {
       "name": "Name",
-      "identifier": "Kennung",
+      "slug": "Slug",
       "category": "Kategorie",
       "description": "Beschreibung",
       "type": "Typ",
@@ -99,6 +99,7 @@
     "subtitle": "Komponentenkonfiguration anzeigen und verwalten",
     "componentDetails": "Komponentendetails",
     "displayName": "Anzeigename",
+    "slug": "Kurzname",
     "identifier": "Kennung",
     "category": "Kategorie",
     "description": "Beschreibung",

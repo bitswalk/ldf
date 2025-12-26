@@ -382,7 +382,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                   },
                   {
                     key: "name",
-                    label: t("components.table.columns.identifier"),
+                    label: t("components.table.columns.slug"),
                     sortable: true,
                     class: "font-mono text-sm text-muted-foreground",
                   },

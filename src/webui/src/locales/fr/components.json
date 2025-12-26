@@ -12,7 +12,7 @@
   "table": {
     "columns": {
       "name": "Nom",
-      "identifier": "Identifiant",
+      "slug": "Slug",
       "category": "Categorie",
       "description": "Description",
       "type": "Type",
@@ -99,6 +99,7 @@
     "subtitle": "Afficher et gerer la configuration du composant",
     "componentDetails": "Details du composant",
     "displayName": "Nom d'affichage",
+    "slug": "Nom court",
     "identifier": "Identifiant",
     "category": "Categorie",
     "description": "Description",

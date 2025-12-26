@@ -14,10 +14,7 @@ import {
   type CreateComponentRequest,
   type UpdateComponentRequest,
 } from "../../services/components";
-import {
-  listSources,
-  type Source,
-} from "../../services/sources";
+import { listSources, type Source } from "../../services/sources";
 import { t } from "../../services/i18n";
 
 interface UserInfo {
@@ -34,7 +31,9 @@ interface ComponentDetailsProps {
   user?: UserInfo | null;
 }
 
-export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (props) => {
+export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
+  props,
+) => {
   const [component, setComponent] = createSignal<Component | null>(null);
   const [relatedSources, setRelatedSources] = createSignal<Source[]>([]);
   const [loading, setLoading] = createSignal(true);
@@ -69,7 +68,7 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (props) =
     if (result.success) {
       // Filter sources that reference this component
       const filtered = result.sources.filter(
-        (s) => s.component_id === props.componentId
+        (s) => s.component_id === props.componentId,
       );
       setRelatedSources(filtered);
     }
@@ -280,9 +279,18 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (props) =
 
                   <div>
                     <span class="text-sm text-muted-foreground">
-                      {t("components.detail.identifier")}
+                      {t("components.detail.slug")}
                     </span>
                     <p class="font-mono text-sm">{component()!.name}</p>
+                  </div>
+
+                  <div>
+                    <span class="text-sm text-muted-foreground">
+                      {t("components.detail.identifier")}
+                    </span>
+                    <p class="font-mono text-xs text-muted-foreground break-all">
+                      {component()!.id}
+                    </p>
                   </div>
 
                   <div>
@@ -315,7 +323,9 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (props) =
                       }`}
                     >
                       <Icon
-                        name={component()!.is_optional ? "circle" : "check-circle"}
+                        name={
+                          component()!.is_optional ? "circle" : "check-circle"
+                        }
                         size="sm"
                       />
                       {component()!.is_optional
@@ -441,7 +451,9 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (props) =
                             }`}
                           >
                             <Icon
-                              name={source.enabled ? "check-circle" : "x-circle"}
+                              name={
+                                source.enabled ? "check-circle" : "x-circle"
+                              }
                               size="sm"
                             />
                           </span>
