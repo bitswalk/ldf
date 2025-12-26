@@ -40,10 +40,10 @@
   },
   "form": {
     "name": {
-      "label": "Identifiant",
+      "label": "Nom court",
       "placeholder": "ex: kernel, systemd, grub2",
-      "help": "Identifiant unique utilisant uniquement des lettres minuscules, chiffres et tirets.",
-      "required": "L'identifiant est requis",
+      "help": "Slug unique utilisant uniquement des lettres minuscules, chiffres et tirets.",
+      "required": "Le nom court est requis",
       "invalid": "Seules les lettres minuscules, chiffres et tirets sont autorises"
     },
     "displayName": {

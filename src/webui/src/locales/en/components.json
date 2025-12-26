@@ -40,10 +40,10 @@
   },
   "form": {
     "name": {
-      "label": "Identifier",
+      "label": "Slug Name",
       "placeholder": "e.g., kernel, systemd, grub2",
-      "help": "Unique identifier using lowercase letters, numbers, and hyphens only.",
-      "required": "Identifier is required",
+      "help": "Unique slug using lowercase letters, numbers, and hyphens only.",
+      "required": "Slug name is required",
       "invalid": "Only lowercase letters, numbers, and hyphens are allowed"
     },
     "displayName": {

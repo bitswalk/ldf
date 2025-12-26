@@ -40,10 +40,10 @@
   },
   "form": {
     "name": {
-      "label": "Kennung",
+      "label": "Kurzname",
       "placeholder": "z.B. kernel, systemd, grub2",
-      "help": "Eindeutige Kennung mit Kleinbuchstaben, Zahlen und Bindestrichen.",
-      "required": "Kennung ist erforderlich",
+      "help": "Eindeutiger Slug mit Kleinbuchstaben, Zahlen und Bindestrichen.",
+      "required": "Kurzname ist erforderlich",
       "invalid": "Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt"
     },
     "displayName": {
