@@ -104,15 +104,23 @@ class I18nService {
 
     try {
       // Dynamic imports for code splitting
-      const [common, settings, distribution, sources, artifacts, auth] =
-        await Promise.all([
-          import(`../locales/${locale}/common.json`),
-          import(`../locales/${locale}/settings.json`),
-          import(`../locales/${locale}/distribution.json`),
-          import(`../locales/${locale}/sources.json`),
-          import(`../locales/${locale}/artifacts.json`),
-          import(`../locales/${locale}/auth.json`),
-        ]);
+      const [
+        common,
+        settings,
+        distribution,
+        sources,
+        artifacts,
+        auth,
+        components,
+      ] = await Promise.all([
+        import(`../locales/${locale}/common.json`),
+        import(`../locales/${locale}/settings.json`),
+        import(`../locales/${locale}/distribution.json`),
+        import(`../locales/${locale}/sources.json`),
+        import(`../locales/${locale}/artifacts.json`),
+        import(`../locales/${locale}/auth.json`),
+        import(`../locales/${locale}/components.json`),
+      ]);
 
       // Merge all modules with namespace prefixes
       const mergedDict: Dictionary = {
@@ -122,6 +130,7 @@ class I18nService {
         sources: sources.default,
         artifacts: artifacts.default,
         auth: auth.default,
+        components: components.default,
       };
 
       // Flatten for fast lookups

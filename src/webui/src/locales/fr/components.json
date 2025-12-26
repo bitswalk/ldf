@@ -1,0 +1,120 @@
+{
+  "title": "Composants",
+  "subtitle": "Gestion des composants systeme pour vos distributions",
+  "filter": {
+    "allCategories": "Toutes les categories"
+  },
+  "create": {
+    "button": "Nouveau composant",
+    "modalTitle": "Creer un composant",
+    "editModalTitle": "Modifier le composant"
+  },
+  "table": {
+    "columns": {
+      "name": "Nom",
+      "identifier": "Identifiant",
+      "category": "Categorie",
+      "description": "Description",
+      "type": "Type",
+      "created": "Cree le",
+      "actions": "Actions"
+    },
+    "optional": "Optionnel",
+    "required": "Requis"
+  },
+  "actions": {
+    "adminOnly": "Admin seulement"
+  },
+  "delete": {
+    "title": "Confirmer la suppression",
+    "confirmSingle": "Etes-vous sur de vouloir supprimer \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} composants ? Cette action est irreversible.",
+    "warning": "La suppression de composants peut affecter les distributions et sources qui les referencent.",
+    "deleting": "Suppression...",
+    "deleteCount": "Supprimer ({{ count }})",
+    "deleteSelected": "Supprimer la selection ({{ count }})"
+  },
+  "empty": {
+    "title": "Aucun composant trouve",
+    "description": "Aucun composant ne correspond au filtre actuel, ou aucun composant n'a encore ete cree."
+  },
+  "form": {
+    "name": {
+      "label": "Identifiant",
+      "placeholder": "ex: kernel, systemd, grub2",
+      "help": "Identifiant unique utilisant uniquement des lettres minuscules, chiffres et tirets.",
+      "required": "L'identifiant est requis",
+      "invalid": "Seules les lettres minuscules, chiffres et tirets sont autorises"
+    },
+    "displayName": {
+      "label": "Nom d'affichage",
+      "placeholder": "ex: Linux Kernel",
+      "required": "Le nom d'affichage est requis"
+    },
+    "category": {
+      "label": "Categorie",
+      "help": "La categorie fonctionnelle de ce composant.",
+      "required": "La categorie est requise"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "Breve description de ce composant..."
+    },
+    "artifactPattern": {
+      "label": "Motif d'artefact",
+      "placeholder": "ex: linux-{version}.tar.xz",
+      "help": "Motif pour le nom du fichier telecharge. Utilisez le placeholder {version}."
+    },
+    "defaultUrlTemplate": {
+      "label": "Modele d'URL par defaut",
+      "placeholder": "ex: {base_url}/linux-{version}.tar.xz",
+      "help": "Modele d'URL par defaut pour telecharger ce composant."
+    },
+    "githubNormalizedTemplate": {
+      "label": "Modele d'URL GitHub",
+      "placeholder": "ex: {base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "Modele d'URL pour les depots GitHub."
+    },
+    "isOptional": {
+      "label": "Composant optionnel",
+      "help": "Les composants optionnels ne sont pas requis pour une distribution minimale."
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "add": "Creer le composant",
+      "update": "Mettre a jour"
+    }
+  },
+  "categories": {
+    "core": "Coeur",
+    "bootloader": "Chargeur d'amorcage",
+    "init": "Systeme d'init",
+    "runtime": "Runtime",
+    "security": "Securite",
+    "desktop": "Bureau"
+  },
+  "detail": {
+    "back": "Retour aux composants",
+    "title": "Details du composant",
+    "subtitle": "Afficher et gerer la configuration du composant",
+    "componentDetails": "Details du composant",
+    "displayName": "Nom d'affichage",
+    "identifier": "Identifiant",
+    "category": "Categorie",
+    "description": "Description",
+    "type": "Type",
+    "created": "Cree le",
+    "updated": "Mis a jour le",
+    "urlTemplates": "Modeles d'URL",
+    "artifactPattern": "Motif d'artefact",
+    "defaultUrlTemplate": "Modele d'URL par defaut",
+    "githubTemplate": "Modele d'URL GitHub",
+    "noTemplates": "Aucun modele d'URL configure pour ce composant.",
+    "relatedSources": "Sources associees",
+    "noSources": "Aucune source n'est actuellement configuree pour ce composant.",
+    "updateSuccess": "Composant mis a jour avec succes",
+    "deleteSuccess": "Composant supprime avec succes",
+    "deleteWarning": "Etes-vous sur de vouloir supprimer \"{{ name }}\" ? Cette action est irreversible.",
+    "deleteSourcesWarning": "Ce composant a {{ count }} source(s) associee(s) qui perdront leur association."
+  }
+}

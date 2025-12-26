@@ -7,6 +7,7 @@ import { DistributionDetail } from "./views/DistributionDetail";
 import { Artifacts } from "./views/Artifacts";
 import { Sources } from "./views/Sources";
 import { SourceDetails } from "./views/Sources/SourceDetails";
+import { Components, ComponentDetails } from "./views/Components";
 import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
@@ -39,6 +40,8 @@ type ViewType =
   | "artifacts"
   | "sources"
   | "source-details"
+  | "components"
+  | "component-details"
   | "login"
   | "register"
   | "settings";
@@ -74,6 +77,9 @@ const App: Component = () => {
   const [sourceDetailsReturnView, setSourceDetailsReturnView] = createSignal<
     "sources" | "settings"
   >("sources");
+  const [selectedComponentId, setSelectedComponentId] = createSignal<
+    string | null
+  >(null);
 
   onMount(async () => {
     // If we have a server URL but missing endpoints, try to re-discover them
@@ -216,12 +222,28 @@ const App: Component = () => {
     setCurrentView(sourceDetailsReturnView());
   };
 
+  const handleViewComponent = (componentId: string) => {
+    setSelectedComponentId(componentId);
+    setCurrentView("component-details");
+  };
+
+  const handleBackFromComponentDetails = () => {
+    setSelectedComponentId(null);
+    setCurrentView("components");
+  };
+
   const menuItems = (): MenuItem[] => [
     {
       id: "distribution",
       label: "Distributions",
       icon: "linux-logo",
       onClick: () => setCurrentView("distribution"),
+    },
+    {
+      id: "components",
+      label: "Components",
+      icon: "cube",
+      onClick: () => setCurrentView("components"),
     },
     {
       id: "artifacts",
@@ -292,6 +314,26 @@ const App: Component = () => {
                   <DistributionDetail
                     distributionId={selectedDistributionId()!}
                     onBack={handleBackFromDistributionDetail}
+                    user={authState().user}
+                  />
+                </Match>
+                <Match when={currentView() === "components"}>
+                  <Components
+                    isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                    onViewComponent={handleViewComponent}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "component-details" &&
+                    selectedComponentId()
+                  }
+                >
+                  <ComponentDetails
+                    componentId={selectedComponentId()!}
+                    onBack={handleBackFromComponentDetails}
+                    onDeleted={handleBackFromComponentDetails}
                     user={authState().user}
                   />
                 </Match>

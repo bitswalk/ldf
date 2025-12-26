@@ -28,7 +28,11 @@ export type GetResult =
   | { success: true; component: Component }
   | {
       success: false;
-      error: "not_found" | "network_error" | "not_configured" | "internal_error";
+      error:
+        | "not_found"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
       message: string;
     };
 
@@ -37,6 +41,72 @@ export type CategoriesResult =
   | {
       success: false;
       error: "network_error" | "not_configured" | "internal_error";
+      message: string;
+    };
+
+export interface CreateComponentRequest {
+  name: string;
+  category: string;
+  display_name: string;
+  description?: string;
+  artifact_pattern?: string;
+  default_url_template?: string;
+  github_normalized_template?: string;
+  is_optional?: boolean;
+}
+
+export interface UpdateComponentRequest {
+  name?: string;
+  category?: string;
+  display_name?: string;
+  description?: string;
+  artifact_pattern?: string;
+  default_url_template?: string;
+  github_normalized_template?: string;
+  is_optional?: boolean;
+}
+
+export type CreateResult =
+  | { success: true; component: Component }
+  | {
+      success: false;
+      error:
+        | "conflict"
+        | "unauthorized"
+        | "forbidden"
+        | "invalid_request"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+export type UpdateResult =
+  | { success: true; component: Component }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "forbidden"
+        | "unauthorized"
+        | "invalid_request"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+export type DeleteResult =
+  | { success: true }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "forbidden"
+        | "unauthorized"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
       message: string;
     };
 
@@ -146,7 +216,7 @@ export async function getComponent(id: string): Promise<GetResult> {
 
 // List components by category
 export async function listComponentsByCategory(
-  category: string
+  category: string,
 ): Promise<ListResult> {
   const url = getApiUrl(`/components/category/${encodeURIComponent(category)}`);
 
@@ -226,7 +296,7 @@ export async function getCategories(): Promise<CategoriesResult> {
 
 // Group components by category
 export function groupByCategory(
-  components: Component[]
+  components: Component[],
 ): Record<string, Component[]> {
   return components.reduce(
     (acc, component) => {
@@ -237,7 +307,7 @@ export function groupByCategory(
       acc[category].push(component);
       return acc;
     },
-    {} as Record<string, Component[]>
+    {} as Record<string, Component[]>,
   );
 }
 
@@ -251,5 +321,229 @@ export function getCategoryDisplayName(category: string): string {
     security: "Security",
     desktop: "Desktop",
   };
-  return names[category] || category.charAt(0).toUpperCase() + category.slice(1);
+  return (
+    names[category] || category.charAt(0).toUpperCase() + category.slice(1)
+  );
 }
+
+// Create a new component (root only)
+export async function createComponent(
+  request: CreateComponentRequest,
+): Promise<CreateResult> {
+  const url = getApiUrl("/components");
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+
+    if (response.ok) {
+      const component = await response.json();
+      return { success: true, component };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Admin access required",
+      };
+    }
+
+    if (response.status === 400) {
+      const data = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: "invalid_request",
+        message: data.message || "Invalid component data",
+      };
+    }
+
+    if (response.status === 409) {
+      return {
+        success: false,
+        error: "conflict",
+        message: "A component with this name already exists",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to create component",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Update a component (root only)
+export async function updateComponent(
+  id: string,
+  request: UpdateComponentRequest,
+): Promise<UpdateResult> {
+  const url = getApiUrl(`/components/${id}`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+
+    if (response.ok) {
+      const component = await response.json();
+      return { success: true, component };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Admin access required",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Component not found",
+      };
+    }
+
+    if (response.status === 400) {
+      const data = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: "invalid_request",
+        message: data.message || "Invalid component data",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to update component",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Delete a component (root only)
+export async function deleteComponent(id: string): Promise<DeleteResult> {
+  const url = getApiUrl(`/components/${id}`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok || response.status === 204) {
+      return { success: true };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Admin access required",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Component not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to delete component",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Available component categories
+export const COMPONENT_CATEGORIES = [
+  "core",
+  "bootloader",
+  "init",
+  "runtime",
+  "security",
+  "desktop",
+] as const;
+
+export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];

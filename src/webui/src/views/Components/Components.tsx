@@ -1,0 +1,536 @@
+import type { Component as SolidComponent, JSX } from "solid-js";
+import { createSignal, onMount, Show, For } from "solid-js";
+import { Datagrid } from "../../components/Datagrid";
+import { Spinner } from "../../components/Spinner";
+import { Icon } from "../../components/Icon";
+import { Modal } from "../../components/Modal";
+import { ComponentForm } from "../../components/ComponentForm";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../components/DropdownMenu";
+import {
+  listComponents,
+  createComponent,
+  updateComponent,
+  deleteComponent,
+  getCategoryDisplayName,
+  type Component,
+  type CreateComponentRequest,
+  type UpdateComponentRequest,
+} from "../../services/components";
+import { t } from "../../services/i18n";
+
+interface UserInfo {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface ComponentsProps {
+  isLoggedIn?: boolean;
+  user?: UserInfo | null;
+  onViewComponent?: (componentId: string) => void;
+}
+
+export const Components: SolidComponent<ComponentsProps> = (props) => {
+  const [isModalOpen, setIsModalOpen] = createSignal(false);
+  const [isLoading, setIsLoading] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const [components, setComponents] = createSignal<Component[]>([]);
+  const [selectedComponents, setSelectedComponents] = createSignal<Component[]>(
+    [],
+  );
+  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
+  const [componentsToDelete, setComponentsToDelete] = createSignal<Component[]>(
+    [],
+  );
+  const [isDeleting, setIsDeleting] = createSignal(false);
+  const [editingComponent, setEditingComponent] =
+    createSignal<Component | null>(null);
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [categoryFilter, setCategoryFilter] = createSignal<string>("all");
+
+  const fetchComponents = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const result = await listComponents();
+
+    setIsLoading(false);
+
+    if (result.success) {
+      setComponents(result.components);
+    } else {
+      setError(result.message);
+    }
+  };
+
+  onMount(() => {
+    fetchComponents();
+  });
+
+  const handleCreateComponent = () => {
+    setEditingComponent(null);
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = async (formData: CreateComponentRequest) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    const editing = editingComponent();
+
+    if (editing) {
+      const updateReq: UpdateComponentRequest = {
+        name: formData.name,
+        category: formData.category,
+        display_name: formData.display_name,
+        description: formData.description,
+        artifact_pattern: formData.artifact_pattern,
+        default_url_template: formData.default_url_template,
+        github_normalized_template: formData.github_normalized_template,
+        is_optional: formData.is_optional,
+      };
+      const result = await updateComponent(editing.id, updateReq);
+
+      setIsSubmitting(false);
+
+      if (result.success) {
+        setIsModalOpen(false);
+        setEditingComponent(null);
+        fetchComponents();
+      } else {
+        setError(result.message);
+      }
+    } else {
+      const result = await createComponent(formData);
+
+      setIsSubmitting(false);
+
+      if (result.success) {
+        setIsModalOpen(false);
+        fetchComponents();
+      } else {
+        setError(result.message);
+      }
+    }
+  };
+
+  const handleFormCancel = () => {
+    setIsModalOpen(false);
+    setEditingComponent(null);
+  };
+
+  const handleEditComponent = (component: Component) => {
+    setEditingComponent(component);
+    setIsModalOpen(true);
+  };
+
+  const openDeleteModal = (comps: Component[]) => {
+    if (comps.length === 0) return;
+    setComponentsToDelete(comps);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteComponent = (id: string) => {
+    const component = components().find((c) => c.id === id);
+    if (component) {
+      openDeleteModal([component]);
+    }
+  };
+
+  const handleSelectionChange = (selected: Component[]) => {
+    setSelectedComponents(selected);
+  };
+
+  const handleDeleteSelected = () => {
+    const selected = selectedComponents();
+    if (selected.length === 0) return;
+    openDeleteModal(selected);
+  };
+
+  const confirmDelete = async () => {
+    const toDelete = componentsToDelete();
+    if (toDelete.length === 0) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    for (const component of toDelete) {
+      const result = await deleteComponent(component.id);
+      if (!result.success) {
+        setError(result.message);
+        setIsDeleting(false);
+        return;
+      }
+    }
+
+    const deletedIds = new Set(toDelete.map((c) => c.id));
+    setComponents((prev) => prev.filter((c) => !deletedIds.has(c.id)));
+    setSelectedComponents([]);
+    setIsDeleting(false);
+    setDeleteModalOpen(false);
+    setComponentsToDelete([]);
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+    setComponentsToDelete([]);
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const isAdmin = () => props.user?.role === "root";
+
+  const categories = () => {
+    const cats = new Set(components().map((c) => c.category));
+    return Array.from(cats).sort();
+  };
+
+  const filteredComponents = () => {
+    const filter = categoryFilter();
+    if (filter === "all") {
+      return components();
+    }
+    return components().filter((c) => c.category === filter);
+  };
+
+  const renderCategory = (category: string): JSX.Element => {
+    const colorMap: Record<string, string> = {
+      core: "bg-blue-500/10 text-blue-500",
+      bootloader: "bg-orange-500/10 text-orange-500",
+      init: "bg-green-500/10 text-green-500",
+      runtime: "bg-purple-500/10 text-purple-500",
+      security: "bg-red-500/10 text-red-500",
+      desktop: "bg-pink-500/10 text-pink-500",
+    };
+    const colorClass = colorMap[category] || "bg-muted text-muted-foreground";
+
+    return (
+      <span
+        class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}
+      >
+        {getCategoryDisplayName(category)}
+      </span>
+    );
+  };
+
+  const renderOptional = (isOptional: boolean): JSX.Element => {
+    return (
+      <span
+        class={`flex items-center gap-2 ${isOptional ? "text-muted-foreground" : "text-primary"}`}
+      >
+        <Icon name={isOptional ? "circle" : "check-circle"} size="sm" />
+        <span>
+          {isOptional
+            ? t("components.table.optional")
+            : t("components.table.required")}
+        </span>
+      </span>
+    );
+  };
+
+  const handleViewComponent = (component: Component) => {
+    props.onViewComponent?.(component.id);
+  };
+
+  const ActionsCell: SolidComponent<{ value: any; row: Component }> = (
+    cellProps,
+  ) => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger class="inline-flex items-center justify-center px-2 py-1 rounded-md hover:bg-muted transition-colors">
+          <Icon
+            name="dots-three-vertical"
+            size="lg"
+            class="text-muted-foreground hover:text-primary transition-colors"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => handleViewComponent(cellProps.row)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>{t("common.actions.viewDetails")}</span>
+          </DropdownMenuItem>
+          <Show when={isAdmin()}>
+            <DropdownMenuItem
+              onSelect={() => handleEditComponent(cellProps.row)}
+              class="gap-2"
+            >
+              <Icon name="pencil" size="sm" />
+              <span>{t("common.actions.edit")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => handleDeleteComponent(cellProps.row.id)}
+              class="gap-2 text-destructive focus:text-destructive"
+            >
+              <Icon name="trash" size="sm" />
+              <span>{t("common.actions.delete")}</span>
+            </DropdownMenuItem>
+          </Show>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  return (
+    <section class="h-full w-full relative">
+      <section class="h-full flex flex-col p-8 gap-6">
+        <header class="flex items-center justify-between">
+          <article>
+            <h1 class="text-4xl font-bold">{t("components.title")}</h1>
+            <p class="text-muted-foreground mt-2">{t("components.subtitle")}</p>
+          </article>
+          <nav class="flex items-center gap-4">
+            <select
+              class="px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              value={categoryFilter()}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">
+                {t("components.filter.allCategories")}
+              </option>
+              <For each={categories()}>
+                {(cat) => (
+                  <option value={cat}>{getCategoryDisplayName(cat)}</option>
+                )}
+              </For>
+            </select>
+            <Show when={isAdmin()}>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={selectedComponents().length === 0}
+                class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
+                  selectedComponents().length > 0
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
+              >
+                <Icon name="trash" size="sm" />
+                <span>
+                  {t("common.actions.delete")} ({selectedComponents().length})
+                </span>
+              </button>
+              <button
+                onClick={handleCreateComponent}
+                class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
+              >
+                <Icon name="plus" size="sm" />
+                <span>{t("components.create.button")}</span>
+              </button>
+            </Show>
+          </nav>
+        </header>
+
+        <Show when={error()}>
+          <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+            {error()}
+          </aside>
+        </Show>
+
+        <section class="flex-1 overflow-visible">
+          <Show
+            when={!isLoading()}
+            fallback={
+              <section class="h-full flex items-center justify-center">
+                <Spinner size="lg" />
+              </section>
+            }
+          >
+            <Show
+              when={filteredComponents().length > 0}
+              fallback={
+                <section class="h-full flex flex-col items-center justify-center text-center">
+                  <Icon
+                    name="cube"
+                    size="2xl"
+                    class="text-muted-foreground mb-4"
+                  />
+                  <h2 class="text-xl font-medium text-muted-foreground">
+                    {t("components.empty.title")}
+                  </h2>
+                  <p class="text-sm text-muted-foreground mt-2">
+                    {t("components.empty.description")}
+                  </p>
+                </section>
+              }
+            >
+              <Datagrid
+                columns={[
+                  {
+                    key: "display_name",
+                    label: t("components.table.columns.name"),
+                    sortable: true,
+                    class: "font-medium",
+                    render: (name: string, row: Component) => (
+                      <button
+                        onClick={() => handleViewComponent(row)}
+                        class="text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {name}
+                      </button>
+                    ),
+                  },
+                  {
+                    key: "name",
+                    label: t("components.table.columns.identifier"),
+                    sortable: true,
+                    class: "font-mono text-sm text-muted-foreground",
+                  },
+                  {
+                    key: "category",
+                    label: t("components.table.columns.category"),
+                    sortable: true,
+                    render: renderCategory,
+                  },
+                  {
+                    key: "description",
+                    label: t("components.table.columns.description"),
+                    class: "max-w-xs truncate",
+                    render: (desc: string) => desc || "—",
+                  },
+                  {
+                    key: "is_optional",
+                    label: t("components.table.columns.type"),
+                    sortable: true,
+                    render: renderOptional,
+                  },
+                  {
+                    key: "created_at",
+                    label: t("components.table.columns.created"),
+                    sortable: true,
+                    class: "font-mono text-sm",
+                    render: formatDate,
+                  },
+                  {
+                    key: "id",
+                    label: t("components.table.columns.actions"),
+                    class: "text-right relative",
+                    component: ActionsCell,
+                  },
+                ]}
+                data={filteredComponents()}
+                rowKey="id"
+                selectable={isAdmin()}
+                onSelectionChange={handleSelectionChange}
+              />
+            </Show>
+          </Show>
+        </section>
+
+        <Show when={isAdmin() && selectedComponents().length > 0}>
+          <footer class="flex justify-end pt-4">
+            <button
+              onClick={handleDeleteSelected}
+              class="px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Icon name="trash" size="sm" />
+              <span>
+                {t("components.delete.deleteSelected", {
+                  count: selectedComponents().length,
+                })}
+              </span>
+            </button>
+          </footer>
+        </Show>
+      </section>
+
+      <Modal
+        isOpen={isModalOpen()}
+        onClose={handleFormCancel}
+        title={
+          editingComponent()
+            ? t("components.create.editModalTitle")
+            : t("components.create.modalTitle")
+        }
+      >
+        <ComponentForm
+          key={editingComponent()?.id || "new"}
+          onSubmit={handleFormSubmit}
+          onCancel={handleFormCancel}
+          initialData={editingComponent() || undefined}
+          isSubmitting={isSubmitting()}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={deleteModalOpen()}
+        onClose={cancelDelete}
+        title={t("components.delete.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            <Show
+              when={componentsToDelete().length === 1}
+              fallback={
+                <>
+                  {t("components.delete.confirmMultiple", {
+                    count: componentsToDelete().length,
+                  })}
+                </>
+              }
+            >
+              {t("components.delete.confirmSingle", {
+                name: componentsToDelete()[0]?.display_name || "",
+              })}
+            </Show>
+          </p>
+
+          <aside class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-600 text-sm">
+            <div class="flex items-start gap-2">
+              <Icon name="warning" size="sm" class="mt-0.5 flex-shrink-0" />
+              <span>{t("components.delete.warning")}</span>
+            </div>
+          </aside>
+
+          <Show when={componentsToDelete().length > 1}>
+            <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
+              {componentsToDelete().map((component) => (
+                <li class="py-1">{component.display_name}</li>
+              ))}
+            </ul>
+          </Show>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={cancelDelete}
+              disabled={isDeleting()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={isDeleting()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={isDeleting()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {isDeleting()
+                  ? t("components.delete.deleting")
+                  : componentsToDelete().length > 1
+                    ? t("components.delete.deleteCount", {
+                        count: componentsToDelete().length,
+                      })
+                    : t("common.actions.delete")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
+    </section>
+  );
+};

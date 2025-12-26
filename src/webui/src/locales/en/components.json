@@ -1,0 +1,120 @@
+{
+  "title": "Components",
+  "subtitle": "Manage system components for your distributions",
+  "filter": {
+    "allCategories": "All Categories"
+  },
+  "create": {
+    "button": "New Component",
+    "modalTitle": "Create Component",
+    "editModalTitle": "Edit Component"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "identifier": "Identifier",
+      "category": "Category",
+      "description": "Description",
+      "type": "Type",
+      "created": "Created",
+      "actions": "Actions"
+    },
+    "optional": "Optional",
+    "required": "Required"
+  },
+  "actions": {
+    "adminOnly": "Admin only"
+  },
+  "delete": {
+    "title": "Confirm Deletion",
+    "confirmSingle": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} components? This action cannot be undone.",
+    "warning": "Deleting components may affect distributions and sources that reference them.",
+    "deleting": "Deleting...",
+    "deleteCount": "Delete ({{ count }})",
+    "deleteSelected": "Delete Selected ({{ count }})"
+  },
+  "empty": {
+    "title": "No components found",
+    "description": "No components match the current filter, or no components have been created yet."
+  },
+  "form": {
+    "name": {
+      "label": "Identifier",
+      "placeholder": "e.g., kernel, systemd, grub2",
+      "help": "Unique identifier using lowercase letters, numbers, and hyphens only.",
+      "required": "Identifier is required",
+      "invalid": "Only lowercase letters, numbers, and hyphens are allowed"
+    },
+    "displayName": {
+      "label": "Display Name",
+      "placeholder": "e.g., Linux Kernel",
+      "required": "Display name is required"
+    },
+    "category": {
+      "label": "Category",
+      "help": "The functional category this component belongs to.",
+      "required": "Category is required"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "Brief description of this component..."
+    },
+    "artifactPattern": {
+      "label": "Artifact Pattern",
+      "placeholder": "e.g., linux-{version}.tar.xz",
+      "help": "Pattern for the downloaded artifact filename. Use {version} placeholder."
+    },
+    "defaultUrlTemplate": {
+      "label": "Default URL Template",
+      "placeholder": "e.g., {base_url}/linux-{version}.tar.xz",
+      "help": "Default URL template for downloading this component."
+    },
+    "githubNormalizedTemplate": {
+      "label": "GitHub URL Template",
+      "placeholder": "e.g., {base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "URL template for GitHub repositories."
+    },
+    "isOptional": {
+      "label": "Optional Component",
+      "help": "Optional components are not required for a minimal distribution."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "add": "Create Component",
+      "update": "Update Component"
+    }
+  },
+  "categories": {
+    "core": "Core",
+    "bootloader": "Bootloader",
+    "init": "Init System",
+    "runtime": "Runtime",
+    "security": "Security",
+    "desktop": "Desktop"
+  },
+  "detail": {
+    "back": "Back to Components",
+    "title": "Component Details",
+    "subtitle": "View and manage component configuration",
+    "componentDetails": "Component Details",
+    "displayName": "Display Name",
+    "identifier": "Identifier",
+    "category": "Category",
+    "description": "Description",
+    "type": "Type",
+    "created": "Created",
+    "updated": "Updated",
+    "urlTemplates": "URL Templates",
+    "artifactPattern": "Artifact Pattern",
+    "defaultUrlTemplate": "Default URL Template",
+    "githubTemplate": "GitHub URL Template",
+    "noTemplates": "No URL templates configured for this component.",
+    "relatedSources": "Related Sources",
+    "noSources": "No sources are currently configured for this component.",
+    "updateSuccess": "Component updated successfully",
+    "deleteSuccess": "Component deleted successfully",
+    "deleteWarning": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
+    "deleteSourcesWarning": "This component has {{ count }} related source(s) that will lose their component association."
+  }
+}

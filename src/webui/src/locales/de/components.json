@@ -1,0 +1,120 @@
+{
+  "title": "Komponenten",
+  "subtitle": "Systemkomponenten fur Ihre Distributionen verwalten",
+  "filter": {
+    "allCategories": "Alle Kategorien"
+  },
+  "create": {
+    "button": "Neue Komponente",
+    "modalTitle": "Komponente erstellen",
+    "editModalTitle": "Komponente bearbeiten"
+  },
+  "table": {
+    "columns": {
+      "name": "Name",
+      "identifier": "Kennung",
+      "category": "Kategorie",
+      "description": "Beschreibung",
+      "type": "Typ",
+      "created": "Erstellt",
+      "actions": "Aktionen"
+    },
+    "optional": "Optional",
+    "required": "Erforderlich"
+  },
+  "actions": {
+    "adminOnly": "Nur fur Admins"
+  },
+  "delete": {
+    "title": "Loschen bestatigen",
+    "confirmSingle": "Sind Sie sicher, dass Sie \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Komponenten loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "warning": "Das Loschen von Komponenten kann Distributionen und Quellen beeintrachtigen, die darauf verweisen.",
+    "deleting": "Wird geloscht...",
+    "deleteCount": "Loschen ({{ count }})",
+    "deleteSelected": "Auswahl loschen ({{ count }})"
+  },
+  "empty": {
+    "title": "Keine Komponenten gefunden",
+    "description": "Keine Komponenten entsprechen dem aktuellen Filter, oder es wurden noch keine Komponenten erstellt."
+  },
+  "form": {
+    "name": {
+      "label": "Kennung",
+      "placeholder": "z.B. kernel, systemd, grub2",
+      "help": "Eindeutige Kennung mit Kleinbuchstaben, Zahlen und Bindestrichen.",
+      "required": "Kennung ist erforderlich",
+      "invalid": "Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt"
+    },
+    "displayName": {
+      "label": "Anzeigename",
+      "placeholder": "z.B. Linux Kernel",
+      "required": "Anzeigename ist erforderlich"
+    },
+    "category": {
+      "label": "Kategorie",
+      "help": "Die funktionale Kategorie dieser Komponente.",
+      "required": "Kategorie ist erforderlich"
+    },
+    "description": {
+      "label": "Beschreibung",
+      "placeholder": "Kurze Beschreibung dieser Komponente..."
+    },
+    "artifactPattern": {
+      "label": "Artefaktmuster",
+      "placeholder": "z.B. linux-{version}.tar.xz",
+      "help": "Muster fur den heruntergeladenen Dateinamen. Verwenden Sie den Platzhalter {version}."
+    },
+    "defaultUrlTemplate": {
+      "label": "Standard-URL-Vorlage",
+      "placeholder": "z.B. {base_url}/linux-{version}.tar.xz",
+      "help": "Standard-URL-Vorlage zum Herunterladen dieser Komponente."
+    },
+    "githubNormalizedTemplate": {
+      "label": "GitHub-URL-Vorlage",
+      "placeholder": "z.B. {base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "URL-Vorlage fur GitHub-Repositories."
+    },
+    "isOptional": {
+      "label": "Optionale Komponente",
+      "help": "Optionale Komponenten sind fur eine minimale Distribution nicht erforderlich."
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "add": "Komponente erstellen",
+      "update": "Komponente aktualisieren"
+    }
+  },
+  "categories": {
+    "core": "Kern",
+    "bootloader": "Bootloader",
+    "init": "Init-System",
+    "runtime": "Laufzeitumgebung",
+    "security": "Sicherheit",
+    "desktop": "Desktop"
+  },
+  "detail": {
+    "back": "Zuruck zu Komponenten",
+    "title": "Komponentendetails",
+    "subtitle": "Komponentenkonfiguration anzeigen und verwalten",
+    "componentDetails": "Komponentendetails",
+    "displayName": "Anzeigename",
+    "identifier": "Kennung",
+    "category": "Kategorie",
+    "description": "Beschreibung",
+    "type": "Typ",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "urlTemplates": "URL-Vorlagen",
+    "artifactPattern": "Artefaktmuster",
+    "defaultUrlTemplate": "Standard-URL-Vorlage",
+    "githubTemplate": "GitHub-URL-Vorlage",
+    "noTemplates": "Keine URL-Vorlagen fur diese Komponente konfiguriert.",
+    "relatedSources": "Zugehorige Quellen",
+    "noSources": "Fur diese Komponente sind derzeit keine Quellen konfiguriert.",
+    "updateSuccess": "Komponente erfolgreich aktualisiert",
+    "deleteSuccess": "Komponente erfolgreich geloscht",
+    "deleteWarning": "Sind Sie sicher, dass Sie \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "deleteSourcesWarning": "Diese Komponente hat {{ count }} zugehorige Quelle(n), die ihre Komponentenzuordnung verlieren werden."
+  }
+}
