@@ -7,6 +7,7 @@ interface CardProps {
   header?: {
     title?: string;
     description?: string;
+    actions?: JSX.Element;
   };
   footer?: JSX.Element;
 }
@@ -20,14 +21,21 @@ export const Card: Component<CardProps> = (props) => {
       class={`border-2 ${borderClass()} border-border rounded-lg bg-card text-card-foreground`}
     >
       <Show when={props.header}>
-        <header class={`px-6 py-4 border-b ${borderClass()} border-border`}>
-          <Show when={props.header?.title}>
-            <h2 class="text-xl font-bold mb-1">{props.header?.title}</h2>
-          </Show>
-          <Show when={props.header?.description}>
-            <p class="text-sm text-muted-foreground">
-              {props.header?.description}
-            </p>
+        <header
+          class={`px-6 py-4 border-b ${borderClass()} border-border flex items-start justify-between gap-4`}
+        >
+          <div class="flex-1 min-w-0">
+            <Show when={props.header?.title}>
+              <h2 class="text-xl font-bold mb-1">{props.header?.title}</h2>
+            </Show>
+            <Show when={props.header?.description}>
+              <p class="text-sm text-muted-foreground">
+                {props.header?.description}
+              </p>
+            </Show>
+          </div>
+          <Show when={props.header?.actions}>
+            <div class="shrink-0">{props.header?.actions}</div>
           </Show>
         </header>
       </Show>

@@ -39,6 +39,7 @@ func (r *Runner) registerAll() {
 		migration003ConvertDistributionIDToUUID(),
 		migration004AddSourcesTables(),
 		migration005AddDownloadManagerTables(),
+		migration006AddVersionSyncTables(),
 	}
 
 	// Sort by version to ensure correct order

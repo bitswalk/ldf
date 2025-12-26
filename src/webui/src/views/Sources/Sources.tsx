@@ -33,6 +33,7 @@ interface UserInfo {
 interface SourcesProps {
   isLoggedIn?: boolean;
   user?: UserInfo | null;
+  onViewSource?: (sourceId: string, sourceType: "default" | "user") => void;
 }
 
 export const Sources: Component<SourcesProps> = (props) => {
@@ -121,11 +122,14 @@ export const Sources: Component<SourcesProps> = (props) => {
   };
 
   const handleEditSource = (source: Source) => {
-    if (source.is_system) {
-      return;
-    }
-    setEditingSource(source);
-    setIsModalOpen(true);
+    // Navigate to source details view for editing
+    const sourceType = source.is_system ? "default" : "user";
+    props.onViewSource?.(source.id, sourceType);
+  };
+
+  const handleViewSource = (source: Source) => {
+    const sourceType = source.is_system ? "default" : "user";
+    props.onViewSource?.(source.id, sourceType);
   };
 
   const openDeleteModal = (srcs: Source[]) => {
@@ -253,6 +257,10 @@ export const Sources: Component<SourcesProps> = (props) => {
       );
     };
 
+    const canEditSystem = () => {
+      return cellProps.row.is_system && isAdmin();
+    };
+
     const canDelete = () => {
       return (
         !cellProps.row.is_system &&
@@ -270,7 +278,14 @@ export const Sources: Component<SourcesProps> = (props) => {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <Show when={canEdit()}>
+          <DropdownMenuItem
+            onSelect={() => handleViewSource(cellProps.row)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>View Details</span>
+          </DropdownMenuItem>
+          <Show when={canEdit() || canEditSystem()}>
             <DropdownMenuItem
               onSelect={() => handleEditSource(cellProps.row)}
               class="gap-2"
@@ -278,6 +293,8 @@ export const Sources: Component<SourcesProps> = (props) => {
               <Icon name="pencil" size="sm" />
               <span>Edit</span>
             </DropdownMenuItem>
+          </Show>
+          <Show when={canEdit()}>
             <DropdownMenuItem
               onSelect={() => handleToggleEnabled(cellProps.row)}
               class="gap-2"
@@ -296,12 +313,6 @@ export const Sources: Component<SourcesProps> = (props) => {
             >
               <Icon name="trash" size="sm" />
               <span>Delete</span>
-            </DropdownMenuItem>
-          </Show>
-          <Show when={cellProps.row.is_system}>
-            <DropdownMenuItem disabled class="gap-2 text-muted-foreground">
-              <Icon name="lock" size="sm" />
-              <span>System source (read-only)</span>
             </DropdownMenuItem>
           </Show>
         </DropdownMenuContent>
@@ -411,6 +422,14 @@ export const Sources: Component<SourcesProps> = (props) => {
                       label: "Name",
                       sortable: true,
                       class: "font-medium",
+                      render: (name: string, row: Source) => (
+                        <button
+                          onClick={() => handleViewSource(row)}
+                          class="text-left hover:text-primary hover:underline transition-colors"
+                        >
+                          {name}
+                        </button>
+                      ),
                     },
                     {
                       key: "url",
@@ -482,6 +501,7 @@ export const Sources: Component<SourcesProps> = (props) => {
         title={editingSource() ? "Edit Source" : "Add New Source"}
       >
         <SourceForm
+          key={editingSource()?.id || "new"}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}

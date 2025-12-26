@@ -1,5 +1,11 @@
 import type { Component as SolidComponent } from "solid-js";
-import { createSignal, createResource, Show, For } from "solid-js";
+import {
+  createSignal,
+  createResource,
+  createEffect,
+  Show,
+  For,
+} from "solid-js";
 import { Spinner } from "../Spinner";
 import { Icon } from "../Icon";
 import type { CreateSourceRequest, Source } from "../../services/sources";
@@ -78,6 +84,19 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     if (!comps || !componentId()) return null;
     return comps.find((c) => c.id === componentId()) || null;
   };
+
+  // Reference to the select element for programmatic updates
+  let selectRef: HTMLSelectElement | undefined;
+
+  // Sync select value when components load (fixes async loading issue)
+  createEffect(() => {
+    const comps = components();
+    const currentId = componentId();
+    if (selectRef && comps && currentId) {
+      // Force the select to update its displayed value
+      selectRef.value = currentId;
+    }
+  });
 
   const previewUrl = () => {
     const baseUrl = url().trim();
@@ -196,6 +215,7 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           Component
         </label>
         <select
+          ref={selectRef}
           id="source-component"
           class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors"
           value={componentId()}

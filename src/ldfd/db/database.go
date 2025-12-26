@@ -280,25 +280,32 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy components table FIRST (source_defaults and user_sources have FK references to components)
+	// Must be loaded before sources to satisfy foreign key constraints
+	if d.tableExistsInDiskDB("components") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO components
+			SELECT * FROM disk_db.components
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+		}
+	}
+
 	// Copy source_defaults table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("source_defaults") {
+		// Try with all new columns first
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO source_defaults
 			(id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
 			SELECT id, name, url, priority, enabled, created_at, updated_at,
-			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='component_id')
-			            THEN component_id ELSE NULL END,
-			       COALESCE(
-			           CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='retrieval_method')
-			                THEN retrieval_method ELSE NULL END,
-			           'release'
-			       ),
-			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.source_defaults') WHERE name='url_template')
-			            THEN url_template ELSE NULL END
+			       component_id, retrieval_method, url_template
 			FROM disk_db.source_defaults
 		`)
 		if err != nil {
-			// Fallback: try explicit column selection without new columns
+			// Fallback: try without new columns (old schema)
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO source_defaults
 				(id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
@@ -315,23 +322,16 @@ func (d *Database) LoadFromDisk() error {
 
 	// Copy user_sources table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("user_sources") {
+		// Try with all new columns first
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO user_sources
 			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
 			SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
-			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='component_id')
-			            THEN component_id ELSE NULL END,
-			       COALESCE(
-			           CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='retrieval_method')
-			                THEN retrieval_method ELSE NULL END,
-			           'release'
-			       ),
-			       CASE WHEN EXISTS (SELECT 1 FROM pragma_table_info('disk_db.user_sources') WHERE name='url_template')
-			            THEN url_template ELSE NULL END
+			       component_id, retrieval_method, url_template
 			FROM disk_db.user_sources
 		`)
 		if err != nil {
-			// Fallback: try explicit column selection without new columns
+			// Fallback: try without new columns (old schema)
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO user_sources
 				(id, owner_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
@@ -343,19 +343,6 @@ func (d *Database) LoadFromDisk() error {
 			loadErrors = append(loadErrors, fmt.Sprintf("user_sources: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
 			loadedTables = append(loadedTables, fmt.Sprintf("user_sources(%d)", rows))
-		}
-	}
-
-	// Copy components table (seeded by migrations, but user may have added custom ones)
-	if d.tableExistsInDiskDB("components") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO components
-			SELECT * FROM disk_db.components
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
 		}
 	}
 

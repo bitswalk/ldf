@@ -219,3 +219,42 @@ type DistributionSourceOverride struct {
 	SourceType     string    `json:"source_type"`
 	CreatedAt      time.Time `json:"created_at"`
 }
+
+// SourceVersion represents a discovered version from an upstream source
+type SourceVersion struct {
+	ID           string     `json:"id"`
+	SourceID     string     `json:"source_id"`
+	SourceType   string     `json:"source_type"` // "default" or "user"
+	Version      string     `json:"version"`
+	ReleaseDate  *time.Time `json:"release_date,omitempty"`
+	DownloadURL  string     `json:"download_url,omitempty"`
+	Checksum     string     `json:"checksum,omitempty"`
+	ChecksumType string     `json:"checksum_type,omitempty"`
+	FileSize     int64      `json:"file_size,omitempty"`
+	IsStable     bool       `json:"is_stable"`
+	DiscoveredAt time.Time  `json:"discovered_at"`
+}
+
+// VersionSyncStatus represents the status of a version sync job
+type VersionSyncStatus string
+
+const (
+	SyncStatusPending   VersionSyncStatus = "pending"
+	SyncStatusRunning   VersionSyncStatus = "running"
+	SyncStatusCompleted VersionSyncStatus = "completed"
+	SyncStatusFailed    VersionSyncStatus = "failed"
+)
+
+// VersionSyncJob represents a version sync job for a source
+type VersionSyncJob struct {
+	ID            string            `json:"id"`
+	SourceID      string            `json:"source_id"`
+	SourceType    string            `json:"source_type"` // "default" or "user"
+	Status        VersionSyncStatus `json:"status"`
+	VersionsFound int               `json:"versions_found"`
+	VersionsNew   int               `json:"versions_new"`
+	StartedAt     *time.Time        `json:"started_at,omitempty"`
+	CompletedAt   *time.Time        `json:"completed_at,omitempty"`
+	ErrorMessage  string            `json:"error_message,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+}
