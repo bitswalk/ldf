@@ -423,10 +423,14 @@ export const Distribution: Component<DistributionProps> = (props) => {
                     ),
                   },
                   {
-                    key: "version",
+                    key: "config",
                     label: "Kernel Version",
                     sortable: true,
                     class: "font-mono",
+                    render: (
+                      _config: DistributionConfig | undefined,
+                      row: DistributionType,
+                    ) => row.config?.core?.kernel?.version || "—",
                   },
                   {
                     key: "status",
