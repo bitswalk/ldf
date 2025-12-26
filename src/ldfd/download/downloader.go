@@ -93,6 +93,11 @@ func (d *Downloader) downloadHTTP(ctx context.Context, job *db.DownloadJob, prog
 	var bytesReceived int64
 	buf := make([]byte, 32*1024) // 32KB buffer
 
+	// Throttle progress updates to avoid database lock contention
+	// Only update the database every 2 seconds
+	lastProgressUpdate := time.Now()
+	progressUpdateInterval := 2 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -109,13 +114,19 @@ func (d *Downloader) downloadHTTP(ctx context.Context, job *db.DownloadJob, prog
 
 			bytesReceived += int64(n)
 
-			// Update progress
+			// Update progress callback (for logging)
 			if progressCb != nil {
 				progressCb(bytesReceived, totalBytes)
 			}
-			if err := d.jobRepo.UpdateProgress(job.ID, bytesReceived, totalBytes); err != nil {
-				// Log but don't fail on progress update errors
-				log.Warn("Failed to update progress", "job_id", job.ID, "error", err)
+
+			// Throttle database progress updates to avoid lock contention
+			now := time.Now()
+			if now.Sub(lastProgressUpdate) >= progressUpdateInterval {
+				if err := d.jobRepo.UpdateProgress(job.ID, bytesReceived, totalBytes); err != nil {
+					// Log but don't fail on progress update errors
+					log.Warn("Failed to update job progress", "job_id", job.ID, "error", err)
+				}
+				lastProgressUpdate = now
 			}
 		}
 
@@ -125,6 +136,11 @@ func (d *Downloader) downloadHTTP(ctx context.Context, job *db.DownloadJob, prog
 		if readErr != nil {
 			return fmt.Errorf("failed to read response body: %w", readErr)
 		}
+	}
+
+	// Final progress update to ensure we record 100%
+	if err := d.jobRepo.UpdateProgress(job.ID, bytesReceived, totalBytes); err != nil {
+		log.Warn("Failed to update final job progress", "job_id", job.ID, "error", err)
 	}
 
 	// Calculate checksum

@@ -693,44 +693,48 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               </div>
             </Card>
 
-            {/* Quick Actions */}
-            <Card header={{ title: "Quick Actions" }}>
-              <div class="space-y-3">
-                <button
-                  class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left"
-                  onClick={() => fetchDistribution()}
-                >
-                  <Icon name="arrow-clockwise" size="md" class="text-primary" />
-                  <div>
-                    <div class="font-medium">Refresh Status</div>
-                    <div class="text-sm text-muted-foreground">
-                      Update distribution info
+            {/* Right Column: Quick Actions + Component Downloads */}
+            <div class="flex flex-col gap-6">
+              {/* Quick Actions */}
+              <Card header={{ title: "Quick Actions" }}>
+                <div class="space-y-3">
+                  <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
+                    <Icon name="hammer" size="md" class="text-primary" />
+                    <div>
+                      <div class="font-medium">Build Distribution</div>
+                      <div class="text-sm text-muted-foreground">
+                        Compile and assemble distribution
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
 
-                <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
-                  <Icon name="download-simple" size="md" class="text-primary" />
-                  <div>
-                    <div class="font-medium">Download Distribution</div>
-                    <div class="text-sm text-muted-foreground">
-                      Download as ISO or archive
+                  <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
+                    <Icon
+                      name="download-simple"
+                      size="md"
+                      class="text-primary"
+                    />
+                    <div>
+                      <div class="font-medium">Download Distribution</div>
+                      <div class="text-sm text-muted-foreground">
+                        Download as ISO or archive
+                      </div>
                     </div>
-                  </div>
-                </button>
-              </div>
-            </Card>
+                  </button>
+                </div>
+              </Card>
+
+              {/* Component Downloads */}
+              <Card header={{ title: "Component Downloads" }}>
+                <DownloadStatus
+                  distributionId={props.distributionId}
+                  onSuccess={handleDownloadSuccess}
+                  onError={handleDownloadError}
+                  pollInterval={3000}
+                />
+              </Card>
+            </div>
           </div>
-
-          {/* Download Status Section */}
-          <Card header={{ title: "Component Downloads" }}>
-            <DownloadStatus
-              distributionId={props.distributionId}
-              onSuccess={handleDownloadSuccess}
-              onError={handleDownloadError}
-              pollInterval={3000}
-            />
-          </Card>
         </Show>
       </section>
     </section>
