@@ -6,6 +6,9 @@ export interface Source {
   id: string;
   name: string;
   url: string;
+  component_id?: string;
+  retrieval_method: string;
+  url_template?: string;
   priority: number;
   enabled: boolean;
   is_system: boolean;
@@ -18,6 +21,9 @@ export interface SourceDefault {
   id: string;
   name: string;
   url: string;
+  component_id?: string;
+  retrieval_method: string;
+  url_template?: string;
   priority: number;
   enabled: boolean;
   created_at: string;
@@ -29,6 +35,9 @@ export interface UserSource {
   owner_id: string;
   name: string;
   url: string;
+  component_id?: string;
+  retrieval_method: string;
+  url_template?: string;
   priority: number;
   enabled: boolean;
   created_at: string;
@@ -38,6 +47,9 @@ export interface UserSource {
 export interface CreateSourceRequest {
   name: string;
   url: string;
+  component_id?: string;
+  retrieval_method?: string;
+  url_template?: string;
   priority?: number;
   enabled?: boolean;
 }
@@ -45,6 +57,9 @@ export interface CreateSourceRequest {
 export interface UpdateSourceRequest {
   name?: string;
   url?: string;
+  component_id?: string;
+  retrieval_method?: string;
+  url_template?: string;
   priority?: number;
   enabled?: boolean;
 }
@@ -241,7 +256,7 @@ export async function listDefaultSources(): Promise<ListDefaultsResult> {
 
 // Create a user source
 export async function createSource(
-  request: CreateSourceRequest
+  request: CreateSourceRequest,
 ): Promise<CreateResult> {
   const url = getApiUrl("/sources");
 
@@ -306,7 +321,7 @@ export async function createSource(
 
 // Create a default source (admin only)
 export async function createDefaultSource(
-  request: CreateSourceRequest
+  request: CreateSourceRequest,
 ): Promise<CreateResult> {
   const url = getApiUrl("/sources/defaults");
 
@@ -380,7 +395,7 @@ export async function createDefaultSource(
 // Update a user source
 export async function updateSource(
   id: string,
-  request: UpdateSourceRequest
+  request: UpdateSourceRequest,
 ): Promise<UpdateResult> {
   const url = getApiUrl(`/sources/${id}`);
 
@@ -454,7 +469,7 @@ export async function updateSource(
 // Update a default source (admin only)
 export async function updateDefaultSource(
   id: string,
-  request: UpdateSourceRequest
+  request: UpdateSourceRequest,
 ): Promise<UpdateResult> {
   const url = getApiUrl(`/sources/defaults/${id}`);
 

@@ -34,6 +34,7 @@ interface UserInfo {
 interface DistributionProps {
   isLoggedIn?: boolean;
   user?: UserInfo | null;
+  onViewDistribution?: (id: string) => void;
 }
 
 export const Distribution: Component<DistributionProps> = (props) => {
@@ -282,6 +283,13 @@ export const Distribution: Component<DistributionProps> = (props) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
+            onSelect={() => props.onViewDistribution?.(cellProps.row.id)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>View Details</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onSelect={() => handleEditDistribution(cellProps.row.id)}
             class="gap-2"
           >
@@ -405,12 +413,24 @@ export const Distribution: Component<DistributionProps> = (props) => {
                     label: "Name",
                     sortable: true,
                     class: "font-medium",
+                    render: (name: string, row: DistributionType) => (
+                      <button
+                        onClick={() => props.onViewDistribution?.(row.id)}
+                        class="text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {name}
+                      </button>
+                    ),
                   },
                   {
-                    key: "version",
+                    key: "config",
                     label: "Kernel Version",
                     sortable: true,
                     class: "font-mono",
+                    render: (
+                      _config: DistributionConfig | undefined,
+                      row: DistributionType,
+                    ) => row.config?.core?.kernel?.version || "—",
                   },
                   {
                     key: "status",

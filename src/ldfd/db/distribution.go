@@ -269,14 +269,23 @@ func (r *DistributionRepository) UpdateStatus(id string, status DistributionStat
 
 // Update updates a distribution
 func (r *DistributionRepository) Update(d *Distribution) error {
+	var configJSON []byte
+	var err error
+	if d.Config != nil {
+		configJSON, err = json.Marshal(d.Config)
+		if err != nil {
+			return fmt.Errorf("failed to marshal config: %w", err)
+		}
+	}
+
 	query := `
 		UPDATE distributions
-		SET name = ?, version = ?, status = ?, visibility = ?, source_url = ?, checksum = ?,
+		SET name = ?, version = ?, status = ?, visibility = ?, config = ?, source_url = ?, checksum = ?,
 		    size_bytes = ?, updated_at = ?, error_message = ?
 		WHERE id = ?
 	`
 	result, err := r.db.DB().Exec(query,
-		d.Name, d.Version, d.Status, d.Visibility, d.SourceURL, d.Checksum,
+		d.Name, d.Version, d.Status, d.Visibility, configJSON, d.SourceURL, d.Checksum,
 		d.SizeBytes, time.Now(), d.ErrorMessage, d.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update distribution: %w", err)

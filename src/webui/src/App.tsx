@@ -3,8 +3,10 @@ import { createSignal, Match, onMount, Switch } from "solid-js";
 import { Transition } from "solid-transition-group";
 import { Header } from "./components/Header";
 import { Distribution } from "./views/Distribution";
+import { DistributionDetail } from "./views/DistributionDetail";
 import { Artifacts } from "./views/Artifacts";
 import { Sources } from "./views/Sources";
+import { SourceDetails } from "./views/Sources/SourceDetails";
 import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
@@ -33,8 +35,10 @@ import { syncDevModeFromServer } from "./services/settings";
 type ViewType =
   | "server-connection"
   | "distribution"
+  | "distribution-detail"
   | "artifacts"
   | "sources"
+  | "source-details"
   | "login"
   | "register"
   | "settings";
@@ -58,6 +62,18 @@ const App: Component = () => {
   const [connectionError, setConnectionError] = createSignal<string | null>(
     null,
   );
+  const [selectedDistributionId, setSelectedDistributionId] = createSignal<
+    string | null
+  >(null);
+  const [selectedSourceId, setSelectedSourceId] = createSignal<string | null>(
+    null,
+  );
+  const [selectedSourceType, setSelectedSourceType] = createSignal<
+    "default" | "user"
+  >("default");
+  const [sourceDetailsReturnView, setSourceDetailsReturnView] = createSignal<
+    "sources" | "settings"
+  >("sources");
 
   onMount(async () => {
     // If we have a server URL but missing endpoints, try to re-discover them
@@ -167,6 +183,39 @@ const App: Component = () => {
     setCurrentView("distribution");
   };
 
+  const handleViewDistribution = (distributionId: string) => {
+    setSelectedDistributionId(distributionId);
+    setCurrentView("distribution-detail");
+  };
+
+  const handleBackFromDistributionDetail = () => {
+    setSelectedDistributionId(null);
+    setCurrentView("distribution");
+  };
+
+  const handleViewSource = (
+    sourceId: string,
+    sourceType: "default" | "user",
+    returnTo: "sources" | "settings" = "sources",
+  ) => {
+    setSelectedSourceId(sourceId);
+    setSelectedSourceType(sourceType);
+    setSourceDetailsReturnView(returnTo);
+    setCurrentView("source-details");
+  };
+
+  const handleViewSourceFromSettings = (
+    sourceId: string,
+    sourceType: "default" | "user",
+  ) => {
+    handleViewSource(sourceId, sourceType, "settings");
+  };
+
+  const handleBackFromSourceDetails = () => {
+    setSelectedSourceId(null);
+    setCurrentView(sourceDetailsReturnView());
+  };
+
   const menuItems = (): MenuItem[] => [
     {
       id: "distribution",
@@ -231,6 +280,19 @@ const App: Component = () => {
                   <Distribution
                     isLoggedIn={isLoggedIn()}
                     user={authState().user}
+                    onViewDistribution={handleViewDistribution}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "distribution-detail" &&
+                    selectedDistributionId()
+                  }
+                >
+                  <DistributionDetail
+                    distributionId={selectedDistributionId()!}
+                    onBack={handleBackFromDistributionDetail}
+                    user={authState().user}
                   />
                 </Match>
                 <Match when={currentView() === "artifacts"}>
@@ -240,7 +302,24 @@ const App: Component = () => {
                   />
                 </Match>
                 <Match when={currentView() === "sources"}>
-                  <Sources isLoggedIn={isLoggedIn()} user={authState().user} />
+                  <Sources
+                    isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                    onViewSource={handleViewSource}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "source-details" && selectedSourceId()
+                  }
+                >
+                  <SourceDetails
+                    sourceId={selectedSourceId()!}
+                    sourceType={selectedSourceType()}
+                    onBack={handleBackFromSourceDetails}
+                    onDeleted={handleBackFromSourceDetails}
+                    user={authState().user}
+                  />
                 </Match>
                 <Match when={currentView() === "login"}>
                   <Login
@@ -258,7 +337,10 @@ const App: Component = () => {
                   />
                 </Match>
                 <Match when={currentView() === "settings"}>
-                  <Settings onBack={handleBackFromSettings} />
+                  <Settings
+                    onBack={handleBackFromSettings}
+                    onViewSource={handleViewSourceFromSettings}
+                  />
                 </Match>
               </Switch>
             </Transition>

@@ -280,12 +280,39 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
-	// Copy source_defaults table (no foreign key dependencies)
+	// Copy components table FIRST (source_defaults and user_sources have FK references to components)
+	// Must be loaded before sources to satisfy foreign key constraints
+	if d.tableExistsInDiskDB("components") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO components
+			SELECT * FROM disk_db.components
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+		}
+	}
+
+	// Copy source_defaults table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("source_defaults") {
+		// Try with all new columns first
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO source_defaults
-			SELECT * FROM disk_db.source_defaults
+			(id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			SELECT id, name, url, priority, enabled, created_at, updated_at,
+			       component_id, retrieval_method, url_template
+			FROM disk_db.source_defaults
 		`)
+		if err != nil {
+			// Fallback: try without new columns (old schema)
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO source_defaults
+				(id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
+				SELECT id, name, url, priority, enabled, created_at, updated_at, 'release'
+				FROM disk_db.source_defaults
+			`)
+		}
 		if err != nil {
 			loadErrors = append(loadErrors, fmt.Sprintf("source_defaults: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
@@ -293,16 +320,83 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
-	// Copy user_sources table (references users)
+	// Copy user_sources table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("user_sources") {
+		// Try with all new columns first
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO user_sources
-			SELECT * FROM disk_db.user_sources
+			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
+			       component_id, retrieval_method, url_template
+			FROM disk_db.user_sources
 		`)
+		if err != nil {
+			// Fallback: try without new columns (old schema)
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO user_sources
+				(id, owner_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
+				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at, 'release'
+				FROM disk_db.user_sources
+			`)
+		}
 		if err != nil {
 			loadErrors = append(loadErrors, fmt.Sprintf("user_sources: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
 			loadedTables = append(loadedTables, fmt.Sprintf("user_sources(%d)", rows))
+		}
+	}
+
+	// Copy distribution_source_overrides table
+	if d.tableExistsInDiskDB("distribution_source_overrides") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO distribution_source_overrides
+			SELECT * FROM disk_db.distribution_source_overrides
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("distribution_source_overrides: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("distribution_source_overrides(%d)", rows))
+		}
+	}
+
+	// Copy download_jobs table (handle schema migration for new columns)
+	if d.tableExistsInDiskDB("download_jobs") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO download_jobs
+			(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+			 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
+			 created_at, started_at, completed_at, artifact_path, checksum, error_message,
+			 retry_count, max_retries)
+			SELECT id, distribution_id,
+			       COALESCE(owner_id, '') as owner_id,
+			       component_id,
+			       COALESCE(component_name, component_id) as component_name,
+			       source_id, source_type,
+			       COALESCE(retrieval_method, 'release') as retrieval_method,
+			       resolved_url, version, status, progress_bytes, total_bytes,
+			       created_at, started_at, completed_at, artifact_path, checksum, error_message,
+			       retry_count, max_retries
+			FROM disk_db.download_jobs
+		`)
+		if err != nil {
+			// Fallback: try without new columns
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO download_jobs
+				(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+				 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
+				 created_at, started_at, completed_at, artifact_path, checksum, error_message,
+				 retry_count, max_retries)
+				SELECT id, distribution_id, '', component_id, component_id, source_id, source_type,
+				       'release', resolved_url, version, status, progress_bytes, total_bytes,
+				       created_at, started_at, completed_at, artifact_path, checksum, error_message,
+				       retry_count, max_retries
+				FROM disk_db.download_jobs
+			`)
+		}
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("download_jobs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("download_jobs(%d)", rows))
 		}
 	}
 

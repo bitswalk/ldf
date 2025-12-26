@@ -18,6 +18,7 @@ export interface Distribution {
   version: string;
   status: DistributionStatus;
   visibility: DistributionVisibility;
+  config?: DistributionConfig;
   source_url?: string;
   checksum?: string;
   size_bytes: number;
@@ -149,6 +150,7 @@ export interface UpdateDistributionRequest {
   source_url?: string;
   checksum?: string;
   size_bytes?: number;
+  config?: DistributionConfig;
 }
 
 export type UpdateResult =

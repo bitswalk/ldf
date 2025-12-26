@@ -1,0 +1,1 @@
+export { DistributionDetail } from "./DistributionDetail";

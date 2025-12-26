@@ -33,6 +33,7 @@ interface UserInfo {
 interface SourcesProps {
   isLoggedIn?: boolean;
   user?: UserInfo | null;
+  onViewSource?: (sourceId: string, sourceType: "default" | "user") => void;
 }
 
 export const Sources: Component<SourcesProps> = (props) => {
@@ -84,6 +85,9 @@ export const Sources: Component<SourcesProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
+        component_id: formData.component_id,
+        retrieval_method: formData.retrieval_method,
+        url_template: formData.url_template,
         priority: formData.priority,
         enabled: formData.enabled,
       };
@@ -118,17 +122,22 @@ export const Sources: Component<SourcesProps> = (props) => {
   };
 
   const handleEditSource = (source: Source) => {
-    if (source.is_system) {
-      return;
-    }
-    setEditingSource(source);
-    setIsModalOpen(true);
+    // Navigate to source details view for editing
+    const sourceType = source.is_system ? "default" : "user";
+    props.onViewSource?.(source.id, sourceType);
+  };
+
+  const handleViewSource = (source: Source) => {
+    const sourceType = source.is_system ? "default" : "user";
+    props.onViewSource?.(source.id, sourceType);
   };
 
   const openDeleteModal = (srcs: Source[]) => {
     const userSources = srcs.filter((s) => !s.is_system);
     if (userSources.length === 0) {
-      setError("Cannot delete system sources. Only user sources can be deleted.");
+      setError(
+        "Cannot delete system sources. Only user sources can be deleted.",
+      );
       return;
     }
     setSourcesToDelete(userSources);
@@ -207,8 +216,8 @@ export const Sources: Component<SourcesProps> = (props) => {
     if (result.success) {
       setSources((prev) =>
         prev.map((s) =>
-          s.id === source.id ? { ...s, enabled: !s.enabled } : s
-        )
+          s.id === source.id ? { ...s, enabled: !s.enabled } : s,
+        ),
       );
     } else {
       setError(result.message);
@@ -242,13 +251,21 @@ export const Sources: Component<SourcesProps> = (props) => {
 
   const ActionsCell: Component<{ value: any; row: Source }> = (cellProps) => {
     const canEdit = () => {
-      return !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin());
+      return (
+        !cellProps.row.is_system &&
+        (props.user?.id === cellProps.row.owner_id || isAdmin())
+      );
+    };
+
+    const canEditSystem = () => {
+      return cellProps.row.is_system && isAdmin();
     };
 
     const canDelete = () => {
-      return !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin());
+      return (
+        !cellProps.row.is_system &&
+        (props.user?.id === cellProps.row.owner_id || isAdmin())
+      );
     };
 
     return (
@@ -261,7 +278,14 @@ export const Sources: Component<SourcesProps> = (props) => {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <Show when={canEdit()}>
+          <DropdownMenuItem
+            onSelect={() => handleViewSource(cellProps.row)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>View Details</span>
+          </DropdownMenuItem>
+          <Show when={canEdit() || canEditSystem()}>
             <DropdownMenuItem
               onSelect={() => handleEditSource(cellProps.row)}
               class="gap-2"
@@ -269,6 +293,8 @@ export const Sources: Component<SourcesProps> = (props) => {
               <Icon name="pencil" size="sm" />
               <span>Edit</span>
             </DropdownMenuItem>
+          </Show>
+          <Show when={canEdit()}>
             <DropdownMenuItem
               onSelect={() => handleToggleEnabled(cellProps.row)}
               class="gap-2"
@@ -287,12 +313,6 @@ export const Sources: Component<SourcesProps> = (props) => {
             >
               <Icon name="trash" size="sm" />
               <span>Delete</span>
-            </DropdownMenuItem>
-          </Show>
-          <Show when={cellProps.row.is_system}>
-            <DropdownMenuItem disabled class="gap-2 text-muted-foreground">
-              <Icon name="lock" size="sm" />
-              <span>System source (read-only)</span>
             </DropdownMenuItem>
           </Show>
         </DropdownMenuContent>
@@ -333,7 +353,9 @@ export const Sources: Component<SourcesProps> = (props) => {
               </Show>
               <button
                 onClick={handleDeleteSelected}
-                disabled={selectedSources().filter((s) => !s.is_system).length === 0}
+                disabled={
+                  selectedSources().filter((s) => !s.is_system).length === 0
+                }
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
                   selectedSources().filter((s) => !s.is_system).length > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -341,7 +363,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                 }`}
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete ({selectedSources().filter((s) => !s.is_system).length})</span>
+                <span>
+                  Delete ({selectedSources().filter((s) => !s.is_system).length}
+                  )
+                </span>
               </button>
               <button
                 onClick={handleCreateSource}
@@ -376,7 +401,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                       borderStyle="dashed"
                       header={{ title: "Add your first source" }}
                     >
-                      <button onClick={handleCreateSource} class="cursor-pointer">
+                      <button
+                        onClick={handleCreateSource}
+                        class="cursor-pointer"
+                      >
                         <Icon
                           name="plus"
                           size="2xl"
@@ -394,6 +422,14 @@ export const Sources: Component<SourcesProps> = (props) => {
                       label: "Name",
                       sortable: true,
                       class: "font-medium",
+                      render: (name: string, row: Source) => (
+                        <button
+                          onClick={() => handleViewSource(row)}
+                          class="text-left hover:text-primary hover:underline transition-colors"
+                        >
+                          {name}
+                        </button>
+                      ),
                     },
                     {
                       key: "url",
@@ -449,7 +485,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                 class="px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <Icon name="trash" size="sm" />
-                <span>Delete Selected ({selectedSources().filter((s) => !s.is_system).length})</span>
+                <span>
+                  Delete Selected (
+                  {selectedSources().filter((s) => !s.is_system).length})
+                </span>
               </button>
             </footer>
           </Show>
@@ -462,6 +501,7 @@ export const Sources: Component<SourcesProps> = (props) => {
         title={editingSource() ? "Edit Source" : "Add New Source"}
       >
         <SourceForm
+          key={editingSource()?.id || "new"}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}

@@ -41,6 +41,7 @@ type ThemePreference = "system" | "light" | "dark";
 
 interface SettingsProps {
   onBack?: () => void;
+  onViewSource?: (sourceId: string, sourceType: "default" | "user") => void;
 }
 
 export const Settings: Component<SettingsProps> = (props) => {
@@ -145,8 +146,8 @@ export const Settings: Component<SettingsProps> = (props) => {
   };
 
   const handleEditSource = (source: SourceDefault) => {
-    setEditingSource(source);
-    setSourceModalOpen(true);
+    // Navigate to source details view instead of opening modal
+    props.onViewSource?.(source.id, "default");
   };
 
   const handleSourceFormSubmit = async (formData: CreateSourceRequest) => {
@@ -159,6 +160,9 @@ export const Settings: Component<SettingsProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
+        component_id: formData.component_id,
+        retrieval_method: formData.retrieval_method,
+        url_template: formData.url_template,
         priority: formData.priority,
         enabled: formData.enabled,
       };
@@ -461,9 +465,14 @@ export const Settings: Component<SettingsProps> = (props) => {
                       <div class="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-border">
                         <div class="flex-1 min-w-0">
                           <div class="flex items-center gap-2">
-                            <span class="font-medium truncate">
+                            <button
+                              onClick={() =>
+                                props.onViewSource?.(source.id, "default")
+                              }
+                              class="font-medium truncate hover:text-primary hover:underline transition-colors text-left"
+                            >
                               {source.name}
-                            </span>
+                            </button>
                             <span
                               class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                 source.enabled
@@ -582,6 +591,7 @@ export const Settings: Component<SettingsProps> = (props) => {
         title={editingSource() ? "Edit Default Source" : "Add Default Source"}
       >
         <SourceForm
+          key={editingSource()?.id || "new"}
           onSubmit={handleSourceFormSubmit}
           onCancel={handleSourceFormCancel}
           initialData={
