@@ -34,7 +34,7 @@ export const Modal: Component<ModalProps> = (props) => {
     <>
       <Show when={props.isOpen}>
         <section
-          class="absolute inset-0 z-[99] flex justify-end"
+          class="fixed inset-0 z-[99] flex justify-end"
           onClick={handleBackdropClick}
           style={{ "pointer-events": "auto" }}
         >
@@ -44,9 +44,10 @@ export const Modal: Component<ModalProps> = (props) => {
           {/* Side panel */}
           <article
             ref={panelRef}
-            class="relative w-[90vw] md:w-[50vw] lg:w-[40vw] h-full bg-card border-l border-border shadow-lg overflow-y-auto flex flex-col"
+            class="relative w-[90vw] md:w-[50vw] lg:w-[40vw] bg-card border-l border-border shadow-lg overflow-y-auto flex flex-col mt-12"
             style={{
               animation: "slideInRight 0.3s ease-out",
+              height: "calc(100% - 3rem)",
             }}
           >
             {/* Header */}
