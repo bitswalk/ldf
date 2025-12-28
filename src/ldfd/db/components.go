@@ -22,7 +22,8 @@ func NewComponentRepository(db *Database) *ComponentRepository {
 func (r *ComponentRepository) List() ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, created_at, updated_at
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
 		FROM components
 		ORDER BY category ASC, name ASC
 	`
@@ -35,11 +36,50 @@ func (r *ComponentRepository) List() ([]Component, error) {
 	return r.scanComponents(rows)
 }
 
+// ListByOwner retrieves all components owned by a specific user
+func (r *ComponentRepository) ListByOwner(ownerID string) ([]Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
+		FROM components
+		WHERE owner_id = ?
+		ORDER BY category ASC, name ASC
+	`
+	rows, err := r.db.DB().Query(query, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list components by owner: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanComponents(rows)
+}
+
+// ListSystem retrieves all system (default) components
+func (r *ComponentRepository) ListSystem() ([]Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
+		FROM components
+		WHERE is_system = 1
+		ORDER BY category ASC, name ASC
+	`
+	rows, err := r.db.DB().Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list system components: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanComponents(rows)
+}
+
 // GetByID retrieves a component by ID
 func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, created_at, updated_at
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
 		FROM components
 		WHERE id = ?
 	`
@@ -51,7 +91,8 @@ func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, created_at, updated_at
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
 		FROM components
 		WHERE name = ?
 	`
@@ -63,7 +104,8 @@ func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 func (r *ComponentRepository) GetByCategory(category string) ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, created_at, updated_at
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
 		FROM components
 		WHERE category = ?
 		ORDER BY name ASC
@@ -87,14 +129,22 @@ func (r *ComponentRepository) Create(c *Component) error {
 	c.CreatedAt = now
 	c.UpdatedAt = now
 
+	// Handle nullable owner_id
+	var ownerID interface{}
+	if c.OwnerID != "" {
+		ownerID = c.OwnerID
+	}
+
 	query := `
 		INSERT INTO components (id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
 		c.ID, c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
-		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.CreatedAt, c.UpdatedAt,
+		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.IsSystem, ownerID,
+		c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create component: %w", err)
@@ -178,12 +228,12 @@ func (r *ComponentRepository) GetCategories() ([]string, error) {
 // scanComponent scans a single component row
 func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	var c Component
-	var description, artifactPattern, defaultTemplate, githubTemplate sql.NullString
+	var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
 
 	err := row.Scan(
 		&c.ID, &c.Name, &c.Category, &c.DisplayName,
 		&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-		&c.IsOptional, &c.CreatedAt, &c.UpdatedAt,
+		&c.IsOptional, &c.IsSystem, &ownerID, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -196,6 +246,7 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	c.ArtifactPattern = artifactPattern.String
 	c.DefaultURLTemplate = defaultTemplate.String
 	c.GitHubNormalizedTemplate = githubTemplate.String
+	c.OwnerID = ownerID.String
 
 	return &c, nil
 }
@@ -206,12 +257,12 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 
 	for rows.Next() {
 		var c Component
-		var description, artifactPattern, defaultTemplate, githubTemplate sql.NullString
+		var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
 
 		if err := rows.Scan(
 			&c.ID, &c.Name, &c.Category, &c.DisplayName,
 			&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-			&c.IsOptional, &c.CreatedAt, &c.UpdatedAt,
+			&c.IsOptional, &c.IsSystem, &ownerID, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan component: %w", err)
 		}
@@ -220,6 +271,7 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		c.ArtifactPattern = artifactPattern.String
 		c.DefaultURLTemplate = defaultTemplate.String
 		c.GitHubNormalizedTemplate = githubTemplate.String
+		c.OwnerID = ownerID.String
 
 		components = append(components, c)
 	}

@@ -111,6 +111,25 @@
         "title": "Delete Default Source",
         "confirm": "Are you sure you want to delete the default source \"{{ name }}\"? This action cannot be undone and will affect all users."
       }
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database management and maintenance options",
+      "reset": {
+        "title": "Reset Database",
+        "description": "Reset the database to its default state. This will delete all user data, distributions, and custom configurations.",
+        "button": "Reset Database",
+        "invalidConfirmation": "Please type RESET_DATABASE to confirm.",
+        "modal": {
+          "title": "Reset Database to Defaults",
+          "warning": "This action cannot be undone!",
+          "description": "All user accounts, distributions, custom components, sources, and settings will be permanently deleted. The database will be restored to its initial state with default system components and roles.",
+          "confirmLabel": "Type RESET_DATABASE to confirm",
+          "confirmHint": "This confirmation is required to prevent accidental data loss.",
+          "confirmButton": "Reset Database",
+          "resetting": "Resetting..."
+        }
+      }
     }
   },
   "account": {

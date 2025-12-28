@@ -25,6 +25,7 @@ import {
   updateServerSetting,
   isRootUser,
   setDevMode,
+  resetDatabase,
   type ServerSetting,
 } from "../../services/settings";
 import {
@@ -92,6 +93,12 @@ export const Settings: Component<SettingsProps> = (props) => {
     name: string;
   } | null>(null);
   const [deletingLangPack, setDeletingLangPack] = createSignal(false);
+
+  // Database reset state
+  const [resetDbModalOpen, setResetDbModalOpen] = createSignal(false);
+  const [resetDbConfirmation, setResetDbConfirmation] = createSignal("");
+  const [resettingDb, setResettingDb] = createSignal(false);
+  const [resetDbError, setResetDbError] = createSignal<string | null>(null);
 
   const loadServerSettings = async () => {
     if (!isRootUser()) return;
@@ -229,6 +236,40 @@ export const Settings: Component<SettingsProps> = (props) => {
   const cancelDeleteLangPack = () => {
     setDeleteLangPackModalOpen(false);
     setLangPackToDelete(null);
+  };
+
+  const openResetDbModal = () => {
+    setResetDbConfirmation("");
+    setResetDbError(null);
+    setResetDbModalOpen(true);
+  };
+
+  const cancelResetDb = () => {
+    setResetDbModalOpen(false);
+    setResetDbConfirmation("");
+    setResetDbError(null);
+  };
+
+  const confirmResetDb = async () => {
+    if (resetDbConfirmation() !== "RESET_DATABASE") {
+      setResetDbError(t("settings.server.database.reset.invalidConfirmation"));
+      return;
+    }
+
+    setResettingDb(true);
+    setResetDbError(null);
+
+    const result = await resetDatabase("RESET_DATABASE");
+
+    setResettingDb(false);
+
+    if (result.success) {
+      setResetDbModalOpen(false);
+      // Reload the page to reflect the reset state
+      window.location.reload();
+    } else {
+      setResetDbError(result.message);
+    }
   };
 
   const handleAddSource = () => {
@@ -429,6 +470,10 @@ export const Settings: Component<SettingsProps> = (props) => {
               <SummaryNavItem
                 id="default-sources"
                 label={t("settings.server.defaultSources.title")}
+              />
+              <SummaryNavItem
+                id="database-management"
+                label={t("settings.server.database.title")}
               />
             </Show>
           </SummaryCategory>
@@ -827,6 +872,25 @@ export const Settings: Component<SettingsProps> = (props) => {
             </div>
           </SummarySection>
 
+          {/* Database Management Section (Root users only) */}
+          <SummarySection
+            id="database-management"
+            title={t("settings.server.database.title")}
+            description={t("settings.server.database.description")}
+          >
+            <SummaryItem
+              title={t("settings.server.database.reset.title")}
+              description={t("settings.server.database.reset.description")}
+            >
+              <SummaryButton
+                onClick={openResetDbModal}
+                class="text-destructive border-destructive hover:bg-destructive/10"
+              >
+                {t("settings.server.database.reset.button")}
+              </SummaryButton>
+            </SummaryItem>
+          </SummarySection>
+
           {/* Profile Section */}
           <SummarySection
             id="profile"
@@ -997,6 +1061,75 @@ export const Settings: Component<SettingsProps> = (props) => {
                 {deletingLangPack()
                   ? t("common.status.deleting")
                   : t("common.actions.delete")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
+
+      {/* Database Reset Confirmation Modal */}
+      <Modal
+        isOpen={resetDbModalOpen()}
+        onClose={cancelResetDb}
+        title={t("settings.server.database.reset.modal.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <div class="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p class="text-destructive font-medium mb-2">
+              {t("settings.server.database.reset.modal.warning")}
+            </p>
+            <p class="text-sm text-muted-foreground">
+              {t("settings.server.database.reset.modal.description")}
+            </p>
+          </div>
+
+          <Show when={resetDbError()}>
+            <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+              {resetDbError()}
+            </div>
+          </Show>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="reset-confirmation">
+              {t("settings.server.database.reset.modal.confirmLabel")}
+            </label>
+            <input
+              id="reset-confirmation"
+              type="text"
+              class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-destructive transition-colors font-mono"
+              placeholder="RESET_DATABASE"
+              value={resetDbConfirmation()}
+              onInput={(e) => setResetDbConfirmation(e.target.value)}
+            />
+            <p class="text-xs text-muted-foreground">
+              {t("settings.server.database.reset.modal.confirmHint")}
+            </p>
+          </div>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={cancelResetDb}
+              disabled={resettingDb()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmResetDb}
+              disabled={
+                resettingDb() || resetDbConfirmation() !== "RESET_DATABASE"
+              }
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={resettingDb()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {resettingDb()
+                  ? t("settings.server.database.reset.modal.resetting")
+                  : t("settings.server.database.reset.modal.confirmButton")}
               </span>
             </button>
           </nav>

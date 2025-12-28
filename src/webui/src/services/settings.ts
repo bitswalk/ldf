@@ -343,3 +343,89 @@ export async function setDevMode(
   }
   return result;
 }
+
+export type ResetDatabaseResult =
+  | { success: true; message: string }
+  | {
+      success: false;
+      error:
+        | "unauthorized"
+        | "forbidden"
+        | "invalid_request"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+/**
+ * Reset the database to its default state (requires root access)
+ * This is a destructive operation that deletes all user data
+ */
+export async function resetDatabase(
+  confirmation: string,
+): Promise<ResetDatabaseResult> {
+  const url = getApiUrl("/settings/database/reset");
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ confirmation }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        message: data.message,
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Root access required",
+      };
+    }
+
+    if (response.status === 400) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: "invalid_request",
+        message: errorData.message || "Invalid confirmation",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to reset database",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}

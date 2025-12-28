@@ -12,6 +12,8 @@ export interface Component {
   default_url_template?: string;
   github_normalized_template?: string;
   is_optional: boolean;
+  is_system: boolean;
+  owner_id?: string;
   created_at: string;
   updated_at: string;
 }

@@ -67,7 +67,20 @@ func New(cfg Config) (*Database, error) {
 		persistPath: persistPath,
 	}
 
-	// Run migrations to initialize schema
+	// IMPORTANT: Load schema_migrations from disk BEFORE running migrations
+	// This ensures we don't re-run migrations (including seeding) that were already applied
+	diskExists := false
+	if cfg.LoadOnStart && persistPath != "" {
+		if _, err := os.Stat(persistPath); err == nil {
+			diskExists = true
+			if err := database.loadSchemaMigrations(); err != nil {
+				// Log warning but continue - will run all migrations fresh
+				fmt.Fprintf(os.Stderr, "warning: failed to load schema_migrations from disk: %v\n", err)
+			}
+		}
+	}
+
+	// Run migrations to initialize schema (will skip already-applied ones from disk)
 	runner := migrations.NewRunner(db)
 	if err := runner.Run(); err != nil {
 		db.Close()
@@ -75,12 +88,10 @@ func New(cfg Config) (*Database, error) {
 	}
 
 	// Load existing data from disk if configured and file exists
-	if cfg.LoadOnStart && persistPath != "" {
-		if _, err := os.Stat(persistPath); err == nil {
-			if err := database.LoadFromDisk(); err != nil {
-				// Log warning but don't fail - start fresh
-				fmt.Fprintf(os.Stderr, "warning: failed to load database from disk: %v\n", err)
-			}
+	if diskExists {
+		if err := database.LoadFromDisk(); err != nil {
+			// Log warning but don't fail - start fresh
+			fmt.Fprintf(os.Stderr, "warning: failed to load database from disk: %v\n", err)
 		}
 	}
 
@@ -88,6 +99,61 @@ func New(cfg Config) (*Database, error) {
 	// to avoid race conditions with multiple signal handlers
 
 	return database, nil
+}
+
+// loadSchemaMigrations loads only the schema_migrations table from disk
+// This must be called BEFORE running migrations to prevent re-seeding
+func (d *Database) loadSchemaMigrations() error {
+	if d.persistPath == "" {
+		return nil
+	}
+
+	// Open the disk database
+	diskDB, err := sql.Open("sqlite3", d.persistPath)
+	if err != nil {
+		return fmt.Errorf("failed to open disk database: %w", err)
+	}
+	defer diskDB.Close()
+
+	// Check if schema_migrations table exists in disk DB
+	var tableName string
+	err = diskDB.QueryRow(`
+		SELECT name FROM sqlite_master
+		WHERE type='table' AND name='schema_migrations'
+	`).Scan(&tableName)
+	if err != nil {
+		// Table doesn't exist - this is a fresh database
+		return nil
+	}
+
+	// Create schema_migrations table in memory if it doesn't exist
+	_, err = d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version INTEGER PRIMARY KEY,
+			description TEXT NOT NULL,
+			applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create schema_migrations table: %w", err)
+	}
+
+	// Copy schema_migrations from disk to memory
+	attachQuery := fmt.Sprintf("ATTACH DATABASE '%s' AS disk_db", d.persistPath)
+	if _, err := d.db.Exec(attachQuery); err != nil {
+		return fmt.Errorf("failed to attach disk database: %w", err)
+	}
+	defer d.db.Exec("DETACH DATABASE disk_db")
+
+	_, err = d.db.Exec(`
+		INSERT OR REPLACE INTO schema_migrations
+		SELECT * FROM disk_db.schema_migrations
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to copy schema_migrations: %w", err)
+	}
+
+	return nil
 }
 
 // DB returns the underlying sql.DB for direct queries
@@ -282,9 +348,15 @@ func (d *Database) LoadFromDisk() error {
 
 	// Copy components table FIRST (source_defaults and user_sources have FK references to components)
 	// Must be loaded before sources to satisfy foreign key constraints
+	// We DELETE then INSERT to ensure deleted components stay deleted (not re-seeded)
 	if d.tableExistsInDiskDB("components") {
+		// First, delete all components from memory (seeded by migrations)
+		if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
+		}
+		// Then insert only what exists on disk
 		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO components
+			INSERT INTO components
 			SELECT * FROM disk_db.components
 		`)
 		if err != nil {
@@ -462,4 +534,76 @@ func (d *Database) GetAllSettings() (map[string]string, error) {
 	}
 
 	return settings, nil
+}
+
+// ResetToDefaults resets the database to its default state by:
+// 1. Clearing all tables except schema_migrations
+// 2. Re-running seeding migrations
+// This is a destructive operation that should only be performed by root users.
+func (d *Database) ResetToDefaults() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	// Delete the disk database file if it exists
+	if d.persistPath != "" {
+		if _, err := os.Stat(d.persistPath); err == nil {
+			if err := os.Remove(d.persistPath); err != nil {
+				return fmt.Errorf("failed to delete disk database: %w", err)
+			}
+		}
+	}
+
+	// Get list of all tables except sqlite internal tables and schema_migrations
+	rows, err := d.db.Query(`
+		SELECT name FROM sqlite_master
+		WHERE type='table'
+		AND name NOT LIKE 'sqlite_%'
+		AND name != 'schema_migrations'
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to list tables: %w", err)
+	}
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return fmt.Errorf("failed to scan table name: %w", err)
+		}
+		tables = append(tables, name)
+	}
+	rows.Close()
+
+	// Disable foreign keys temporarily to allow deletion in any order
+	if _, err := d.db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("failed to disable foreign keys: %w", err)
+	}
+
+	// Delete all data from all tables
+	for _, table := range tables {
+		if _, err := d.db.Exec(fmt.Sprintf("DELETE FROM %s", table)); err != nil {
+			// Re-enable foreign keys before returning
+			d.db.Exec("PRAGMA foreign_keys = ON")
+			return fmt.Errorf("failed to clear table %s: %w", table, err)
+		}
+	}
+
+	// Re-enable foreign keys
+	if _, err := d.db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		return fmt.Errorf("failed to re-enable foreign keys: %w", err)
+	}
+
+	// Clear schema_migrations to force re-running all migrations
+	if _, err := d.db.Exec("DELETE FROM schema_migrations"); err != nil {
+		return fmt.Errorf("failed to clear schema_migrations: %w", err)
+	}
+
+	// Re-run all migrations to seed default data
+	runner := migrations.NewRunner(d.db)
+	if err := runner.Run(); err != nil {
+		return fmt.Errorf("failed to run migrations after reset: %w", err)
+	}
+
+	return nil
 }

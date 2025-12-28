@@ -169,6 +169,8 @@ type Component struct {
 	DefaultURLTemplate       string    `json:"default_url_template,omitempty"`
 	GitHubNormalizedTemplate string    `json:"github_normalized_template,omitempty"`
 	IsOptional               bool      `json:"is_optional"`
+	IsSystem                 bool      `json:"is_system"`
+	OwnerID                  string    `json:"owner_id,omitempty"`
 	CreatedAt                time.Time `json:"created_at"`
 	UpdatedAt                time.Time `json:"updated_at"`
 }

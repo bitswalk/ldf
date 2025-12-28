@@ -111,6 +111,25 @@
         "title": "Supprimer la source par defaut",
         "confirm": "Etes-vous sur de vouloir supprimer la source par defaut \"{{ name }}\" ? Cette action est irreversible et affectera tous les utilisateurs."
       }
+    },
+    "database": {
+      "title": "Base de donnees",
+      "description": "Options de gestion et de maintenance de la base de donnees",
+      "reset": {
+        "title": "Reinitialiser la base de donnees",
+        "description": "Reinitialiser la base de donnees a son etat par defaut. Cela supprimera toutes les donnees utilisateur, distributions et configurations personnalisees.",
+        "button": "Reinitialiser la base de donnees",
+        "invalidConfirmation": "Veuillez taper RESET_DATABASE pour confirmer.",
+        "modal": {
+          "title": "Reinitialiser la base de donnees",
+          "warning": "Cette action est irreversible !",
+          "description": "Tous les comptes utilisateur, distributions, composants personnalises, sources et parametres seront definitivement supprimes. La base de donnees sera restauree a son etat initial avec les composants et roles systeme par defaut.",
+          "confirmLabel": "Tapez RESET_DATABASE pour confirmer",
+          "confirmHint": "Cette confirmation est necessaire pour eviter la perte accidentelle de donnees.",
+          "confirmButton": "Reinitialiser",
+          "resetting": "Reinitialisation..."
+        }
+      }
     }
   },
   "account": {

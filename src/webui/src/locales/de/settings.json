@@ -111,6 +111,25 @@
         "title": "Standardquelle loschen",
         "confirm": "Sind Sie sicher, dass Sie die Standardquelle \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden und betrifft alle Benutzer."
       }
+    },
+    "database": {
+      "title": "Datenbank",
+      "description": "Datenbankverwaltung und Wartungsoptionen",
+      "reset": {
+        "title": "Datenbank zurucksetzen",
+        "description": "Die Datenbank auf den Standardzustand zurucksetzen. Alle Benutzerdaten, Distributionen und benutzerdefinierten Konfigurationen werden geloscht.",
+        "button": "Datenbank zurucksetzen",
+        "invalidConfirmation": "Bitte geben Sie RESET_DATABASE zur Bestatigung ein.",
+        "modal": {
+          "title": "Datenbank auf Standard zurucksetzen",
+          "warning": "Diese Aktion kann nicht ruckgangig gemacht werden!",
+          "description": "Alle Benutzerkonten, Distributionen, benutzerdefinierten Komponenten, Quellen und Einstellungen werden dauerhaft geloscht. Die Datenbank wird auf den Ausgangszustand mit Standardsystemkomponenten und -rollen zuruckgesetzt.",
+          "confirmLabel": "Geben Sie RESET_DATABASE zur Bestatigung ein",
+          "confirmHint": "Diese Bestatigung ist erforderlich, um versehentlichen Datenverlust zu vermeiden.",
+          "confirmButton": "Zurucksetzen",
+          "resetting": "Wird zuruckgesetzt..."
+        }
+      }
     }
   },
   "account": {
