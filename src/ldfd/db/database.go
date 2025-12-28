@@ -67,20 +67,8 @@ func New(cfg Config) (*Database, error) {
 		persistPath: persistPath,
 	}
 
-	// IMPORTANT: Load schema_migrations from disk BEFORE running migrations
-	// This ensures we don't re-run migrations (including seeding) that were already applied
-	diskExists := false
-	if cfg.LoadOnStart && persistPath != "" {
-		if _, err := os.Stat(persistPath); err == nil {
-			diskExists = true
-			if err := database.loadSchemaMigrations(); err != nil {
-				// Log warning but continue - will run all migrations fresh
-				fmt.Fprintf(os.Stderr, "warning: failed to load schema_migrations from disk: %v\n", err)
-			}
-		}
-	}
-
-	// Run migrations to initialize schema (will skip already-applied ones from disk)
+	// Run ALL migrations to initialize schema in-memory
+	// This creates all tables and seeds default data
 	runner := migrations.NewRunner(db)
 	if err := runner.Run(); err != nil {
 		db.Close()
@@ -88,10 +76,14 @@ func New(cfg Config) (*Database, error) {
 	}
 
 	// Load existing data from disk if configured and file exists
-	if diskExists {
-		if err := database.LoadFromDisk(); err != nil {
-			// Log warning but don't fail - start fresh
-			fmt.Fprintf(os.Stderr, "warning: failed to load database from disk: %v\n", err)
+	// This will REPLACE the seeded data with actual user data from disk
+	// The LoadFromDisk method handles this by deleting seeded data first
+	if cfg.LoadOnStart && persistPath != "" {
+		if _, err := os.Stat(persistPath); err == nil {
+			if err := database.LoadFromDisk(); err != nil {
+				// Log warning but don't fail - start fresh
+				fmt.Fprintf(os.Stderr, "warning: failed to load database from disk: %v\n", err)
+			}
 		}
 	}
 
@@ -350,19 +342,60 @@ func (d *Database) LoadFromDisk() error {
 	// Must be loaded before sources to satisfy foreign key constraints
 	// We DELETE then INSERT to ensure deleted components stay deleted (not re-seeded)
 	if d.tableExistsInDiskDB("components") {
-		// First, delete all components from memory (seeded by migrations)
-		if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
-		}
-		// Then insert only what exists on disk
-		result, err := d.db.Exec(`
-			INSERT INTO components
-			SELECT * FROM disk_db.components
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+		// Check if the disk schema is compatible by looking for the 'is_optional' column
+		// (this is a key column in the current components schema)
+		var hasIsOptionalCol int
+		d.db.QueryRow(`
+			SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_optional'
+		`).Scan(&hasIsOptionalCol)
+
+		if hasIsOptionalCol > 0 {
+			// Compatible schema - delete seeded components and load from disk
+			// ON DELETE CASCADE handles cleanup of related tables (download_jobs,
+			// distribution_source_overrides), and ON DELETE SET NULL handles
+			// source_defaults and user_sources
+			if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
+			}
+			// Insert from disk (handle schema migration for is_system and owner_id)
+			// Schema: id, name, category, display_name, description, artifact_pattern,
+			//         default_url_template, github_normalized_template, is_optional,
+			//         created_at, updated_at, is_system, owner_id
+			result, err := d.db.Exec(`
+				INSERT INTO components
+				(id, name, category, display_name, description, artifact_pattern,
+				 default_url_template, github_normalized_template, is_optional,
+				 created_at, updated_at, is_system, owner_id)
+				SELECT id, name, category, display_name, description, artifact_pattern,
+				       default_url_template, github_normalized_template, is_optional,
+				       created_at, updated_at,
+				       COALESCE(is_system, 0) as is_system,
+				       NULLIF(owner_id, '') as owner_id
+				FROM disk_db.components
+			`)
+			if err != nil {
+				// Fallback: try with old schema (no is_system, owner_id columns on disk)
+				result, err = d.db.Exec(`
+					INSERT INTO components
+					(id, name, category, display_name, description, artifact_pattern,
+					 default_url_template, github_normalized_template, is_optional,
+					 created_at, updated_at, is_system, owner_id)
+					SELECT id, name, category, display_name, description, artifact_pattern,
+					       default_url_template, github_normalized_template, is_optional,
+					       created_at, updated_at,
+					       0 as is_system,
+					       NULL as owner_id
+					FROM disk_db.components
+				`)
+			}
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+			}
+		} else {
+			// Incompatible schema - keep seeded components from migrations
+			fmt.Fprintf(os.Stderr, "INFO: Components table schema changed, using default components\n")
 		}
 	}
 
