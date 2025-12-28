@@ -41,6 +41,7 @@ func (r *Runner) registerAll() {
 		migration005AddDownloadManagerTables(),
 		migration006AddVersionSyncTables(),
 		migration007AddLanguagePacksTable(),
+		migration008RemoveComponentNameFromDownloadJobs(),
 	}
 
 	// Sort by version to ensure correct order

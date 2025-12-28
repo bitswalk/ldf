@@ -363,14 +363,13 @@ func (d *Database) LoadFromDisk() error {
 	if d.tableExistsInDiskDB("download_jobs") {
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO download_jobs
-			(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+			(id, distribution_id, owner_id, component_id, source_id, source_type,
 			 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
 			 created_at, started_at, completed_at, artifact_path, checksum, error_message,
 			 retry_count, max_retries)
 			SELECT id, distribution_id,
 			       COALESCE(owner_id, '') as owner_id,
 			       component_id,
-			       COALESCE(component_name, component_id) as component_name,
 			       source_id, source_type,
 			       COALESCE(retrieval_method, 'release') as retrieval_method,
 			       resolved_url, version, status, progress_bytes, total_bytes,
@@ -382,11 +381,11 @@ func (d *Database) LoadFromDisk() error {
 			// Fallback: try without new columns
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO download_jobs
-				(id, distribution_id, owner_id, component_id, component_name, source_id, source_type,
+				(id, distribution_id, owner_id, component_id, source_id, source_type,
 				 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
 				 created_at, started_at, completed_at, artifact_path, checksum, error_message,
 				 retry_count, max_retries)
-				SELECT id, distribution_id, '', component_id, component_id, source_id, source_type,
+				SELECT id, distribution_id, '', component_id, source_id, source_type,
 				       'release', resolved_url, version, status, progress_bytes, total_bytes,
 				       created_at, started_at, completed_at, artifact_path, checksum, error_message,
 				       retry_count, max_retries

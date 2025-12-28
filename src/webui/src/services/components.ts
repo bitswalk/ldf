@@ -87,6 +87,7 @@ export type UpdateResult =
       success: false;
       error:
         | "not_found"
+        | "conflict"
         | "forbidden"
         | "unauthorized"
         | "invalid_request"
@@ -457,6 +458,14 @@ export async function updateComponent(
         success: false,
         error: "invalid_request",
         message: data.message || "Invalid component data",
+      };
+    }
+
+    if (response.status === 409) {
+      return {
+        success: false,
+        error: "conflict",
+        message: "A component with this name already exists",
       };
     }
 

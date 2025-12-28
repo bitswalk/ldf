@@ -33,14 +33,14 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 	}
 
 	query := `
-		INSERT INTO download_jobs (id, distribution_id, owner_id, component_id, component_name,
+		INSERT INTO download_jobs (id, distribution_id, owner_id, component_id,
 			source_id, source_type, retrieval_method, resolved_url, version, status,
 			progress_bytes, total_bytes, created_at, started_at, completed_at,
 			artifact_path, checksum, error_message, retry_count, max_retries)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
-		job.ID, job.DistributionID, job.OwnerID, job.ComponentID, job.ComponentName,
+		job.ID, job.DistributionID, job.OwnerID, job.ComponentID,
 		job.SourceID, job.SourceType, job.RetrievalMethod, job.ResolvedURL, job.Version, job.Status,
 		job.ProgressBytes, job.TotalBytes, job.CreatedAt, job.StartedAt, job.CompletedAt,
 		job.ArtifactPath, job.Checksum, job.ErrorMessage, job.RetryCount, job.MaxRetries,
@@ -52,31 +52,26 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 	return nil
 }
 
+// selectJobsQuery is the base SELECT query with JOIN to get component name
+const selectJobsQuery = `
+	SELECT dj.id, dj.distribution_id, dj.owner_id, dj.component_id, c.name as component_name,
+		dj.source_id, dj.source_type, dj.retrieval_method, dj.resolved_url, dj.version, dj.status,
+		dj.progress_bytes, dj.total_bytes, dj.created_at, dj.started_at, dj.completed_at,
+		dj.artifact_path, dj.checksum, dj.error_message, dj.retry_count, dj.max_retries
+	FROM download_jobs dj
+	LEFT JOIN components c ON dj.component_id = c.id
+`
+
 // GetByID retrieves a download job by ID
 func (r *DownloadJobRepository) GetByID(id string) (*DownloadJob, error) {
-	query := `
-		SELECT id, distribution_id, owner_id, component_id, component_name,
-			source_id, source_type, retrieval_method, resolved_url, version, status,
-			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries
-		FROM download_jobs
-		WHERE id = ?
-	`
+	query := selectJobsQuery + ` WHERE dj.id = ?`
 	row := r.db.DB().QueryRow(query, id)
 	return r.scanJob(row)
 }
 
 // ListByDistribution retrieves all download jobs for a distribution
 func (r *DownloadJobRepository) ListByDistribution(distributionID string) ([]DownloadJob, error) {
-	query := `
-		SELECT id, distribution_id, owner_id, component_id, component_name,
-			source_id, source_type, retrieval_method, resolved_url, version, status,
-			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries
-		FROM download_jobs
-		WHERE distribution_id = ?
-		ORDER BY created_at DESC
-	`
+	query := selectJobsQuery + ` WHERE dj.distribution_id = ? ORDER BY dj.created_at DESC`
 	rows, err := r.db.DB().Query(query, distributionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list download jobs: %w", err)
@@ -88,15 +83,7 @@ func (r *DownloadJobRepository) ListByDistribution(distributionID string) ([]Dow
 
 // ListByStatus retrieves all download jobs with a specific status
 func (r *DownloadJobRepository) ListByStatus(status DownloadJobStatus) ([]DownloadJob, error) {
-	query := `
-		SELECT id, distribution_id, owner_id, component_id, component_name,
-			source_id, source_type, retrieval_method, resolved_url, version, status,
-			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries
-		FROM download_jobs
-		WHERE status = ?
-		ORDER BY created_at ASC
-	`
+	query := selectJobsQuery + ` WHERE dj.status = ? ORDER BY dj.created_at ASC`
 	rows, err := r.db.DB().Query(query, status)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list download jobs by status: %w", err)
@@ -113,15 +100,7 @@ func (r *DownloadJobRepository) ListPending() ([]DownloadJob, error) {
 
 // ListActive retrieves all active (pending, verifying, downloading) download jobs
 func (r *DownloadJobRepository) ListActive() ([]DownloadJob, error) {
-	query := `
-		SELECT id, distribution_id, owner_id, component_id, component_name,
-			source_id, source_type, retrieval_method, resolved_url, version, status,
-			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries
-		FROM download_jobs
-		WHERE status IN (?, ?, ?)
-		ORDER BY created_at ASC
-	`
+	query := selectJobsQuery + ` WHERE dj.status IN (?, ?, ?) ORDER BY dj.created_at ASC`
 	rows, err := r.db.DB().Query(query, JobStatusPending, JobStatusVerifying, JobStatusDownloading)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list active download jobs: %w", err)
@@ -334,10 +313,10 @@ func (r *DownloadJobRepository) DeleteByDistribution(distributionID string) erro
 func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 	var job DownloadJob
 	var startedAt, completedAt sql.NullTime
-	var artifactPath, checksum, errorMsg sql.NullString
+	var artifactPath, checksum, errorMsg, componentName sql.NullString
 
 	err := row.Scan(
-		&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &job.ComponentName,
+		&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &componentName,
 		&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 		&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
 		&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
@@ -358,6 +337,7 @@ func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 	job.ArtifactPath = artifactPath.String
 	job.Checksum = checksum.String
 	job.ErrorMessage = errorMsg.String
+	job.ComponentName = componentName.String
 
 	return &job, nil
 }
@@ -369,10 +349,10 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 	for rows.Next() {
 		var job DownloadJob
 		var startedAt, completedAt sql.NullTime
-		var artifactPath, checksum, errorMsg sql.NullString
+		var artifactPath, checksum, errorMsg, componentName sql.NullString
 
 		if err := rows.Scan(
-			&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &job.ComponentName,
+			&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &componentName,
 			&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 			&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
 			&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
@@ -389,6 +369,7 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 		job.ArtifactPath = artifactPath.String
 		job.Checksum = checksum.String
 		job.ErrorMessage = errorMsg.String
+		job.ComponentName = componentName.String
 
 		jobs = append(jobs, job)
 	}
