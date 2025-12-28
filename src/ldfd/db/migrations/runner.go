@@ -35,15 +35,6 @@ func NewRunner(db *sql.DB) *Runner {
 func (r *Runner) registerAll() {
 	r.migrations = []Migration{
 		migration001InitialSchema(),
-		migration002SeedDefaultRoles(),
-		migration003ConvertDistributionIDToUUID(),
-		migration004AddSourcesTables(),
-		migration005AddDownloadManagerTables(),
-		migration006AddVersionSyncTables(),
-		migration007AddLanguagePacksTable(),
-		migration008RemoveComponentNameFromDownloadJobs(),
-		migration009AddComponentOwnership(),
-		migration010AddCascadeDeleteToComponentFKs(),
 	}
 
 	// Sort by version to ensure correct order

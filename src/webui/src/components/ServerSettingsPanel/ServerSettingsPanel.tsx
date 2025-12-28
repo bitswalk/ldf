@@ -10,6 +10,7 @@ interface ServerSettingsPanelProps {
   updatingKeys: Set<string>;
   onUpdate: (key: string, value: string | number | boolean) => void;
   onRetry: () => void;
+  onResetDatabase?: () => void;
 }
 
 // Setting group configuration - defines the hierarchy and UI behavior
@@ -422,6 +423,7 @@ const SettingGroup: Component<{
   settings: ServerSetting[];
   updatingKeys: Set<string>;
   onUpdate: (key: string, value: string | number | boolean) => void;
+  onResetDatabase?: () => void;
 }> = (props) => {
   const [expanded, setExpanded] = createSignal(true);
 
@@ -497,6 +499,28 @@ const SettingGroup: Component<{
                 />
               )}
             </For>
+          </Show>
+
+          {/* Database reset button - only shown for database group */}
+          <Show when={props.group.key === "database" && props.onResetDatabase}>
+            <article class="flex items-center justify-between py-3 pl-8 pr-4 gap-4 border-t border-border">
+              <section class="flex flex-col min-w-0 flex-1">
+                <span class="text-sm font-medium text-destructive">
+                  Reset Database
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  Reset the database to its default state. This will delete all
+                  user data.
+                </span>
+              </section>
+              <button
+                type="button"
+                onClick={props.onResetDatabase}
+                class="px-3 py-1.5 text-sm text-destructive border border-destructive rounded hover:bg-destructive/10 transition-colors"
+              >
+                Reset
+              </button>
+            </article>
           </Show>
 
           {/* Variant-based settings (like storage) */}
@@ -600,6 +624,7 @@ export const ServerSettingsPanel: Component<ServerSettingsPanelProps> = (
               settings={props.settings}
               updatingKeys={props.updatingKeys}
               onUpdate={props.onUpdate}
+              onResetDatabase={props.onResetDatabase}
             />
           )}
         </For>

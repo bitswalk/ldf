@@ -471,10 +471,6 @@ export const Settings: Component<SettingsProps> = (props) => {
                 id="default-sources"
                 label={t("settings.server.defaultSources.title")}
               />
-              <SummaryNavItem
-                id="database-management"
-                label={t("settings.server.database.title")}
-              />
             </Show>
           </SummaryCategory>
           <SummaryCategory
@@ -770,6 +766,7 @@ export const Settings: Component<SettingsProps> = (props) => {
               updatingKeys={updatingSettings()}
               onUpdate={handleSettingUpdate}
               onRetry={loadServerSettings}
+              onResetDatabase={openResetDbModal}
             />
           </SummarySection>
 
@@ -870,25 +867,6 @@ export const Settings: Component<SettingsProps> = (props) => {
                 </div>
               </Show>
             </div>
-          </SummarySection>
-
-          {/* Database Management Section (Root users only) */}
-          <SummarySection
-            id="database-management"
-            title={t("settings.server.database.title")}
-            description={t("settings.server.database.description")}
-          >
-            <SummaryItem
-              title={t("settings.server.database.reset.title")}
-              description={t("settings.server.database.reset.description")}
-            >
-              <SummaryButton
-                onClick={openResetDbModal}
-                class="text-destructive border-destructive hover:bg-destructive/10"
-              >
-                {t("settings.server.database.reset.button")}
-              </SummaryButton>
-            </SummaryItem>
           </SummarySection>
 
           {/* Profile Section */}
