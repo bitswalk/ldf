@@ -1,11 +1,5 @@
 import type { Component, JSX } from "solid-js";
-import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  For,
-  Show,
-} from "solid-js";
+import { createSignal, createEffect, onCleanup, For, Show } from "solid-js";
 import { Icon } from "../Icon";
 
 export interface SearchableSelectOption {
@@ -24,6 +18,8 @@ interface SearchableSelectProps {
   onSearch?: (query: string) => void;
   maxDisplayed?: number;
   class?: string;
+  /** When true, the trigger button and dropdown will take full width of the container */
+  fullWidth?: boolean;
 }
 
 export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
@@ -44,7 +40,7 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
       .filter(
         (opt) =>
           opt.value.toLowerCase().includes(query) ||
-          opt.label.toLowerCase().includes(query)
+          opt.label.toLowerCase().includes(query),
       )
       .slice(0, maxDisplayed());
   };
@@ -111,7 +107,9 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    onCleanup(() => document.removeEventListener("mousedown", handleClickOutside));
+    onCleanup(() =>
+      document.removeEventListener("mousedown", handleClickOutside),
+    );
   });
 
   // Focus search input when opened
@@ -137,10 +135,15 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen())}
-        class="flex items-center justify-between gap-2 px-2 py-1 text-sm bg-background border border-border rounded-md hover:border-primary focus:outline-none focus:border-primary min-w-[140px] text-right"
+        class={`flex items-center justify-between gap-2 px-3 py-2 text-sm bg-background border-2 border-border rounded-md hover:border-primary focus:outline-none focus:border-primary ${
+          props.fullWidth ? "w-full" : "min-w-[140px]"
+        }`}
       >
-        <span class="font-mono truncate">
-          {selectedOption()?.label || props.value || props.placeholder || "Select..."}
+        <span class="truncate">
+          {selectedOption()?.label ||
+            props.value ||
+            props.placeholder ||
+            "Select..."}
         </span>
         <Icon
           name={isOpen() ? "caret-up" : "caret-down"}
@@ -151,7 +154,11 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
 
       {/* Dropdown */}
       <Show when={isOpen()}>
-        <div class="absolute right-0 top-full mt-1 w-64 bg-popover border border-border rounded-md shadow-lg z-50 overflow-hidden">
+        <div
+          class={`absolute left-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg z-50 overflow-hidden ${
+            props.fullWidth ? "w-full min-w-[280px]" : "w-64"
+          }`}
+        >
           {/* Search input */}
           <div class="p-2 border-b border-border">
             <div class="relative">
@@ -220,9 +227,15 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
           </div>
 
           {/* Footer hint */}
-          <Show when={filteredOptions().length > 0 && props.options.length > maxDisplayed()}>
+          <Show
+            when={
+              filteredOptions().length > 0 &&
+              props.options.length > maxDisplayed()
+            }
+          >
             <div class="px-3 py-2 border-t border-border text-xs text-muted-foreground text-center">
-              Showing {filteredOptions().length} of {props.options.length} results
+              Showing {filteredOptions().length} of {props.options.length}{" "}
+              results
             </div>
           </Show>
         </div>

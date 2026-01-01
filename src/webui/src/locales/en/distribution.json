@@ -135,7 +135,11 @@
     "fields": {
       "kernelVersion": {
         "label": "Kernel Version",
-        "placeholder": "Select kernel version"
+        "placeholder": "Select kernel version",
+        "searchPlaceholder": "Type to search (e.g., 6.9.1)",
+        "loading": "Loading kernel versions...",
+        "none": "None (no synced versions available)",
+        "noVersionsHint": "No kernel versions available. Sync your kernel sources first to see available versions."
       },
       "bootloader": "Bootloader",
       "partitioningSystem": "Partitioning System",

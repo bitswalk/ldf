@@ -110,7 +110,58 @@
   "form": {
     "name": {
       "label": "Nom de la distribution",
-      "placeholder": "Ma distribution personnalisee"
+      "placeholder": "ex., ma-distribution-linux, serveur-production",
+      "optional": "optionnel",
+      "help": "Si non fourni, un nom genere automatiquement sera utilise"
+    },
+    "steps": {
+      "coreSystem": {
+        "title": "Systeme principal",
+        "description": "Configurer les composants fondamentaux de votre distribution"
+      },
+      "systemServices": {
+        "title": "Services systeme",
+        "description": "Choisir les options d'initialisation et de stockage"
+      },
+      "securityRuntime": {
+        "title": "Securite et execution",
+        "description": "Configurer les options de securite et de conteneurs/virtualisation"
+      },
+      "distributionType": {
+        "title": "Type de distribution",
+        "description": "Choisir l'environnement cible de votre distribution"
+      }
+    },
+    "fields": {
+      "kernelVersion": {
+        "label": "Version du noyau",
+        "placeholder": "Selectionner la version du noyau",
+        "searchPlaceholder": "Tapez pour rechercher (ex., 6.9.1)",
+        "loading": "Chargement des versions du noyau...",
+        "none": "Aucune (pas de versions synchronisees disponibles)",
+        "noVersionsHint": "Aucune version du noyau disponible. Synchronisez d'abord vos sources de noyau pour voir les versions disponibles."
+      },
+      "bootloader": "Chargeur de demarrage",
+      "partitioningSystem": "Systeme de partitionnement",
+      "initSystem": "Systeme d'initialisation",
+      "filesystem": "Systeme de fichiers",
+      "partitioning": "Partitionnement",
+      "filesystemHierarchy": "Hierarchie du systeme de fichiers",
+      "packageManager": "Gestionnaire de paquets",
+      "securitySystem": "Systeme de securite",
+      "containerRuntime": "Moteur de conteneurs",
+      "virtualizationRuntime": "Moteur de virtualisation",
+      "targetEnvironment": "Environnement cible",
+      "desktopEnvironment": {
+        "label": "Environnement de bureau / Gestionnaire de fenetres",
+        "waylandOnly": "Serveur d'affichage Wayland uniquement"
+      }
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "previous": "Precedent",
+      "next": "Suivant",
+      "create": "Creer la distribution"
     },
     "description": {
       "label": "Description",

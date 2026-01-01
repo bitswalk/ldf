@@ -1,7 +1,21 @@
 import type { Component } from "solid-js";
-import { createSignal, Show, For } from "solid-js";
+import { createSignal, Show, For, onMount, createResource } from "solid-js";
 import { debugLog } from "../../lib/utils";
 import { t } from "../../services/i18n";
+import { listSources, type Source } from "../../services/sources";
+import {
+  listSourceVersions,
+  type SourceVersion,
+  type SourceType,
+} from "../../services/sourceVersions";
+import {
+  listComponents,
+  type Component as LDFComponent,
+} from "../../services/components";
+import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "../SearchableSelect";
 
 // Mock API response structure from LDF server
 interface LDFServerOptions {
@@ -84,16 +98,127 @@ interface DistributionFormProps {
   onCancel: () => void;
 }
 
-// Mock data simulating LDF server API response
+// Kernel version with stability type derived from source
+interface KernelVersion {
+  version: string;
+  type: "stable" | "lts" | "mainline";
+  sourceId: string;
+  sourceType: SourceType;
+}
+
+// Function to fetch kernel versions from synced sources
+async function fetchKernelVersions(): Promise<KernelVersion[]> {
+  try {
+    // First, get all components to find the kernel component
+    const componentsResult = await listComponents();
+    if (!componentsResult.success) {
+      debugLog("Failed to fetch components:", componentsResult.message);
+      return [];
+    }
+
+    const kernelComponent = componentsResult.components.find(
+      (c) => c.name === "kernel" && c.category === "core",
+    );
+    if (!kernelComponent) {
+      debugLog("Kernel component not found");
+      return [];
+    }
+
+    // Get all sources (merged defaults + user sources)
+    const sourcesResult = await listSources();
+    if (!sourcesResult.success) {
+      debugLog("Failed to fetch sources:", sourcesResult.message);
+      return [];
+    }
+
+    // Filter sources that are linked to the kernel component
+    const kernelSources = sourcesResult.sources.filter(
+      (s) => s.component_id === kernelComponent.id && s.enabled,
+    );
+
+    if (kernelSources.length === 0) {
+      debugLog("No kernel sources found");
+      return [];
+    }
+
+    // Fetch versions from all kernel sources
+    const allVersions: KernelVersion[] = [];
+    for (const source of kernelSources) {
+      const sourceType: SourceType = source.is_system ? "default" : "user";
+      const versionsResult = await listSourceVersions(
+        source.id,
+        sourceType,
+        100, // Limit to 100 versions
+        0,
+        false, // Include all versions, not just stable
+      );
+
+      if (versionsResult.success) {
+        for (const v of versionsResult.versions) {
+          // Determine version type based on is_stable flag and version pattern
+          let versionType: "stable" | "lts" | "mainline" = "stable";
+          if (!v.is_stable) {
+            versionType = "mainline";
+          } else {
+            // LTS kernels typically have specific version numbers (6.1.x, 6.6.x, 5.15.x, etc.)
+            // This is a simplified heuristic
+            const versionParts = v.version.split(".");
+            if (versionParts.length >= 2) {
+              const majorMinor = `${versionParts[0]}.${versionParts[1]}`;
+              // Known LTS versions (simplified check)
+              const ltsVersions = [
+                "6.12",
+                "6.6",
+                "6.1",
+                "5.15",
+                "5.10",
+                "5.4",
+                "4.19",
+                "4.14",
+              ];
+              if (ltsVersions.includes(majorMinor)) {
+                versionType = "lts";
+              }
+            }
+          }
+
+          allVersions.push({
+            version: v.version,
+            type: versionType,
+            sourceId: source.id,
+            sourceType,
+          });
+        }
+      }
+    }
+
+    // Sort versions by semantic version (descending)
+    allVersions.sort((a, b) => {
+      const partsA = a.version.split(".").map((p) => parseInt(p, 10) || 0);
+      const partsB = b.version.split(".").map((p) => parseInt(p, 10) || 0);
+      for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const numA = partsA[i] || 0;
+        const numB = partsB[i] || 0;
+        if (numA !== numB) return numB - numA;
+      }
+      return 0;
+    });
+
+    // Remove duplicates (same version from different sources)
+    const uniqueVersions = allVersions.filter(
+      (v, i, arr) => arr.findIndex((x) => x.version === v.version) === i,
+    );
+
+    return uniqueVersions;
+  } catch (err) {
+    debugLog("Error fetching kernel versions:", err);
+    return [];
+  }
+}
+
+// Mock data simulating LDF server API response (kept for other options)
 const mockLDFServerOptions: LDFServerOptions = {
-  kernels: [
-    { version: "6.12.0", type: "mainline" },
-    { version: "6.11.5", type: "stable" },
-    { version: "6.10.14", type: "stable" },
-    { version: "6.6.58", type: "lts" },
-    { version: "6.1.115", type: "lts" },
-    { version: "5.15.167", type: "lts" },
-  ],
+  kernels: [], // Now fetched dynamically
   bootloaders: [
     {
       id: "systemd-boot",
@@ -190,6 +315,7 @@ const mockLDFServerOptions: LDFServerOptions = {
 
 export const DistributionForm: Component<DistributionFormProps> = (props) => {
   const [currentStep, setCurrentStep] = createSignal(1);
+  const [kernelVersions] = createResource(fetchKernelVersions);
   const [formData, setFormData] = createSignal<DistributionFormData>({
     name: "",
     kernelVersion: "",
@@ -278,11 +404,13 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     const data = formData();
     switch (step) {
       case 1:
-        return !!(
+        // Allow "none" as valid kernel version when no synced versions are available
+        const hasValidKernel =
           data.kernelVersion &&
-          data.bootloader &&
-          data.partitioningType
-        );
+          (data.kernelVersion === "none" ||
+            (kernelVersions()?.some((k) => k.version === data.kernelVersion) ??
+              false));
+        return !!(hasValidKernel && data.bootloader && data.partitioningType);
       case 2:
         return !!(
           data.initSystem &&
@@ -377,25 +505,54 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <label class="text-sm font-medium">
                 {t("distribution.form.fields.kernelVersion.label")}
               </label>
-              <select
-                class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary appearance-none"
-                style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25rem; padding-right: 2.5rem;"
-                value={formData().kernelVersion}
-                onChange={(e) =>
-                  updateFormData("kernelVersion", e.target.value)
+              <Show
+                when={!kernelVersions.loading && kernelVersions()?.length === 0}
+                fallback={
+                  <SearchableSelect
+                    value={formData().kernelVersion}
+                    options={
+                      (kernelVersions() || []).map((kernel) => ({
+                        value: kernel.version,
+                        label: kernel.version,
+                        sublabel: kernel.type,
+                      })) as SearchableSelectOption[]
+                    }
+                    onChange={(value) => updateFormData("kernelVersion", value)}
+                    placeholder={
+                      kernelVersions.loading
+                        ? t("distribution.form.fields.kernelVersion.loading")
+                        : t(
+                            "distribution.form.fields.kernelVersion.placeholder",
+                          )
+                    }
+                    searchPlaceholder={t(
+                      "distribution.form.fields.kernelVersion.searchPlaceholder",
+                    )}
+                    loading={kernelVersions.loading}
+                    maxDisplayed={50}
+                    fullWidth
+                  />
                 }
               >
-                <option value="">
-                  {t("distribution.form.fields.kernelVersion.placeholder")}
-                </option>
-                <For each={mockLDFServerOptions.kernels}>
-                  {(kernel) => (
-                    <option value={kernel.version}>
-                      {kernel.version} ({kernel.type})
-                    </option>
-                  )}
-                </For>
-              </select>
+                <select
+                  class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary appearance-none"
+                  style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25rem; padding-right: 2.5rem;"
+                  value={formData().kernelVersion}
+                  onChange={(e) =>
+                    updateFormData("kernelVersion", e.target.value)
+                  }
+                >
+                  <option value="">
+                    {t("distribution.form.fields.kernelVersion.placeholder")}
+                  </option>
+                  <option value="none">
+                    {t("distribution.form.fields.kernelVersion.none")}
+                  </option>
+                </select>
+                <p class="text-xs text-muted-foreground">
+                  {t("distribution.form.fields.kernelVersion.noVersionsHint")}
+                </p>
+              </Show>
             </div>
 
             {/* Bootloader */}

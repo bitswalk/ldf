@@ -110,7 +110,58 @@
   "form": {
     "name": {
       "label": "Distributionsname",
-      "placeholder": "Meine benutzerdefinierte Distribution"
+      "placeholder": "z.B., meine-linux-distribution, produktions-server",
+      "optional": "optional",
+      "help": "Wenn nicht angegeben, wird ein automatisch generierter Name verwendet"
+    },
+    "steps": {
+      "coreSystem": {
+        "title": "Kernsystem",
+        "description": "Konfigurieren Sie die grundlegenden Komponenten Ihrer Distribution"
+      },
+      "systemServices": {
+        "title": "Systemdienste",
+        "description": "Wahlen Sie Initialisierungs- und Speicheroptionen"
+      },
+      "securityRuntime": {
+        "title": "Sicherheit und Laufzeit",
+        "description": "Konfigurieren Sie Sicherheits- und Container-/Virtualisierungsoptionen"
+      },
+      "distributionType": {
+        "title": "Distributionstyp",
+        "description": "Wahlen Sie die Zielumgebung Ihrer Distribution"
+      }
+    },
+    "fields": {
+      "kernelVersion": {
+        "label": "Kernel-Version",
+        "placeholder": "Kernel-Version auswahlen",
+        "searchPlaceholder": "Tippen zum Suchen (z.B., 6.9.1)",
+        "loading": "Kernel-Versionen werden geladen...",
+        "none": "Keine (keine synchronisierten Versionen verfugbar)",
+        "noVersionsHint": "Keine Kernel-Versionen verfugbar. Synchronisieren Sie zuerst Ihre Kernel-Quellen, um verfugbare Versionen zu sehen."
+      },
+      "bootloader": "Bootloader",
+      "partitioningSystem": "Partitionierungssystem",
+      "initSystem": "Init-System",
+      "filesystem": "Dateisystem",
+      "partitioning": "Partitionierung",
+      "filesystemHierarchy": "Dateisystemhierarchie",
+      "packageManager": "Paketverwaltung",
+      "securitySystem": "Sicherheitssystem",
+      "containerRuntime": "Container-Laufzeit",
+      "virtualizationRuntime": "Virtualisierungs-Laufzeit",
+      "targetEnvironment": "Zielumgebung",
+      "desktopEnvironment": {
+        "label": "Desktop-Umgebung / Fenstermanager",
+        "waylandOnly": "Nur Wayland-Anzeigeserver"
+      }
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "previous": "Zuruck",
+      "next": "Weiter",
+      "create": "Distribution erstellen"
     },
     "description": {
       "label": "Beschreibung",
