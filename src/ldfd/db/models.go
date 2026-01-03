@@ -113,37 +113,8 @@ type DistributionLog struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-// SourceDefault represents a system-wide default source (admin-managed)
-type SourceDefault struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	URL             string    `json:"url"`
-	ComponentIDs    []string  `json:"component_ids"`
-	RetrievalMethod string    `json:"retrieval_method"`
-	URLTemplate     string    `json:"url_template,omitempty"`
-	Priority        int       `json:"priority"`
-	Enabled         bool      `json:"enabled"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-}
-
-// UserSource represents a user-specific source
-type UserSource struct {
-	ID              string    `json:"id"`
-	OwnerID         string    `json:"owner_id"`
-	Name            string    `json:"name"`
-	URL             string    `json:"url"`
-	ComponentIDs    []string  `json:"component_ids"`
-	RetrievalMethod string    `json:"retrieval_method"`
-	URLTemplate     string    `json:"url_template,omitempty"`
-	Priority        int       `json:"priority"`
-	Enabled         bool      `json:"enabled"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-}
-
-// Source represents a merged view of sources for API responses
-type Source struct {
+// UpstreamSource represents a unified source (both system and user sources)
+type UpstreamSource struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name"`
 	URL             string    `json:"url"`
@@ -157,6 +128,18 @@ type Source struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
+
+// SourceDefault is an alias for UpstreamSource for backwards compatibility
+// Deprecated: Use UpstreamSource instead
+type SourceDefault = UpstreamSource
+
+// UserSource is an alias for UpstreamSource for backwards compatibility
+// Deprecated: Use UpstreamSource instead
+type UserSource = UpstreamSource
+
+// Source is an alias for UpstreamSource for API responses
+// This maintains backwards compatibility with existing API consumers
+type Source = UpstreamSource
 
 // Component represents a downloadable component in the registry
 type Component struct {

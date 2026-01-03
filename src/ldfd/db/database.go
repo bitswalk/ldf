@@ -399,77 +399,93 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
-	// Copy source_defaults table (handle schema migration for component fields)
-	if d.tableExistsInDiskDB("source_defaults") {
-		// Try with component_ids column first (new schema)
+	// Copy upstream_sources table (unified sources table - new schema)
+	if d.tableExistsInDiskDB("upstream_sources") {
 		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO source_defaults
-			(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
-			SELECT id, name, url, priority, enabled, created_at, updated_at,
-			       component_ids, retrieval_method, url_template
-			FROM disk_db.source_defaults
+			INSERT OR REPLACE INTO upstream_sources
+			(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+			SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+			FROM disk_db.upstream_sources
 		`)
 		if err != nil {
-			// Fallback: try with component_id column (migrate to component_ids)
-			result, err = d.db.Exec(`
-				INSERT OR REPLACE INTO source_defaults
-				(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
-				SELECT id, name, url, priority, enabled, created_at, updated_at,
-				       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
-				       retrieval_method, url_template
-				FROM disk_db.source_defaults
-			`)
-		}
-		if err != nil {
-			// Fallback: try without component columns (old schema)
-			result, err = d.db.Exec(`
-				INSERT OR REPLACE INTO source_defaults
-				(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method)
-				SELECT id, name, url, priority, enabled, created_at, updated_at, '[]', 'release'
-				FROM disk_db.source_defaults
-			`)
-		}
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("source_defaults: %v", err))
+			loadErrors = append(loadErrors, fmt.Sprintf("upstream_sources: %v", err))
 		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("source_defaults(%d)", rows))
+			loadedTables = append(loadedTables, fmt.Sprintf("upstream_sources(%d)", rows))
 		}
-	}
+	} else {
+		// Fallback: migrate from old source_defaults and user_sources tables if they exist
+		// This handles loading databases created before migration 004
 
-	// Copy user_sources table (handle schema migration for component fields)
-	if d.tableExistsInDiskDB("user_sources") {
-		// Try with component_ids column first (new schema)
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO user_sources
-			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
-			SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
-			       component_ids, retrieval_method, url_template
-			FROM disk_db.user_sources
-		`)
-		if err != nil {
-			// Fallback: try with component_id column (migrate to component_ids)
-			result, err = d.db.Exec(`
-				INSERT OR REPLACE INTO user_sources
-				(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
-				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
-				       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
-				       retrieval_method, url_template
+		// Load from source_defaults (system sources)
+		if d.tableExistsInDiskDB("source_defaults") {
+			// Try with component_ids column first (new schema)
+			result, err := d.db.Exec(`
+				INSERT OR REPLACE INTO upstream_sources
+				(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+				SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
+				FROM disk_db.source_defaults
+			`)
+			if err != nil {
+				// Fallback: try with component_id column (migrate to component_ids)
+				result, err = d.db.Exec(`
+					INSERT OR REPLACE INTO upstream_sources
+					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+					SELECT id, name, url,
+					       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+					       retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
+					FROM disk_db.source_defaults
+				`)
+			}
+			if err != nil {
+				// Fallback: try without component columns (old schema)
+				result, err = d.db.Exec(`
+					INSERT OR REPLACE INTO upstream_sources
+					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+					SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 1, NULL, created_at, updated_at
+					FROM disk_db.source_defaults
+				`)
+			}
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("source_defaults->upstream_sources: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("source_defaults->upstream_sources(%d)", rows))
+			}
+		}
+
+		// Load from user_sources (user sources)
+		if d.tableExistsInDiskDB("user_sources") {
+			// Try with component_ids column first (new schema)
+			result, err := d.db.Exec(`
+				INSERT OR REPLACE INTO upstream_sources
+				(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+				SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
 				FROM disk_db.user_sources
 			`)
-		}
-		if err != nil {
-			// Fallback: try without component columns (old schema)
-			result, err = d.db.Exec(`
-				INSERT OR REPLACE INTO user_sources
-				(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method)
-				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at, '[]', 'release'
-				FROM disk_db.user_sources
-			`)
-		}
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("user_sources: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("user_sources(%d)", rows))
+			if err != nil {
+				// Fallback: try with component_id column (migrate to component_ids)
+				result, err = d.db.Exec(`
+					INSERT OR REPLACE INTO upstream_sources
+					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+					SELECT id, name, url,
+					       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+					       retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
+					FROM disk_db.user_sources
+				`)
+			}
+			if err != nil {
+				// Fallback: try without component columns (old schema)
+				result, err = d.db.Exec(`
+					INSERT OR REPLACE INTO upstream_sources
+					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+					SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 0, owner_id, created_at, updated_at
+					FROM disk_db.user_sources
+				`)
+			}
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("user_sources->upstream_sources: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("user_sources->upstream_sources(%d)", rows))
+			}
 		}
 	}
 

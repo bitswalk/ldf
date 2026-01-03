@@ -587,3 +587,15 @@ func nullTime(t *time.Time) sql.NullTime {
 	}
 	return sql.NullTime{Time: *t, Valid: true}
 }
+
+// GetSourceType returns "default" for system sources and "user" for user sources
+// This helper is useful for deriving the source_type from an UpstreamSource
+func GetSourceType(source *UpstreamSource) string {
+	if source == nil {
+		return ""
+	}
+	if source.IsSystem {
+		return "default"
+	}
+	return "user"
+}

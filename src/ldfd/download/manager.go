@@ -424,11 +424,9 @@ func (m *Manager) getComponentVersion(config *db.DistributionConfig, componentNa
 }
 
 // getSourceType determines if a source is "default" or "user"
+// Deprecated: Use db.GetSourceType() directly instead
 func (m *Manager) getSourceType(source *db.Source) string {
-	if source.IsSystem {
-		return "default"
-	}
-	return "user"
+	return db.GetSourceType(source)
 }
 
 // registerCancel registers a cancel function for a job

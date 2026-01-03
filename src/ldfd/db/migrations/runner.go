@@ -37,6 +37,7 @@ func (r *Runner) registerAll() {
 		migration001InitialSchema(),
 		migration002AddVersionType(),
 		migration003MultiComponentSources(),
+		migration004MergeSources(),
 	}
 
 	// Sort by version to ensure correct order
