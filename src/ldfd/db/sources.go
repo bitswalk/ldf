@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -22,7 +23,7 @@ func NewSourceRepository(db *Database) *SourceRepository {
 // ListDefaults retrieves all default sources ordered by priority
 func (r *SourceRepository) ListDefaults() ([]SourceDefault, error) {
 	query := `
-		SELECT id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM source_defaults
 		ORDER BY priority ASC, name ASC
 	`
@@ -38,9 +39,9 @@ func (r *SourceRepository) ListDefaults() ([]SourceDefault, error) {
 // ListDefaultsByComponent retrieves all default sources for a specific component
 func (r *SourceRepository) ListDefaultsByComponent(componentID string) ([]SourceDefault, error) {
 	query := `
-		SELECT id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM source_defaults
-		WHERE component_id = ?
+		WHERE EXISTS (SELECT 1 FROM json_each(component_ids) WHERE value = ?)
 		ORDER BY priority ASC, name ASC
 	`
 	rows, err := r.db.DB().Query(query, componentID)
@@ -55,15 +56,15 @@ func (r *SourceRepository) ListDefaultsByComponent(componentID string) ([]Source
 // GetDefaultByID retrieves a default source by ID
 func (r *SourceRepository) GetDefaultByID(id string) (*SourceDefault, error) {
 	query := `
-		SELECT id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM source_defaults
 		WHERE id = ?
 	`
 	row := r.db.DB().QueryRow(query, id)
 
 	var s SourceDefault
-	var componentID, urlTemplate sql.NullString
-	err := row.Scan(&s.ID, &s.Name, &s.URL, &componentID, &s.RetrievalMethod, &urlTemplate,
+	var componentIDsJSON, urlTemplate sql.NullString
+	err := row.Scan(&s.ID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
 		&s.Priority, &s.Enabled, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -72,7 +73,7 @@ func (r *SourceRepository) GetDefaultByID(id string) (*SourceDefault, error) {
 		return nil, fmt.Errorf("failed to get default source: %w", err)
 	}
 
-	s.ComponentID = componentID.String
+	s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 	s.URLTemplate = urlTemplate.String
 
 	return &s, nil
@@ -86,16 +87,21 @@ func (r *SourceRepository) CreateDefault(s *SourceDefault) error {
 	if s.RetrievalMethod == "" {
 		s.RetrievalMethod = "release"
 	}
+	if s.ComponentIDs == nil {
+		s.ComponentIDs = []string{}
+	}
 
 	now := time.Now()
 	s.CreatedAt = now
 	s.UpdatedAt = now
 
+	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
+
 	query := `
-		INSERT INTO source_defaults (id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at)
+		INSERT INTO source_defaults (id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.DB().Exec(query, s.ID, s.Name, s.URL, nullString(s.ComponentID), s.RetrievalMethod,
+	_, err := r.db.DB().Exec(query, s.ID, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
 		nullString(s.URLTemplate), s.Priority, s.Enabled, s.CreatedAt, s.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create default source: %w", err)
@@ -107,13 +113,18 @@ func (r *SourceRepository) CreateDefault(s *SourceDefault) error {
 // UpdateDefault updates an existing default source
 func (r *SourceRepository) UpdateDefault(s *SourceDefault) error {
 	s.UpdatedAt = time.Now()
+	if s.ComponentIDs == nil {
+		s.ComponentIDs = []string{}
+	}
+
+	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
 
 	query := `
 		UPDATE source_defaults
-		SET name = ?, url = ?, component_id = ?, retrieval_method = ?, url_template = ?, priority = ?, enabled = ?, updated_at = ?
+		SET name = ?, url = ?, component_ids = ?, retrieval_method = ?, url_template = ?, priority = ?, enabled = ?, updated_at = ?
 		WHERE id = ?
 	`
-	result, err := r.db.DB().Exec(query, s.Name, s.URL, nullString(s.ComponentID), s.RetrievalMethod,
+	result, err := r.db.DB().Exec(query, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
 		nullString(s.URLTemplate), s.Priority, s.Enabled, s.UpdatedAt, s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update default source: %w", err)
@@ -151,7 +162,7 @@ func (r *SourceRepository) DeleteDefault(id string) error {
 // ListUserSources retrieves all sources for a specific user ordered by priority
 func (r *SourceRepository) ListUserSources(ownerID string) ([]UserSource, error) {
 	query := `
-		SELECT id, owner_id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, owner_id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM user_sources
 		WHERE owner_id = ?
 		ORDER BY priority ASC, name ASC
@@ -168,9 +179,9 @@ func (r *SourceRepository) ListUserSources(ownerID string) ([]UserSource, error)
 // ListUserSourcesByComponent retrieves all user sources for a specific component
 func (r *SourceRepository) ListUserSourcesByComponent(ownerID, componentID string) ([]UserSource, error) {
 	query := `
-		SELECT id, owner_id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, owner_id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM user_sources
-		WHERE owner_id = ? AND component_id = ?
+		WHERE owner_id = ? AND EXISTS (SELECT 1 FROM json_each(component_ids) WHERE value = ?)
 		ORDER BY priority ASC, name ASC
 	`
 	rows, err := r.db.DB().Query(query, ownerID, componentID)
@@ -185,15 +196,15 @@ func (r *SourceRepository) ListUserSourcesByComponent(ownerID, componentID strin
 // GetUserSourceByID retrieves a user source by ID
 func (r *SourceRepository) GetUserSourceByID(id string) (*UserSource, error) {
 	query := `
-		SELECT id, owner_id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at
+		SELECT id, owner_id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at
 		FROM user_sources
 		WHERE id = ?
 	`
 	row := r.db.DB().QueryRow(query, id)
 
 	var s UserSource
-	var componentID, urlTemplate sql.NullString
-	err := row.Scan(&s.ID, &s.OwnerID, &s.Name, &s.URL, &componentID, &s.RetrievalMethod, &urlTemplate,
+	var componentIDsJSON, urlTemplate sql.NullString
+	err := row.Scan(&s.ID, &s.OwnerID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
 		&s.Priority, &s.Enabled, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -202,7 +213,7 @@ func (r *SourceRepository) GetUserSourceByID(id string) (*UserSource, error) {
 		return nil, fmt.Errorf("failed to get user source: %w", err)
 	}
 
-	s.ComponentID = componentID.String
+	s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 	s.URLTemplate = urlTemplate.String
 
 	return &s, nil
@@ -216,16 +227,21 @@ func (r *SourceRepository) CreateUserSource(s *UserSource) error {
 	if s.RetrievalMethod == "" {
 		s.RetrievalMethod = "release"
 	}
+	if s.ComponentIDs == nil {
+		s.ComponentIDs = []string{}
+	}
 
 	now := time.Now()
 	s.CreatedAt = now
 	s.UpdatedAt = now
 
+	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
+
 	query := `
-		INSERT INTO user_sources (id, owner_id, name, url, component_id, retrieval_method, url_template, priority, enabled, created_at, updated_at)
+		INSERT INTO user_sources (id, owner_id, name, url, component_ids, retrieval_method, url_template, priority, enabled, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.DB().Exec(query, s.ID, s.OwnerID, s.Name, s.URL, nullString(s.ComponentID), s.RetrievalMethod,
+	_, err := r.db.DB().Exec(query, s.ID, s.OwnerID, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
 		nullString(s.URLTemplate), s.Priority, s.Enabled, s.CreatedAt, s.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create user source: %w", err)
@@ -237,13 +253,18 @@ func (r *SourceRepository) CreateUserSource(s *UserSource) error {
 // UpdateUserSource updates an existing user source
 func (r *SourceRepository) UpdateUserSource(s *UserSource) error {
 	s.UpdatedAt = time.Now()
+	if s.ComponentIDs == nil {
+		s.ComponentIDs = []string{}
+	}
+
+	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
 
 	query := `
 		UPDATE user_sources
-		SET name = ?, url = ?, component_id = ?, retrieval_method = ?, url_template = ?, priority = ?, enabled = ?, updated_at = ?
+		SET name = ?, url = ?, component_ids = ?, retrieval_method = ?, url_template = ?, priority = ?, enabled = ?, updated_at = ?
 		WHERE id = ?
 	`
-	result, err := r.db.DB().Exec(query, s.Name, s.URL, nullString(s.ComponentID), s.RetrievalMethod,
+	result, err := r.db.DB().Exec(query, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
 		nullString(s.URLTemplate), s.Priority, s.Enabled, s.UpdatedAt, s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update user source: %w", err)
@@ -293,7 +314,7 @@ func (r *SourceRepository) GetMergedSources(userID string) ([]Source, error) {
 			ID:              d.ID,
 			Name:            d.Name,
 			URL:             d.URL,
-			ComponentID:     d.ComponentID,
+			ComponentIDs:    d.ComponentIDs,
 			RetrievalMethod: d.RetrievalMethod,
 			URLTemplate:     d.URLTemplate,
 			Priority:        d.Priority,
@@ -317,7 +338,7 @@ func (r *SourceRepository) GetMergedSources(userID string) ([]Source, error) {
 				ID:              u.ID,
 				Name:            u.Name,
 				URL:             u.URL,
-				ComponentID:     u.ComponentID,
+				ComponentIDs:    u.ComponentIDs,
 				RetrievalMethod: u.RetrievalMethod,
 				URLTemplate:     u.URLTemplate,
 				Priority:        u.Priority,
@@ -356,7 +377,7 @@ func (r *SourceRepository) GetMergedSourcesByComponent(userID, componentID strin
 			ID:              d.ID,
 			Name:            d.Name,
 			URL:             d.URL,
-			ComponentID:     d.ComponentID,
+			ComponentIDs:    d.ComponentIDs,
 			RetrievalMethod: d.RetrievalMethod,
 			URLTemplate:     d.URLTemplate,
 			Priority:        d.Priority,
@@ -380,7 +401,7 @@ func (r *SourceRepository) GetMergedSourcesByComponent(userID, componentID strin
 				ID:              u.ID,
 				Name:            u.Name,
 				URL:             u.URL,
-				ComponentID:     u.ComponentID,
+				ComponentIDs:    u.ComponentIDs,
 				RetrievalMethod: u.RetrievalMethod,
 				URLTemplate:     u.URLTemplate,
 				Priority:        u.Priority,
@@ -424,7 +445,7 @@ func (r *SourceRepository) GetEffectiveSource(distributionID, componentID, userI
 					ID:              src.ID,
 					Name:            src.Name,
 					URL:             src.URL,
-					ComponentID:     src.ComponentID,
+					ComponentIDs:    src.ComponentIDs,
 					RetrievalMethod: src.RetrievalMethod,
 					URLTemplate:     src.URLTemplate,
 					Priority:        src.Priority,
@@ -444,7 +465,7 @@ func (r *SourceRepository) GetEffectiveSource(distributionID, componentID, userI
 					ID:              src.ID,
 					Name:            src.Name,
 					URL:             src.URL,
-					ComponentID:     src.ComponentID,
+					ComponentIDs:    src.ComponentIDs,
 					RetrievalMethod: src.RetrievalMethod,
 					URLTemplate:     src.URLTemplate,
 					Priority:        src.Priority,
@@ -589,12 +610,12 @@ func (r *SourceRepository) scanDefaultSources(rows *sql.Rows) ([]SourceDefault, 
 	var sources []SourceDefault
 	for rows.Next() {
 		var s SourceDefault
-		var componentID, urlTemplate sql.NullString
-		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &componentID, &s.RetrievalMethod, &urlTemplate,
+		var componentIDsJSON, urlTemplate sql.NullString
+		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
 			&s.Priority, &s.Enabled, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan default source: %w", err)
 		}
-		s.ComponentID = componentID.String
+		s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 		s.URLTemplate = urlTemplate.String
 		sources = append(sources, s)
 	}
@@ -611,12 +632,12 @@ func (r *SourceRepository) scanUserSources(rows *sql.Rows) ([]UserSource, error)
 	var sources []UserSource
 	for rows.Next() {
 		var s UserSource
-		var componentID, urlTemplate sql.NullString
-		if err := rows.Scan(&s.ID, &s.OwnerID, &s.Name, &s.URL, &componentID, &s.RetrievalMethod, &urlTemplate,
+		var componentIDsJSON, urlTemplate sql.NullString
+		if err := rows.Scan(&s.ID, &s.OwnerID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
 			&s.Priority, &s.Enabled, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan user source: %w", err)
 		}
-		s.ComponentID = componentID.String
+		s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 		s.URLTemplate = urlTemplate.String
 		sources = append(sources, s)
 	}
@@ -634,4 +655,28 @@ func nullString(s string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+// parseComponentIDs parses a JSON array string into a slice of component IDs
+func parseComponentIDs(jsonStr string) []string {
+	if jsonStr == "" || jsonStr == "[]" {
+		return []string{}
+	}
+	var ids []string
+	if err := json.Unmarshal([]byte(jsonStr), &ids); err != nil {
+		return []string{}
+	}
+	return ids
+}
+
+// serializeComponentIDs serializes a slice of component IDs to a JSON array string
+func serializeComponentIDs(ids []string) string {
+	if ids == nil || len(ids) == 0 {
+		return "[]"
+	}
+	data, err := json.Marshal(ids)
+	if err != nil {
+		return "[]"
+	}
+	return string(data)
 }

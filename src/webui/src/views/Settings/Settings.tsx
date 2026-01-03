@@ -38,6 +38,13 @@ import {
   type UpdateSourceRequest,
 } from "../../services/sources";
 import { isDevMode } from "../../lib/utils";
+import {
+  getBrandingAssetInfo,
+  getBrandingAssetURL,
+  uploadBrandingAsset,
+  deleteBrandingAsset,
+  type BrandingAssetInfo,
+} from "../../services/branding";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -99,6 +106,23 @@ export const Settings: Component<SettingsProps> = (props) => {
   const [resetDbConfirmation, setResetDbConfirmation] = createSignal("");
   const [resettingDb, setResettingDb] = createSignal(false);
   const [resetDbError, setResetDbError] = createSignal<string | null>(null);
+
+  // Branding state (for root users)
+  const [logoInfo, setLogoInfo] = createSignal<BrandingAssetInfo | null>(null);
+  const [faviconInfo, setFaviconInfo] = createSignal<BrandingAssetInfo | null>(
+    null,
+  );
+  const [brandingLoading, setBrandingLoading] = createSignal(false);
+  const [uploadingLogo, setUploadingLogo] = createSignal(false);
+  const [uploadingFavicon, setUploadingFavicon] = createSignal(false);
+  const [logoUploadProgress, setLogoUploadProgress] = createSignal(0);
+  const [faviconUploadProgress, setFaviconUploadProgress] = createSignal(0);
+  const [brandingError, setBrandingError] = createSignal<string | null>(null);
+  const [deleteLogoModalOpen, setDeleteLogoModalOpen] = createSignal(false);
+  const [deleteFaviconModalOpen, setDeleteFaviconModalOpen] =
+    createSignal(false);
+  const [deletingLogo, setDeletingLogo] = createSignal(false);
+  const [deletingFavicon, setDeletingFavicon] = createSignal(false);
 
   const loadServerSettings = async () => {
     if (!isRootUser()) return;
@@ -272,6 +296,119 @@ export const Settings: Component<SettingsProps> = (props) => {
     }
   };
 
+  const loadBrandingAssets = async () => {
+    if (!isRootUser()) return;
+
+    setBrandingLoading(true);
+    setBrandingError(null);
+
+    const [logoResult, faviconResult] = await Promise.all([
+      getBrandingAssetInfo("logo"),
+      getBrandingAssetInfo("favicon"),
+    ]);
+
+    if (logoResult.success) {
+      setLogoInfo(logoResult.info);
+    }
+    if (faviconResult.success) {
+      setFaviconInfo(faviconResult.info);
+    }
+
+    setBrandingLoading(false);
+  };
+
+  const handleLogoUpload = async (
+    event: Event & { currentTarget: HTMLInputElement },
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setLogoUploadProgress(0);
+    setBrandingError(null);
+
+    const result = await uploadBrandingAsset("logo", file, (progress) => {
+      setLogoUploadProgress(progress);
+    });
+
+    setUploadingLogo(false);
+
+    if (result.success) {
+      loadBrandingAssets();
+    } else {
+      setBrandingError(result.message);
+    }
+
+    event.currentTarget.value = "";
+  };
+
+  const handleFaviconUpload = async (
+    event: Event & { currentTarget: HTMLInputElement },
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    setUploadingFavicon(true);
+    setFaviconUploadProgress(0);
+    setBrandingError(null);
+
+    const result = await uploadBrandingAsset("favicon", file, (progress) => {
+      setFaviconUploadProgress(progress);
+    });
+
+    setUploadingFavicon(false);
+
+    if (result.success) {
+      loadBrandingAssets();
+      // Update the favicon in the document head
+      const faviconLink = document.querySelector(
+        "link[rel='icon']",
+      ) as HTMLLinkElement;
+      if (faviconLink) {
+        const url = getBrandingAssetURL("favicon");
+        if (url) {
+          faviconLink.href = url + "?t=" + Date.now();
+        }
+      }
+    } else {
+      setBrandingError(result.message);
+    }
+
+    event.currentTarget.value = "";
+  };
+
+  const confirmDeleteLogo = async () => {
+    setDeletingLogo(true);
+    setBrandingError(null);
+
+    const result = await deleteBrandingAsset("logo");
+
+    setDeletingLogo(false);
+
+    if (result.success) {
+      setDeleteLogoModalOpen(false);
+      setLogoInfo(null);
+    } else {
+      setBrandingError(result.message);
+    }
+  };
+
+  const confirmDeleteFavicon = async () => {
+    setDeletingFavicon(true);
+    setBrandingError(null);
+
+    const result = await deleteBrandingAsset("favicon");
+
+    setDeletingFavicon(false);
+
+    if (result.success) {
+      setDeleteFaviconModalOpen(false);
+      setFaviconInfo(null);
+    } else {
+      setBrandingError(result.message);
+    }
+  };
+
   const handleAddSource = () => {
     setEditingSource(null);
     setSourceModalOpen(true);
@@ -292,7 +429,7 @@ export const Settings: Component<SettingsProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
-        component_id: formData.component_id,
+        component_ids: formData.component_ids,
         retrieval_method: formData.retrieval_method,
         url_template: formData.url_template,
         priority: formData.priority,
@@ -388,6 +525,9 @@ export const Settings: Component<SettingsProps> = (props) => {
 
     // Load language packs if user is root
     loadLanguagePacks();
+
+    // Load branding assets if user is root
+    loadBrandingAssets();
   });
 
   const handleThemeChange = (preference: ThemePreference) => {
@@ -724,6 +864,205 @@ export const Settings: Component<SettingsProps> = (props) => {
                 }
               />
             </SummaryItem>
+
+            {/* Branding section (root users only) */}
+            <Show when={isRootUser()}>
+              <div class="pt-6">
+                <h3 class="text-lg font-semibold mb-4">
+                  {t("settings.theme.branding.title")}
+                </h3>
+                <p class="text-sm text-muted-foreground mb-6">
+                  {t("settings.theme.branding.description")}
+                </p>
+
+                <Show when={brandingError()}>
+                  <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm mb-4">
+                    {brandingError()}
+                  </div>
+                </Show>
+
+                <Show
+                  when={!brandingLoading()}
+                  fallback={
+                    <div class="flex items-center justify-center py-8">
+                      <Spinner size="lg" />
+                    </div>
+                  }
+                >
+                  <div class="space-y-6">
+                    {/* Logo Upload */}
+                    <div class="space-y-3">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <h4 class="text-sm font-medium">
+                            {t("settings.theme.branding.logo.title")}
+                          </h4>
+                          <p class="text-xs text-muted-foreground">
+                            {t("settings.theme.branding.logo.description")}
+                          </p>
+                        </div>
+                        <Show when={logoInfo()?.exists}>
+                          <button
+                            onClick={() => setDeleteLogoModalOpen(true)}
+                            class="p-2 rounded-md hover:bg-destructive/10 transition-colors"
+                            title={t("common.actions.delete")}
+                          >
+                            <Icon
+                              name="trash"
+                              size="sm"
+                              class="text-muted-foreground hover:text-destructive"
+                            />
+                          </button>
+                        </Show>
+                      </div>
+
+                      <div class="flex items-center gap-4">
+                        <Show
+                          when={logoInfo()?.exists}
+                          fallback={
+                            <div class="w-24 h-24 bg-muted rounded-md flex items-center justify-center border-2 border-dashed border-border">
+                              <Icon
+                                name="image"
+                                size="lg"
+                                class="text-muted-foreground"
+                              />
+                            </div>
+                          }
+                        >
+                          <div class="w-24 h-24 bg-muted rounded-md flex items-center justify-center border border-border overflow-hidden">
+                            <img
+                              src={
+                                getBrandingAssetURL("logo") + "?t=" + Date.now()
+                              }
+                              alt="Logo"
+                              class="max-w-full max-h-full object-contain"
+                            />
+                          </div>
+                        </Show>
+
+                        <div class="flex-1">
+                          <label class="block">
+                            <div class="relative">
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                onChange={handleLogoUpload}
+                                disabled={uploadingLogo()}
+                                class="block w-full text-sm text-muted-foreground
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border file:border-border
+                                  file:text-sm file:font-medium
+                                  file:bg-muted file:text-foreground
+                                  hover:file:bg-muted/80
+                                  file:cursor-pointer cursor-pointer
+                                  disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <Show when={uploadingLogo()}>
+                                <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                  <span class="text-xs text-muted-foreground">
+                                    {logoUploadProgress()}%
+                                  </span>
+                                  <Spinner size="sm" />
+                                </div>
+                              </Show>
+                            </div>
+                            <p class="text-xs text-muted-foreground mt-1">
+                              {t("settings.theme.branding.logo.formats")}
+                            </p>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Favicon Upload */}
+                    <div class="space-y-3">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <h4 class="text-sm font-medium">
+                            {t("settings.theme.branding.favicon.title")}
+                          </h4>
+                          <p class="text-xs text-muted-foreground">
+                            {t("settings.theme.branding.favicon.description")}
+                          </p>
+                        </div>
+                        <Show when={faviconInfo()?.exists}>
+                          <button
+                            onClick={() => setDeleteFaviconModalOpen(true)}
+                            class="p-2 rounded-md hover:bg-destructive/10 transition-colors"
+                            title={t("common.actions.delete")}
+                          >
+                            <Icon
+                              name="trash"
+                              size="sm"
+                              class="text-muted-foreground hover:text-destructive"
+                            />
+                          </button>
+                        </Show>
+                      </div>
+
+                      <div class="flex items-center gap-4">
+                        <Show
+                          when={faviconInfo()?.exists}
+                          fallback={
+                            <div class="w-16 h-16 bg-muted rounded-md flex items-center justify-center border-2 border-dashed border-border">
+                              <Icon
+                                name="image"
+                                size="md"
+                                class="text-muted-foreground"
+                              />
+                            </div>
+                          }
+                        >
+                          <div class="w-16 h-16 bg-muted rounded-md flex items-center justify-center border border-border overflow-hidden">
+                            <img
+                              src={
+                                getBrandingAssetURL("favicon") +
+                                "?t=" +
+                                Date.now()
+                              }
+                              alt="Favicon"
+                              class="max-w-full max-h-full object-contain"
+                            />
+                          </div>
+                        </Show>
+
+                        <div class="flex-1">
+                          <label class="block">
+                            <div class="relative">
+                              <input
+                                type="file"
+                                accept="image/png,image/x-icon,image/svg+xml,.ico"
+                                onChange={handleFaviconUpload}
+                                disabled={uploadingFavicon()}
+                                class="block w-full text-sm text-muted-foreground
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border file:border-border
+                                  file:text-sm file:font-medium
+                                  file:bg-muted file:text-foreground
+                                  hover:file:bg-muted/80
+                                  file:cursor-pointer cursor-pointer
+                                  disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <Show when={uploadingFavicon()}>
+                                <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                  <span class="text-xs text-muted-foreground">
+                                    {faviconUploadProgress()}%
+                                  </span>
+                                  <Spinner size="sm" />
+                                </div>
+                              </Show>
+                            </div>
+                            <p class="text-xs text-muted-foreground mt-1">
+                              {t("settings.theme.branding.favicon.formats")}
+                            </p>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Show>
+              </div>
+            </Show>
           </SummarySection>
 
           {/* Server Connection Section */}
@@ -1108,6 +1447,84 @@ export const Settings: Component<SettingsProps> = (props) => {
                 {resettingDb()
                   ? t("settings.server.database.reset.modal.resetting")
                   : t("settings.server.database.reset.modal.confirmButton")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
+
+      {/* Delete Logo Confirmation Modal */}
+      <Modal
+        isOpen={deleteLogoModalOpen()}
+        onClose={() => setDeleteLogoModalOpen(false)}
+        title={t("settings.theme.branding.logo.delete.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            {t("settings.theme.branding.logo.delete.confirm")}
+          </p>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteLogoModalOpen(false)}
+              disabled={deletingLogo()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteLogo}
+              disabled={deletingLogo()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={deletingLogo()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {deletingLogo()
+                  ? t("common.status.deleting")
+                  : t("common.actions.delete")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
+
+      {/* Delete Favicon Confirmation Modal */}
+      <Modal
+        isOpen={deleteFaviconModalOpen()}
+        onClose={() => setDeleteFaviconModalOpen(false)}
+        title={t("settings.theme.branding.favicon.delete.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            {t("settings.theme.branding.favicon.delete.confirm")}
+          </p>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteFaviconModalOpen(false)}
+              disabled={deletingFavicon()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteFavicon}
+              disabled={deletingFavicon()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={deletingFavicon()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {deletingFavicon()
+                  ? t("common.status.deleting")
+                  : t("common.actions.delete")}
               </span>
             </button>
           </nav>

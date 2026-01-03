@@ -149,9 +149,17 @@ export async function getServerSettings(): Promise<GetSettingsResult> {
 
 /**
  * Fetch a single server setting by key (requires root access)
+ * @param key - The setting key
+ * @param reveal - If true, returns unmasked sensitive values
  */
-export async function getServerSetting(key: string): Promise<GetSettingResult> {
-  const url = getApiUrl(`/settings/${key}`);
+export async function getServerSetting(
+  key: string,
+  reveal: boolean = false,
+): Promise<GetSettingResult> {
+  let url = getApiUrl(`/settings/${key}`);
+  if (reveal) {
+    url += "?reveal=true";
+  }
 
   if (!url) {
     return {

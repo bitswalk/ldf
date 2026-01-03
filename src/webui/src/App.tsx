@@ -32,6 +32,7 @@ import {
   clearAllAuth,
 } from "./services/storage";
 import { syncDevModeFromServer } from "./services/settings";
+import { initializeFavicon } from "./services/branding";
 
 type ViewType =
   | "server-connection"
@@ -105,6 +106,8 @@ const App: Component = () => {
       setCurrentView("distribution");
       // Sync devmode setting from server for root users
       syncDevModeFromServer();
+      // Initialize favicon from server branding
+      initializeFavicon();
     } else if (hasCompleteServerConnection()) {
       const serverUrl = getServerUrl()!;
       setAuthState((prev) => ({ ...prev, serverUrl }));
@@ -161,6 +164,8 @@ const App: Component = () => {
     setCurrentView("distribution");
     // Sync devmode setting from server for root users
     syncDevModeFromServer();
+    // Initialize favicon from server branding
+    initializeFavicon();
   };
 
   const handleShowRegister = (username: string) => {

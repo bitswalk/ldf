@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { Show } from "solid-js";
+import { Show, createSignal, createEffect, onMount } from "solid-js";
 import { Icon } from "../Icon";
 import { t } from "../../services/i18n";
 import { Badge } from "../Badge";
@@ -11,6 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../DropdownMenu";
+import {
+  getBrandingAssetInfo,
+  getBrandingAssetURL,
+} from "../../services/branding";
 
 interface UserInfo {
   name: string;
@@ -27,12 +31,38 @@ interface HeaderProps {
 }
 
 export const Header: Component<HeaderProps> = (props) => {
+  const [hasLogo, setHasLogo] = createSignal(false);
+  const [logoUrl, setLogoUrl] = createSignal<string | null>(null);
+
+  onMount(async () => {
+    // Check if a logo has been uploaded
+    const result = await getBrandingAssetInfo("logo");
+    if (result.success && result.info.exists) {
+      setHasLogo(true);
+      const url = getBrandingAssetURL("logo");
+      if (url) {
+        setLogoUrl(url);
+      }
+    }
+  });
+
   return (
     <header class="h-full w-full border-b flex items-center justify-between bg-card z-[100] relative">
       <section class="flex items-center h-full">
         {/* Logo */}
         <section class="w-12 h-full bg-muted flex items-center justify-center border-r border-border shrink-0">
-          <span class="text-muted-foreground text-xs font-mono">LOGO</span>
+          <Show
+            when={hasLogo() && logoUrl()}
+            fallback={
+              <span class="text-muted-foreground text-xs font-mono">LOGO</span>
+            }
+          >
+            <img
+              src={logoUrl()!}
+              alt="Logo"
+              class="max-w-10 max-h-10 object-contain"
+            />
+          </Show>
         </section>
         <h1 class="text-2xl font-bold px-6">{t("common.app.name")}</h1>
       </section>

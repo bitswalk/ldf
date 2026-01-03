@@ -137,11 +137,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
       return;
     }
 
-    // Find a kernel source (look for "kernel" in name or component_id)
-    const kernelSource = sourcesResult.sources.find(
-      (s) =>
-        s.name.toLowerCase().includes("kernel") ||
-        s.component_id?.toLowerCase().includes("kernel"),
+    // Find a kernel source (look for "kernel" in name)
+    const kernelSource = sourcesResult.sources.find((s) =>
+      s.name.toLowerCase().includes("kernel"),
     );
 
     if (!kernelSource) {

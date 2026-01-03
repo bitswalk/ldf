@@ -86,7 +86,7 @@ export const Sources: Component<SourcesProps> = (props) => {
       const updateReq: UpdateSourceRequest = {
         name: formData.name,
         url: formData.url,
-        component_id: formData.component_id,
+        component_ids: formData.component_ids,
         retrieval_method: formData.retrieval_method,
         url_template: formData.url_template,
         priority: formData.priority,

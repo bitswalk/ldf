@@ -3,11 +3,14 @@
 import { getServerUrl, getAuthToken } from "./storage";
 import type { SourceDefault, UserSource } from "./sources";
 
+export type VersionType = "mainline" | "stable" | "longterm" | "linux-next";
+
 export interface SourceVersion {
   id: string;
   source_id: string;
   source_type: string;
   version: string;
+  version_type: VersionType;
   release_date?: string;
   download_url?: string;
   checksum?: string;
@@ -188,7 +191,7 @@ export async function listSourceVersions(
   sourceType: SourceType,
   limit: number = 50,
   offset: number = 0,
-  stableOnly: boolean = false,
+  versionTypeFilter?: VersionType | "all",
 ): Promise<ListVersionsResult> {
   const path =
     sourceType === "default"
@@ -198,8 +201,8 @@ export async function listSourceVersions(
     limit: limit.toString(),
     offset: offset.toString(),
   });
-  if (stableOnly) {
-    params.set("stable_only", "true");
+  if (versionTypeFilter && versionTypeFilter !== "all") {
+    params.set("version_type", versionTypeFilter);
   }
   const url = getApiUrl(`${path}?${params.toString()}`);
 

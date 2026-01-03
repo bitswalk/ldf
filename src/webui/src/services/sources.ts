@@ -6,7 +6,7 @@ export interface Source {
   id: string;
   name: string;
   url: string;
-  component_id?: string;
+  component_ids: string[];
   retrieval_method: string;
   url_template?: string;
   priority: number;
@@ -21,7 +21,7 @@ export interface SourceDefault {
   id: string;
   name: string;
   url: string;
-  component_id?: string;
+  component_ids: string[];
   retrieval_method: string;
   url_template?: string;
   priority: number;
@@ -35,7 +35,7 @@ export interface UserSource {
   owner_id: string;
   name: string;
   url: string;
-  component_id?: string;
+  component_ids: string[];
   retrieval_method: string;
   url_template?: string;
   priority: number;
@@ -47,7 +47,7 @@ export interface UserSource {
 export interface CreateSourceRequest {
   name: string;
   url: string;
-  component_id?: string;
+  component_ids?: string[];
   retrieval_method?: string;
   url_template?: string;
   priority?: number;
@@ -57,7 +57,7 @@ export interface CreateSourceRequest {
 export interface UpdateSourceRequest {
   name?: string;
   url?: string;
-  component_id?: string;
+  component_ids?: string[];
   retrieval_method?: string;
   url_template?: string;
   priority?: number;
