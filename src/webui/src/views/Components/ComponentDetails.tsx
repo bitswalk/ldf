@@ -67,8 +67,8 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
     const result = await listSources();
     if (result.success) {
       // Filter sources that reference this component
-      const filtered = result.sources.filter(
-        (s) => s.component_id === props.componentId,
+      const filtered = result.sources.filter((s) =>
+        s.component_ids.includes(props.componentId),
       );
       setRelatedSources(filtered);
     }

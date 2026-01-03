@@ -99,6 +99,14 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     return component?.display_name || componentId;
   };
 
+  const getComponentNames = (componentIds: string[] | undefined): string[] => {
+    if (!componentIds || componentIds.length === 0) return [];
+    return componentIds.map((id) => {
+      const component = components().find((c) => c.id === id);
+      return component?.display_name || id;
+    });
+  };
+
   const getComponentCategory = (componentId: string | undefined): string => {
     if (!componentId) return "";
     const component = components().find((c) => c.id === componentId);
@@ -126,7 +134,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     const updateReq: UpdateSourceRequest = {
       name: formData.name,
       url: formData.url,
-      component_id: formData.component_id,
+      component_ids: formData.component_ids,
       retrieval_method: formData.retrieval_method,
       url_template: formData.url_template,
       priority: formData.priority,
@@ -196,7 +204,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       id: src.id,
       name: src.name,
       url: src.url,
-      component_id: src.component_id,
+      component_ids: src.component_ids,
       retrieval_method: src.retrieval_method,
       url_template: src.url_template,
       priority: src.priority,
@@ -237,18 +245,22 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
               </Show>
             </div>
             <p class="text-muted-foreground mt-1">
-              <Show when={source()?.component_id}>
-                <span class="flex items-center gap-2">
+              <Show
+                when={
+                  source()?.component_ids && source()!.component_ids.length > 0
+                }
+              >
+                <span class="flex items-center gap-2 flex-wrap">
                   <Icon name="cube" size="sm" />
-                  {getComponentName(source()?.component_id)}
-                  <Show when={getComponentCategory(source()?.component_id)}>
-                    <span class="text-xs px-2 py-0.5 bg-muted rounded">
-                      {getComponentCategory(source()?.component_id)}
-                    </span>
-                  </Show>
+                  {getComponentNames(source()?.component_ids).join(", ")}
                 </span>
               </Show>
-              <Show when={!source()?.component_id}>
+              <Show
+                when={
+                  !source()?.component_ids ||
+                  source()!.component_ids.length === 0
+                }
+              >
                 {t("sources.detail.subtitle")}
               </Show>
             </p>
@@ -338,9 +350,32 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                     <span class="text-sm text-muted-foreground">
                       {t("sources.detail.component")}
                     </span>
-                    <p class="font-medium">
-                      {getComponentName(source()!.component_id)}
-                    </p>
+                    <Show
+                      when={
+                        source()!.component_ids &&
+                        source()!.component_ids.length > 0
+                      }
+                    >
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        {getComponentNames(source()!.component_ids).map(
+                          (name) => (
+                            <span class="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                              {name}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    </Show>
+                    <Show
+                      when={
+                        !source()!.component_ids ||
+                        source()!.component_ids.length === 0
+                      }
+                    >
+                      <p class="font-medium text-muted-foreground">
+                        {t("sources.detail.notAssigned")}
+                      </p>
+                    </Show>
                   </div>
 
                   <div>

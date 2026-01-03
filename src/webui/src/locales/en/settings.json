@@ -78,6 +78,28 @@
         "light": "Light",
         "dark": "Dark"
       }
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "Customize the application branding with your own logo and favicon (root only).",
+      "logo": {
+        "title": "Logo",
+        "description": "Upload a logo to display in the application header.",
+        "formats": "Supported formats: PNG, JPEG, WebP, SVG",
+        "delete": {
+          "title": "Delete Logo",
+          "confirm": "Are you sure you want to delete the logo? The default placeholder will be shown instead."
+        }
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "Upload a favicon to display in browser tabs.",
+        "formats": "Supported formats: PNG, ICO, SVG",
+        "delete": {
+          "title": "Delete Favicon",
+          "confirm": "Are you sure you want to delete the favicon? The default browser icon will be shown instead."
+        }
+      }
     }
   },
   "server": {

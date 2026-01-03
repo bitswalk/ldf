@@ -347,66 +347,64 @@ func (m *Manager) createJobForComponent(dist *db.Distribution, componentName str
 }
 
 // getRequiredComponents determines which components are needed based on distribution config
+// It dynamically looks up components from the database by category and config value
 func (m *Manager) getRequiredComponents(config *db.DistributionConfig) []string {
 	var components []string
 
-	// Core - kernel is always required
-	components = append(components, "kernel")
+	// Helper to find component by category and config value
+	findComponent := func(category, configValue string) {
+		if configValue == "" {
+			return
+		}
+		component, err := m.componentRepo.GetByCategoryAndNameContains(category, configValue)
+		if err != nil {
+			log.Warn("Failed to lookup component", "category", category, "configValue", configValue, "error", err)
+			return
+		}
+		if component != nil {
+			components = append(components, component.Name)
+		} else {
+			log.Warn("No component found for config", "category", category, "configValue", configValue)
+		}
+	}
 
-	// Bootloader
-	switch config.Core.Bootloader {
-	case "systemd-boot":
-		components = append(components, "bootloader-systemd-boot")
-	case "u-boot":
-		components = append(components, "bootloader-u-boot")
-	case "grub2":
-		components = append(components, "bootloader-grub2")
+	// Core - kernel is always required (look it up by category)
+	kernel, err := m.componentRepo.GetByCategoryAndNameContains("core", "kernel")
+	if err != nil || kernel == nil {
+		// Fallback to hardcoded name if not found
+		components = append(components, "kernel")
+	} else {
+		components = append(components, kernel.Name)
+	}
+
+	// Bootloader - lookup by category and config value
+	if config.Core.Bootloader != "" {
+		findComponent("bootloader", config.Core.Bootloader)
 	}
 
 	// Init system
-	switch config.System.Init {
-	case "systemd":
-		components = append(components, "init-systemd")
-	case "openrc":
-		components = append(components, "init-openrc")
+	if config.System.Init != "" {
+		findComponent("init", config.System.Init)
 	}
 
 	// Virtualization
-	switch config.Runtime.Virtualization {
-	case "cloud-hypervisor":
-		components = append(components, "virtualization-cloud-hypervisor")
-	case "qemu-kvm-libvirt":
-		components = append(components, "virtualization-qemu-kvm-libvirt")
+	if config.Runtime.Virtualization != "" {
+		findComponent("runtime", config.Runtime.Virtualization)
 	}
 
 	// Container
-	switch config.Runtime.Container {
-	case "docker-podman":
-		components = append(components, "container-docker-podman")
-	case "runc":
-		components = append(components, "container-runc")
-	case "cri-o":
-		components = append(components, "container-cri-o")
+	if config.Runtime.Container != "" {
+		findComponent("runtime", config.Runtime.Container)
 	}
 
 	// Security
-	switch config.Security.System {
-	case "selinux":
-		components = append(components, "security-selinux")
-	case "apparmor":
-		components = append(components, "security-apparmor")
+	if config.Security.System != "" {
+		findComponent("security", config.Security.System)
 	}
 
 	// Desktop (only if target is desktop)
-	if config.Target.Type == "desktop" && config.Target.Desktop != nil {
-		switch config.Target.Desktop.Environment {
-		case "kde":
-			components = append(components, "desktop-kde")
-		case "gnome":
-			components = append(components, "desktop-gnome")
-		case "swaywm":
-			components = append(components, "desktop-swaywm")
-		}
+	if config.Target.Type == "desktop" && config.Target.Desktop != nil && config.Target.Desktop.Environment != "" {
+		findComponent("desktop", config.Target.Desktop.Environment)
 	}
 
 	return components

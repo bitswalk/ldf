@@ -3,6 +3,7 @@ import {
   createSignal,
   createResource,
   createEffect,
+  createMemo,
   Show,
   For,
 } from "solid-js";
@@ -48,8 +49,8 @@ interface SourceFormProps {
 export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
   const [name, setName] = createSignal(props.initialData?.name || "");
   const [url, setUrl] = createSignal(props.initialData?.url || "");
-  const [componentId, setComponentId] = createSignal(
-    props.initialData?.component_id || "",
+  const [componentIds, setComponentIds] = createSignal<string[]>(
+    props.initialData?.component_ids || [],
   );
   const [retrievalMethod, setRetrievalMethod] = createSignal(
     props.initialData?.retrieval_method || "release",
@@ -80,30 +81,38 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     return groupByCategory(comps);
   };
 
-  const selectedComponent = () => {
+  // Get selected components for display and URL template preview
+  const selectedComponents = createMemo(() => {
     const comps = components();
-    if (!comps || !componentId()) return null;
-    return comps.find((c) => c.id === componentId()) || null;
+    const ids = componentIds();
+    if (!comps || ids.length === 0) return [];
+    return comps.filter((c) => ids.includes(c.id));
+  });
+
+  // Get the first selected component for URL template preview
+  const firstSelectedComponent = () => {
+    const selected = selectedComponents();
+    return selected.length > 0 ? selected[0] : null;
   };
 
-  // Reference to the select element for programmatic updates
-  let selectRef: HTMLSelectElement | undefined;
+  // Toggle component selection
+  const toggleComponent = (id: string) => {
+    setComponentIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((cid) => cid !== id);
+      }
+      return [...prev, id];
+    });
+  };
 
-  // Sync select value when components load (fixes async loading issue)
-  createEffect(() => {
-    const comps = components();
-    const currentId = componentId();
-    if (selectRef && comps && currentId) {
-      // Force the select to update its displayed value
-      selectRef.value = currentId;
-    }
-  });
+  // Check if a component is selected
+  const isComponentSelected = (id: string) => componentIds().includes(id);
 
   const previewUrl = () => {
     const baseUrl = url().trim();
     if (!baseUrl) return "";
 
-    const comp = selectedComponent();
+    const comp = firstSelectedComponent();
     let template = urlTemplate().trim();
 
     if (!template && comp) {
@@ -166,11 +175,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
       url: url().trim(),
       priority: priority(),
       enabled: enabled(),
+      component_ids: componentIds(),
     };
 
-    if (componentId()) {
-      request.component_id = componentId();
-    }
     if (retrievalMethod()) {
       request.retrieval_method = retrievalMethod();
     }
@@ -212,32 +219,65 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
       </div>
 
       <div class="space-y-2">
-        <label class="text-sm font-medium" for="source-component">
+        <label class="text-sm font-medium">
           {t("sources.form.component.label")}
         </label>
-        <select
-          ref={selectRef}
-          id="source-component"
-          class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors"
-          value={componentId()}
-          onChange={(e) => setComponentId(e.target.value)}
-        >
-          <option value="">{t("sources.form.component.placeholder")}</option>
+        <div class="border-2 border-border rounded-md max-h-64 overflow-y-auto">
           <For each={Object.entries(groupedComponents())}>
             {([category, comps]) => (
-              <optgroup label={getCategoryDisplayName(category)}>
-                <For each={comps as Component[]}>
-                  {(comp) => (
-                    <option value={comp.id}>
-                      {comp.display_name}
-                      {comp.is_optional ? " (optional)" : ""}
-                    </option>
-                  )}
-                </For>
-              </optgroup>
+              <div class="border-b border-border last:border-b-0">
+                <div class="px-3 py-2 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {getCategoryDisplayName(category)}
+                </div>
+                <div class="divide-y divide-border/50">
+                  <For each={comps as Component[]}>
+                    {(comp) => (
+                      <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={isComponentSelected(comp.id)}
+                          onChange={() => toggleComponent(comp.id)}
+                          class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                        <span class="text-sm flex-1">
+                          {comp.display_name}
+                          {comp.is_optional && (
+                            <span class="text-muted-foreground ml-1">
+                              (optional)
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    )}
+                  </For>
+                </div>
+              </div>
             )}
           </For>
-        </select>
+          <Show when={Object.keys(groupedComponents()).length === 0}>
+            <div class="px-3 py-4 text-center text-sm text-muted-foreground">
+              Loading components...
+            </div>
+          </Show>
+        </div>
+        <Show when={selectedComponents().length > 0}>
+          <div class="flex flex-wrap gap-1.5">
+            <For each={selectedComponents()}>
+              {(comp) => (
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                  {comp.display_name}
+                  <button
+                    type="button"
+                    onClick={() => toggleComponent(comp.id)}
+                    class="hover:bg-primary/20 rounded-full p-0.5"
+                  >
+                    <Icon name="x" size="xs" />
+                  </button>
+                </span>
+              )}
+            </For>
+          </div>
+        </Show>
         <p class="text-xs text-muted-foreground">
           {t("sources.form.component.help")}
         </p>

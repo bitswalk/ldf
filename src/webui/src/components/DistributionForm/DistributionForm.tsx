@@ -133,7 +133,7 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
 
     // Filter sources that are linked to the kernel component
     const kernelSources = sourcesResult.sources.filter(
-      (s) => s.component_id === kernelComponent.id && s.enabled,
+      (s) => s.component_ids.includes(kernelComponent.id) && s.enabled,
     );
 
     if (kernelSources.length === 0) {
@@ -141,53 +141,53 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
       return [];
     }
 
-    // Fetch versions from all kernel sources
+    // Fetch versions from all kernel sources, paginating to get all versions
     const allVersions: KernelVersion[] = [];
     for (const source of kernelSources) {
       const sourceType: SourceType = source.is_system ? "default" : "user";
-      const versionsResult = await listSourceVersions(
-        source.id,
-        sourceType,
-        100, // Limit to 100 versions
-        0,
-        false, // Include all versions, not just stable
-      );
 
-      if (versionsResult.success) {
-        for (const v of versionsResult.versions) {
-          // Determine version type based on is_stable flag and version pattern
-          let versionType: "stable" | "lts" | "mainline" = "stable";
-          if (!v.is_stable) {
-            versionType = "mainline";
-          } else {
-            // LTS kernels typically have specific version numbers (6.1.x, 6.6.x, 5.15.x, etc.)
-            // This is a simplified heuristic
-            const versionParts = v.version.split(".");
-            if (versionParts.length >= 2) {
-              const majorMinor = `${versionParts[0]}.${versionParts[1]}`;
-              // Known LTS versions (simplified check)
-              const ltsVersions = [
-                "6.12",
-                "6.6",
-                "6.1",
-                "5.15",
-                "5.10",
-                "5.4",
-                "4.19",
-                "4.14",
-              ];
-              if (ltsVersions.includes(majorMinor)) {
-                versionType = "lts";
-              }
+      // Paginate through all versions
+      const pageSize = 100;
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const versionsResult = await listSourceVersions(
+          source.id,
+          sourceType,
+          pageSize,
+          offset,
+          undefined, // No filter - include all version types
+        );
+
+        if (versionsResult.success) {
+          for (const v of versionsResult.versions) {
+            // Use the version_type from the API, map to form display type
+            let displayType: "stable" | "lts" | "mainline" = "stable";
+            if (
+              v.version_type === "mainline" ||
+              v.version_type === "linux-next"
+            ) {
+              displayType = "mainline";
+            } else if (v.version_type === "longterm") {
+              displayType = "lts";
+            } else {
+              displayType = "stable";
             }
+
+            allVersions.push({
+              version: v.version,
+              type: displayType,
+              sourceId: source.id,
+              sourceType,
+            });
           }
 
-          allVersions.push({
-            version: v.version,
-            type: versionType,
-            sourceId: source.id,
-            sourceType,
-          });
+          // Check if there are more pages
+          hasMore = versionsResult.versions.length === pageSize;
+          offset += pageSize;
+        } else {
+          hasMore = false;
         }
       }
     }

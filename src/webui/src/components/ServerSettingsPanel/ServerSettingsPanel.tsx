@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, createMemo, Show, For } from "solid-js";
 import { Icon } from "../Icon";
-import type { ServerSetting } from "../../services/settings";
+import { getServerSetting, type ServerSetting } from "../../services/settings";
 
 interface ServerSettingsPanelProps {
   settings: ServerSetting[];
@@ -191,11 +191,32 @@ const SettingInput: Component<{
   const [editValue, setEditValue] = createSignal<string>("");
   const [isEditing, setIsEditing] = createSignal(false);
   const [hasChanges, setHasChanges] = createSignal(false);
+  const [showSecret, setShowSecret] = createSignal(false);
+  const [revealedValue, setRevealedValue] = createSignal<string | null>(null);
+  const [loadingReveal, setLoadingReveal] = createSignal(false);
 
   // Check if value is sensitive (masked)
   const isSensitive = () => {
     const key = props.config.key;
     return key === "storage.s3.access_key" || key === "storage.s3.secret_key";
+  };
+
+  // Toggle secret visibility - fetch revealed value from server
+  const toggleSecretVisibility = async () => {
+    if (showSecret()) {
+      // Hide the secret
+      setShowSecret(false);
+      setRevealedValue(null);
+    } else {
+      // Fetch and show the secret
+      setLoadingReveal(true);
+      const result = await getServerSetting(props.config.key, true);
+      setLoadingReveal(false);
+      if (result.success) {
+        setRevealedValue(String(result.setting.value));
+        setShowSecret(true);
+      }
+    }
   };
 
   // Initialize edit value when entering edit mode
@@ -309,28 +330,56 @@ const SettingInput: Component<{
           <Show
             when={isEditing()}
             fallback={
-              <button
-                type="button"
-                onClick={startEditing}
-                disabled={props.disabled || props.updating}
-                class="text-sm font-mono max-w-56 truncate block px-2 py-1 border border-transparent rounded hover:border-border hover:bg-muted/50 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-50"
-                title={isSensitive() ? "Click to edit" : String(value())}
-              >
-                {props.updating ? (
-                  <Icon name="spinner" size="xs" class="animate-spin" />
-                ) : isSensitive() ? (
-                  <span class="text-muted-foreground">••••••••</span>
-                ) : (
-                  String(value()) || (
-                    <span class="text-muted-foreground">—</span>
-                  )
-                )}
-              </button>
+              <section class="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  disabled={props.disabled || props.updating}
+                  class="text-sm font-mono max-w-56 truncate block px-2 py-1 border border-transparent rounded hover:border-border hover:bg-muted/50 transition-colors text-left disabled:cursor-not-allowed disabled:opacity-50"
+                  title={isSensitive() ? "Click to edit" : String(value())}
+                >
+                  {props.updating ? (
+                    <Icon name="spinner" size="xs" class="animate-spin" />
+                  ) : isSensitive() ? (
+                    showSecret() && revealedValue() ? (
+                      <span class="font-mono">{revealedValue()}</span>
+                    ) : (
+                      <span class="text-muted-foreground">••••••••</span>
+                    )
+                  ) : (
+                    String(value()) || (
+                      <span class="text-muted-foreground">—</span>
+                    )
+                  )}
+                </button>
+                <Show
+                  when={
+                    isSensitive() && String(value()) && String(value()) !== ""
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={toggleSecretVisibility}
+                    disabled={loadingReveal()}
+                    class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors disabled:opacity-50"
+                    title={showSecret() ? "Hide value" : "Show value"}
+                  >
+                    {loadingReveal() ? (
+                      <Icon name="spinner" size="xs" class="animate-spin" />
+                    ) : (
+                      <Icon
+                        name={showSecret() ? "eye-slash" : "eye"}
+                        size="xs"
+                      />
+                    )}
+                  </button>
+                </Show>
+              </section>
             }
           >
             <section class="flex items-center gap-1">
               <input
-                type={isSensitive() ? "password" : "text"}
+                type={isSensitive() && !showSecret() ? "password" : "text"}
                 value={editValue()}
                 onInput={(e) => handleInputChange(e.currentTarget.value)}
                 onKeyDown={handleKeyDown}
@@ -339,6 +388,16 @@ const SettingInput: Component<{
                 placeholder={isSensitive() ? "Enter new value" : ""}
                 class="w-48 px-2 py-1 text-sm font-mono border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <Show when={isSensitive()}>
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret())}
+                  class="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+                  title={showSecret() ? "Hide value" : "Show value"}
+                >
+                  <Icon name={showSecret() ? "eye-slash" : "eye"} size="xs" />
+                </button>
+              </Show>
               <Show when={hasChanges() || isSensitive()}>
                 <button
                   type="button"

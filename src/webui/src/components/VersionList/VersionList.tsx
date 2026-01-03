@@ -1,13 +1,7 @@
-import type { Component } from "solid-js";
-import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  For,
-  Show,
-  createMemo,
-} from "solid-js";
+import type { Component, JSX } from "solid-js";
+import { createSignal, createEffect, onCleanup, Show } from "solid-js";
 import { Icon } from "../Icon";
+import { Datagrid } from "../Datagrid";
 import {
   Pagination,
   PaginationContent,
@@ -21,6 +15,7 @@ import {
   type SourceVersion,
   type VersionSyncJob,
   type SourceType,
+  type VersionType,
   listSourceVersions,
   triggerVersionSync,
   getSyncStatus,
@@ -40,6 +35,14 @@ interface VersionListProps {
 
 const PAGE_SIZE = 20;
 
+const VERSION_TYPE_OPTIONS: { value: VersionType | "all"; label: string }[] = [
+  { value: "all", label: "All versions" },
+  { value: "mainline", label: "Mainline" },
+  { value: "stable", label: "Stable" },
+  { value: "longterm", label: "Longterm" },
+  { value: "linux-next", label: "Linux-next" },
+];
+
 export const VersionList: Component<VersionListProps> = (props) => {
   const [versions, setVersions] = createSignal<SourceVersion[]>([]);
   const [total, setTotal] = createSignal(0);
@@ -48,26 +51,25 @@ export const VersionList: Component<VersionListProps> = (props) => {
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [syncing, setSyncing] = createSignal(false);
-  const [filterStable, setFilterStable] = createSignal(true);
+  const [versionTypeFilter, setVersionTypeFilter] = createSignal<
+    VersionType | "all"
+  >("all");
+  const [dropdownOpen, setDropdownOpen] = createSignal(false);
 
   const pollInterval = () => props.pollInterval ?? 2000;
 
-  const totalPages = createMemo(() => Math.ceil(total() / PAGE_SIZE));
-
-  const filteredVersions = createMemo(() => {
-    if (!filterStable()) return versions();
-    return versions().filter((v) => v.is_stable);
-  });
+  const totalPages = () => Math.ceil(total() / PAGE_SIZE);
 
   const fetchVersions = async (page: number = 1) => {
     setLoading(true);
     const offset = (page - 1) * PAGE_SIZE;
+    const filter = versionTypeFilter();
     const result = await listSourceVersions(
       props.sourceId,
       props.sourceType,
       PAGE_SIZE,
       offset,
-      filterStable(),
+      filter === "all" ? undefined : filter,
     );
     if (result.success) {
       setVersions(result.versions);
@@ -88,7 +90,6 @@ export const VersionList: Component<VersionListProps> = (props) => {
     const result = await getSyncStatus(props.sourceId, props.sourceType);
     if (result.success && result.job) {
       setSyncJob(result.job);
-      // If sync just completed, refresh versions
       if (result.job.status === "completed" || result.job.status === "failed") {
         fetchVersions(currentPage());
       }
@@ -114,9 +115,25 @@ export const VersionList: Component<VersionListProps> = (props) => {
 
   // Refetch when filter changes
   createEffect(() => {
-    const _ = filterStable();
+    const _ = versionTypeFilter();
     fetchVersions(1);
     setCurrentPage(1);
+  });
+
+  // Close dropdown when clicking outside
+  createEffect(() => {
+    if (dropdownOpen()) {
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest("[data-version-filter-dropdown]")) {
+          setDropdownOpen(false);
+        }
+      };
+      document.addEventListener("click", handleClickOutside);
+      onCleanup(() =>
+        document.removeEventListener("click", handleClickOutside),
+      );
+    }
   });
 
   const handlePageChange = (page: number) => {
@@ -130,7 +147,6 @@ export const VersionList: Component<VersionListProps> = (props) => {
     const result = await triggerVersionSync(props.sourceId, props.sourceType);
     if (result.success) {
       props.onSuccess?.("Version sync started");
-      // Start polling for updates
       fetchSyncStatus();
     } else {
       props.onError?.(result.message);
@@ -191,26 +207,81 @@ export const VersionList: Component<VersionListProps> = (props) => {
     return date.toLocaleDateString();
   };
 
+  const getVersionTypeColor = (type: VersionType | undefined): string => {
+    switch (type) {
+      case "mainline":
+        return "bg-blue-500/20 text-blue-500";
+      case "longterm":
+        return "bg-purple-500/20 text-purple-500";
+      case "linux-next":
+        return "bg-orange-500/20 text-orange-500";
+      default:
+        return "bg-green-500/20 text-green-500";
+    }
+  };
+
+  const getVersionTypeLabel = (type: VersionType | undefined): string => {
+    if (type === "linux-next") return "Linux-next";
+    if (type) return type.charAt(0).toUpperCase() + type.slice(1);
+    return "Stable";
+  };
+
+  const renderVersionType = (
+    versionType: VersionType | undefined,
+  ): JSX.Element => {
+    return (
+      <span
+        class={`text-xs px-2 py-0.5 rounded-full ${getVersionTypeColor(versionType)}`}
+      >
+        {getVersionTypeLabel(versionType)}
+      </span>
+    );
+  };
+
+  const ActionsCell: Component<{ value: any; row: SourceVersion }> = (
+    cellProps,
+  ) => {
+    return (
+      <div class="flex justify-end gap-1">
+        <button
+          onClick={() => handleCopyUrl(cellProps.row)}
+          class="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+          title="Copy download URL"
+        >
+          <Icon name="copy" size="md" />
+        </button>
+        <Show when={cellProps.row.download_url}>
+          <a
+            href={cellProps.row.download_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors inline-block"
+            title="Open download URL"
+          >
+            <Icon name="arrow-square-out" size="md" />
+          </a>
+        </Show>
+      </div>
+    );
+  };
+
   // Generate visible page numbers with ellipsis logic
-  const visiblePages = createMemo(() => {
+  const visiblePages = () => {
     const total = totalPages();
     const current = currentPage();
     const pages: (number | "ellipsis")[] = [];
 
     if (total <= 7) {
-      // Show all pages if 7 or fewer
       for (let i = 1; i <= total; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
 
       if (current > 3) {
         pages.push("ellipsis");
       }
 
-      // Show pages around current
       const start = Math.max(2, current - 1);
       const end = Math.min(total - 1, current + 1);
 
@@ -222,12 +293,11 @@ export const VersionList: Component<VersionListProps> = (props) => {
         pages.push("ellipsis");
       }
 
-      // Always show last page
       pages.push(total);
     }
 
     return pages;
-  });
+  };
 
   return (
     <div class="space-y-4">
@@ -237,24 +307,46 @@ export const VersionList: Component<VersionListProps> = (props) => {
           <Icon name="git-branch" size="lg" class="text-primary" />
           <h3 class="text-lg font-semibold">Available Versions</h3>
           <Show when={total() > 0}>
-            <span class="text-sm text-muted-foreground">
-              ({total()} {filterStable() ? "stable" : "total"})
-            </span>
+            <span class="text-sm text-muted-foreground">({total()})</span>
           </Show>
         </div>
         <div class="flex items-center gap-2">
-          {/* Filter toggle */}
-          <button
-            onClick={() => setFilterStable(!filterStable())}
-            class={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
-              filterStable()
-                ? "bg-green-500/20 text-green-500"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            <Icon name={filterStable() ? "check" : "circle"} size="sm" />
-            <span>Stable only</span>
-          </button>
+          {/* Version type filter dropdown */}
+          <div class="relative" data-version-filter-dropdown>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen())}
+              class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-muted/80 transition-colors"
+            >
+              <Icon name="funnel" size="sm" />
+              <span>
+                {
+                  VERSION_TYPE_OPTIONS.find(
+                    (o) => o.value === versionTypeFilter(),
+                  )?.label
+                }
+              </span>
+              <Icon name="caret-down" size="sm" />
+            </button>
+            <Show when={dropdownOpen()}>
+              <div class="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-popover border border-border rounded-md shadow-lg">
+                {VERSION_TYPE_OPTIONS.map((option) => (
+                  <button
+                    onClick={() => {
+                      setVersionTypeFilter(option.value);
+                      setDropdownOpen(false);
+                    }}
+                    class={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-md last:rounded-b-md ${
+                      versionTypeFilter() === option.value
+                        ? "bg-primary/10 text-primary"
+                        : ""
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </Show>
+          </div>
 
           {/* Sync button */}
           <button
@@ -362,76 +454,41 @@ export const VersionList: Component<VersionListProps> = (props) => {
         </div>
       </Show>
 
-      {/* Versions table */}
-      <Show when={!loading() && filteredVersions().length > 0}>
+      {/* Versions table using Datagrid */}
+      <Show when={!loading() && versions().length > 0}>
         <div class="border border-border rounded-lg overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-muted/50">
-              <tr>
-                <th class="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Version
-                </th>
-                <th class="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Release Date
-                </th>
-                <th class="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Type
-                </th>
-                <th class="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              <For each={filteredVersions()}>
-                {(version) => (
-                  <tr class="hover:bg-muted/30 transition-colors">
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <span class="font-mono font-medium">
-                          {version.version}
-                        </span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-muted-foreground">
-                      {formatDate(version.release_date)}
-                    </td>
-                    <td class="px-4 py-3">
-                      <span
-                        class={`text-xs px-2 py-0.5 rounded-full ${
-                          version.is_stable
-                            ? "bg-green-500/20 text-green-500"
-                            : "bg-yellow-500/20 text-yellow-500"
-                        }`}
-                      >
-                        {version.is_stable ? "Stable" : "Pre-release"}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleCopyUrl(version)}
-                        class="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                        title="Copy download URL"
-                      >
-                        <Icon name="copy" size="md" />
-                      </button>
-                      <Show when={version.download_url}>
-                        <a
-                          href={version.download_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors inline-block"
-                          title="Open download URL"
-                        >
-                          <Icon name="arrow-square-out" size="md" />
-                        </a>
-                      </Show>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
+          <Datagrid
+            columns={[
+              {
+                key: "version",
+                label: "Version",
+                sortable: true,
+                class: "font-mono font-medium",
+              },
+              {
+                key: "release_date",
+                label: "Release Date",
+                sortable: true,
+                class: "text-sm text-muted-foreground",
+                render: (value: string | undefined) => formatDate(value),
+              },
+              {
+                key: "version_type",
+                label: "Type",
+                sortable: true,
+                render: (value: VersionType | undefined) =>
+                  renderVersionType(value),
+              },
+              {
+                key: "id",
+                label: "Actions",
+                class: "text-right",
+                component: ActionsCell,
+              },
+            ]}
+            data={versions()}
+            rowKey="id"
+          />
         </div>
 
         {/* Pagination */}
@@ -455,24 +512,22 @@ export const VersionList: Component<VersionListProps> = (props) => {
                   />
                 </PaginationItem>
 
-                <For each={visiblePages()}>
-                  {(page) => (
-                    <PaginationItem>
-                      <Show
-                        when={page !== "ellipsis"}
-                        fallback={<PaginationEllipsis />}
+                {visiblePages().map((page) => (
+                  <PaginationItem>
+                    <Show
+                      when={page !== "ellipsis"}
+                      fallback={<PaginationEllipsis />}
+                    >
+                      <PaginationLink
+                        onClick={() => handlePageChange(page as number)}
+                        isActive={currentPage() === page}
+                        class="cursor-pointer"
                       >
-                        <PaginationLink
-                          onClick={() => handlePageChange(page as number)}
-                          isActive={currentPage() === page}
-                          class="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      </Show>
-                    </PaginationItem>
-                  )}
-                </For>
+                        {page}
+                      </PaginationLink>
+                    </Show>
+                  </PaginationItem>
+                ))}
 
                 <PaginationItem>
                   <PaginationNext

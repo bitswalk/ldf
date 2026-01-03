@@ -118,7 +118,7 @@ type SourceDefault struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name"`
 	URL             string    `json:"url"`
-	ComponentID     string    `json:"component_id,omitempty"`
+	ComponentIDs    []string  `json:"component_ids"`
 	RetrievalMethod string    `json:"retrieval_method"`
 	URLTemplate     string    `json:"url_template,omitempty"`
 	Priority        int       `json:"priority"`
@@ -133,7 +133,7 @@ type UserSource struct {
 	OwnerID         string    `json:"owner_id"`
 	Name            string    `json:"name"`
 	URL             string    `json:"url"`
-	ComponentID     string    `json:"component_id,omitempty"`
+	ComponentIDs    []string  `json:"component_ids"`
 	RetrievalMethod string    `json:"retrieval_method"`
 	URLTemplate     string    `json:"url_template,omitempty"`
 	Priority        int       `json:"priority"`
@@ -147,7 +147,7 @@ type Source struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name"`
 	URL             string    `json:"url"`
-	ComponentID     string    `json:"component_id,omitempty"`
+	ComponentIDs    []string  `json:"component_ids"`
 	RetrievalMethod string    `json:"retrieval_method"`
 	URLTemplate     string    `json:"url_template,omitempty"`
 	Priority        int       `json:"priority"`
@@ -222,19 +222,30 @@ type DistributionSourceOverride struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+// VersionType represents the type/category of a version
+type VersionType string
+
+const (
+	VersionTypeMainline  VersionType = "mainline"
+	VersionTypeStable    VersionType = "stable"
+	VersionTypeLongterm  VersionType = "longterm"
+	VersionTypeLinuxNext VersionType = "linux-next"
+)
+
 // SourceVersion represents a discovered version from an upstream source
 type SourceVersion struct {
-	ID           string     `json:"id"`
-	SourceID     string     `json:"source_id"`
-	SourceType   string     `json:"source_type"` // "default" or "user"
-	Version      string     `json:"version"`
-	ReleaseDate  *time.Time `json:"release_date,omitempty"`
-	DownloadURL  string     `json:"download_url,omitempty"`
-	Checksum     string     `json:"checksum,omitempty"`
-	ChecksumType string     `json:"checksum_type,omitempty"`
-	FileSize     int64      `json:"file_size,omitempty"`
-	IsStable     bool       `json:"is_stable"`
-	DiscoveredAt time.Time  `json:"discovered_at"`
+	ID           string      `json:"id"`
+	SourceID     string      `json:"source_id"`
+	SourceType   string      `json:"source_type"` // "default" or "user"
+	Version      string      `json:"version"`
+	VersionType  VersionType `json:"version_type"` // "mainline", "stable", "longterm", "linux-next"
+	ReleaseDate  *time.Time  `json:"release_date,omitempty"`
+	DownloadURL  string      `json:"download_url,omitempty"`
+	Checksum     string      `json:"checksum,omitempty"`
+	ChecksumType string      `json:"checksum_type,omitempty"`
+	FileSize     int64       `json:"file_size,omitempty"`
+	IsStable     bool        `json:"is_stable"` // Kept for backwards compatibility
+	DiscoveredAt time.Time   `json:"discovered_at"`
 }
 
 // VersionSyncStatus represents the status of a version sync job

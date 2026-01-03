@@ -119,6 +119,25 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 	return r.scanComponents(rows)
 }
 
+// GetByCategoryAndNameContains finds a component by category where name contains the given value
+// This is used for dynamic component lookup based on distribution config values
+// e.g., category="bootloader", nameContains="systemd-boot" could match "bootloader-systemd-boot" or "my-systemd-boot-variant"
+func (r *ComponentRepository) GetByCategoryAndNameContains(category, nameContains string) (*Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			created_at, updated_at
+		FROM components
+		WHERE category = ? AND name LIKE ?
+		ORDER BY is_system DESC, name ASC
+		LIMIT 1
+	`
+	// Use LIKE pattern to find components containing the config value
+	pattern := "%" + nameContains + "%"
+	row := r.db.DB().QueryRow(query, category, pattern)
+	return r.scanComponent(row)
+}
+
 // Create inserts a new component
 func (r *ComponentRepository) Create(c *Component) error {
 	if c.ID == "" {

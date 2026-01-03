@@ -21,7 +21,7 @@ func NewSourceVersionRepository(db *Database) *SourceVersionRepository {
 // ListBySource retrieves all versions for a specific source ordered by version descending
 func (r *SourceVersionRepository) ListBySource(sourceID, sourceType string) ([]SourceVersion, error) {
 	query := `
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE source_id = ? AND source_type = ?
@@ -39,7 +39,7 @@ func (r *SourceVersionRepository) ListBySource(sourceID, sourceType string) ([]S
 // ListBySourceStable retrieves only stable versions for a specific source
 func (r *SourceVersionRepository) ListBySourceStable(sourceID, sourceType string) ([]SourceVersion, error) {
 	query := `
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE source_id = ? AND source_type = ? AND is_stable = 1
@@ -54,13 +54,16 @@ func (r *SourceVersionRepository) ListBySourceStable(sourceID, sourceType string
 	return r.scanVersions(rows)
 }
 
-// ListBySourcePaginated retrieves versions with pagination and optional stable filter
-func (r *SourceVersionRepository) ListBySourcePaginated(sourceID, sourceType string, limit, offset int, stableOnly bool) ([]SourceVersion, int, error) {
+// ListBySourcePaginated retrieves versions with pagination and optional version type filter
+func (r *SourceVersionRepository) ListBySourcePaginated(sourceID, sourceType string, limit, offset int, versionTypeFilter string) ([]SourceVersion, int, error) {
 	// Build where clause
 	whereClause := "source_id = ? AND source_type = ?"
 	args := []interface{}{sourceID, sourceType}
-	if stableOnly {
-		whereClause += " AND is_stable = 1"
+
+	// Filter by version type if specified
+	if versionTypeFilter != "" && versionTypeFilter != "all" {
+		whereClause += " AND version_type = ?"
+		args = append(args, versionTypeFilter)
 	}
 
 	// Get total count
@@ -72,7 +75,7 @@ func (r *SourceVersionRepository) ListBySourcePaginated(sourceID, sourceType str
 
 	// Get paginated results
 	query := fmt.Sprintf(`
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE %s
@@ -97,7 +100,7 @@ func (r *SourceVersionRepository) ListBySourcePaginated(sourceID, sourceType str
 // GetByID retrieves a source version by ID
 func (r *SourceVersionRepository) GetByID(id string) (*SourceVersion, error) {
 	query := `
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE id = ?
@@ -118,7 +121,7 @@ func (r *SourceVersionRepository) GetByID(id string) (*SourceVersion, error) {
 // GetByVersion retrieves a specific version for a source
 func (r *SourceVersionRepository) GetByVersion(sourceID, sourceType, version string) (*SourceVersion, error) {
 	query := `
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE source_id = ? AND source_type = ? AND version = ?
@@ -139,7 +142,7 @@ func (r *SourceVersionRepository) GetByVersion(sourceID, sourceType, version str
 // GetLatestStable retrieves the most recent stable version for a source
 func (r *SourceVersionRepository) GetLatestStable(sourceID, sourceType string) (*SourceVersion, error) {
 	query := `
-		SELECT id, source_id, source_type, version, release_date, download_url,
+		SELECT id, source_id, source_type, version, version_type, release_date, download_url,
 		       checksum, checksum_type, file_size, is_stable, discovered_at
 		FROM source_versions
 		WHERE source_id = ? AND source_type = ? AND is_stable = 1
@@ -167,13 +170,16 @@ func (r *SourceVersionRepository) Create(v *SourceVersion) error {
 	if v.DiscoveredAt.IsZero() {
 		v.DiscoveredAt = time.Now().UTC()
 	}
+	if v.VersionType == "" {
+		v.VersionType = VersionTypeStable
+	}
 
 	query := `
-		INSERT INTO source_versions (id, source_id, source_type, version, release_date, download_url,
+		INSERT INTO source_versions (id, source_id, source_type, version, version_type, release_date, download_url,
 		                             checksum, checksum_type, file_size, is_stable, discovered_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.DB().Exec(query, v.ID, v.SourceID, v.SourceType, v.Version,
+	_, err := r.db.DB().Exec(query, v.ID, v.SourceID, v.SourceType, v.Version, v.VersionType,
 		nullTime(v.ReleaseDate), nullString(v.DownloadURL), nullString(v.Checksum),
 		nullString(v.ChecksumType), v.FileSize, v.IsStable, v.DiscoveredAt)
 	if err != nil {
@@ -197,10 +203,11 @@ func (r *SourceVersionRepository) BulkUpsert(versions []SourceVersion) (int, err
 
 	// Prepare the upsert statement
 	stmt, err := tx.Prepare(`
-		INSERT INTO source_versions (id, source_id, source_type, version, release_date, download_url,
+		INSERT INTO source_versions (id, source_id, source_type, version, version_type, release_date, download_url,
 		                             checksum, checksum_type, file_size, is_stable, discovered_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(source_id, source_type, version) DO UPDATE SET
+			version_type = excluded.version_type,
 			release_date = excluded.release_date,
 			download_url = excluded.download_url,
 			checksum = excluded.checksum,
@@ -232,8 +239,11 @@ func (r *SourceVersionRepository) BulkUpsert(versions []SourceVersion) (int, err
 		if v.DiscoveredAt.IsZero() {
 			v.DiscoveredAt = now
 		}
+		if v.VersionType == "" {
+			v.VersionType = VersionTypeStable
+		}
 
-		_, err = stmt.Exec(v.ID, v.SourceID, v.SourceType, v.Version,
+		_, err = stmt.Exec(v.ID, v.SourceID, v.SourceType, v.Version, v.VersionType,
 			nullTime(v.ReleaseDate), nullString(v.DownloadURL), nullString(v.Checksum),
 			nullString(v.ChecksumType), v.FileSize, v.IsStable, v.DiscoveredAt)
 		if err != nil {
@@ -473,9 +483,9 @@ func (r *SourceVersionRepository) scanVersions(rows *sql.Rows) ([]SourceVersion,
 	for rows.Next() {
 		var v SourceVersion
 		var releaseDate sql.NullTime
-		var downloadURL, checksum, checksumType sql.NullString
+		var downloadURL, checksum, checksumType, versionType sql.NullString
 
-		if err := rows.Scan(&v.ID, &v.SourceID, &v.SourceType, &v.Version, &releaseDate,
+		if err := rows.Scan(&v.ID, &v.SourceID, &v.SourceType, &v.Version, &versionType, &releaseDate,
 			&downloadURL, &checksum, &checksumType, &v.FileSize, &v.IsStable, &v.DiscoveredAt); err != nil {
 			return nil, fmt.Errorf("failed to scan source version: %w", err)
 		}
@@ -486,6 +496,10 @@ func (r *SourceVersionRepository) scanVersions(rows *sql.Rows) ([]SourceVersion,
 		v.DownloadURL = downloadURL.String
 		v.Checksum = checksum.String
 		v.ChecksumType = checksumType.String
+		v.VersionType = VersionType(versionType.String)
+		if v.VersionType == "" {
+			v.VersionType = VersionTypeStable
+		}
 
 		versions = append(versions, v)
 	}
@@ -500,9 +514,9 @@ func (r *SourceVersionRepository) scanVersions(rows *sql.Rows) ([]SourceVersion,
 func (r *SourceVersionRepository) scanVersion(row *sql.Row) (*SourceVersion, error) {
 	var v SourceVersion
 	var releaseDate sql.NullTime
-	var downloadURL, checksum, checksumType sql.NullString
+	var downloadURL, checksum, checksumType, versionType sql.NullString
 
-	err := row.Scan(&v.ID, &v.SourceID, &v.SourceType, &v.Version, &releaseDate,
+	err := row.Scan(&v.ID, &v.SourceID, &v.SourceType, &v.Version, &versionType, &releaseDate,
 		&downloadURL, &checksum, &checksumType, &v.FileSize, &v.IsStable, &v.DiscoveredAt)
 	if err != nil {
 		return nil, err
@@ -514,6 +528,10 @@ func (r *SourceVersionRepository) scanVersion(row *sql.Row) (*SourceVersion, err
 	v.DownloadURL = downloadURL.String
 	v.Checksum = checksum.String
 	v.ChecksumType = checksumType.String
+	v.VersionType = VersionType(versionType.String)
+	if v.VersionType == "" {
+		v.VersionType = VersionTypeStable
+	}
 
 	return &v, nil
 }

@@ -35,6 +35,8 @@ func NewRunner(db *sql.DB) *Runner {
 func (r *Runner) registerAll() {
 	r.migrations = []Migration{
 		migration001InitialSchema(),
+		migration002AddVersionType(),
+		migration003MultiComponentSources(),
 	}
 
 	// Sort by version to ensure correct order

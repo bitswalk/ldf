@@ -401,20 +401,31 @@ func (d *Database) LoadFromDisk() error {
 
 	// Copy source_defaults table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("source_defaults") {
-		// Try with all new columns first
+		// Try with component_ids column first (new schema)
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO source_defaults
-			(id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
 			SELECT id, name, url, priority, enabled, created_at, updated_at,
-			       component_id, retrieval_method, url_template
+			       component_ids, retrieval_method, url_template
 			FROM disk_db.source_defaults
 		`)
 		if err != nil {
-			// Fallback: try without new columns (old schema)
+			// Fallback: try with component_id column (migrate to component_ids)
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO source_defaults
-				(id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
-				SELECT id, name, url, priority, enabled, created_at, updated_at, 'release'
+				(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
+				SELECT id, name, url, priority, enabled, created_at, updated_at,
+				       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+				       retrieval_method, url_template
+				FROM disk_db.source_defaults
+			`)
+		}
+		if err != nil {
+			// Fallback: try without component columns (old schema)
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO source_defaults
+				(id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method)
+				SELECT id, name, url, priority, enabled, created_at, updated_at, '[]', 'release'
 				FROM disk_db.source_defaults
 			`)
 		}
@@ -427,20 +438,31 @@ func (d *Database) LoadFromDisk() error {
 
 	// Copy user_sources table (handle schema migration for component fields)
 	if d.tableExistsInDiskDB("user_sources") {
-		// Try with all new columns first
+		// Try with component_ids column first (new schema)
 		result, err := d.db.Exec(`
 			INSERT OR REPLACE INTO user_sources
-			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_id, retrieval_method, url_template)
+			(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
 			SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
-			       component_id, retrieval_method, url_template
+			       component_ids, retrieval_method, url_template
 			FROM disk_db.user_sources
 		`)
 		if err != nil {
-			// Fallback: try without new columns (old schema)
+			// Fallback: try with component_id column (migrate to component_ids)
 			result, err = d.db.Exec(`
 				INSERT OR REPLACE INTO user_sources
-				(id, owner_id, name, url, priority, enabled, created_at, updated_at, retrieval_method)
-				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at, 'release'
+				(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method, url_template)
+				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at,
+				       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+				       retrieval_method, url_template
+				FROM disk_db.user_sources
+			`)
+		}
+		if err != nil {
+			// Fallback: try without component columns (old schema)
+			result, err = d.db.Exec(`
+				INSERT OR REPLACE INTO user_sources
+				(id, owner_id, name, url, priority, enabled, created_at, updated_at, component_ids, retrieval_method)
+				SELECT id, owner_id, name, url, priority, enabled, created_at, updated_at, '[]', 'release'
 				FROM disk_db.user_sources
 			`)
 		}

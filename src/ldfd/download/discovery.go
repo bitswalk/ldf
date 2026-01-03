@@ -23,6 +23,7 @@ type VersionDiscovery struct {
 // DiscoveredVersion represents a version found from an upstream source
 type DiscoveredVersion struct {
 	Version     string
+	VersionType db.VersionType
 	ReleaseDate *time.Time
 	DownloadURL string
 	IsStable    bool
@@ -177,9 +178,14 @@ func (d *VersionDiscovery) fetchGitHubReleases(ctx context.Context, apiURL strin
 
 			version := normalizeVersion(r.TagName)
 			publishedAt := r.PublishedAt
+			versionType := db.VersionTypeStable
+			if r.Prerelease {
+				versionType = db.VersionTypeMainline
+			}
 
 			allVersions = append(allVersions, DiscoveredVersion{
 				Version:     version,
+				VersionType: versionType,
 				ReleaseDate: &publishedAt,
 				DownloadURL: r.HTMLURL,
 				IsStable:    !r.Prerelease,
@@ -246,9 +252,15 @@ func (d *VersionDiscovery) fetchGitHubTags(ctx context.Context, apiURL string) (
 				continue
 			}
 
+			versionType := db.VersionTypeStable
+			if isPrerelease(version) {
+				versionType = db.VersionTypeMainline
+			}
+
 			allVersions = append(allVersions, DiscoveredVersion{
-				Version:  version,
-				IsStable: !isPrerelease(version),
+				Version:     version,
+				VersionType: versionType,
+				IsStable:    !isPrerelease(version),
 			})
 		}
 
@@ -368,9 +380,11 @@ func (d *VersionDiscovery) fetchKernelVersionsFromDirectory(ctx context.Context,
 		if len(m) > 1 && !seen[m[1]] {
 			version := m[1]
 			downloadURL := fmt.Sprintf("%s/linux-%s.tar.xz", dirURL, version)
+			versionType := determineKernelVersionType(version)
 
 			versions = append(versions, DiscoveredVersion{
 				Version:     version,
+				VersionType: versionType,
 				DownloadURL: downloadURL,
 				IsStable:    !strings.Contains(version, "-rc"),
 			})
@@ -434,8 +448,14 @@ func (d *VersionDiscovery) discoverHTTPDirectoryVersions(ctx context.Context, ba
 					}
 					downloadURL += link
 
+					versionType := db.VersionTypeStable
+					if isPrerelease(version) {
+						versionType = db.VersionTypeMainline
+					}
+
 					versions = append(versions, DiscoveredVersion{
 						Version:     version,
+						VersionType: versionType,
 						DownloadURL: downloadURL,
 						IsStable:    !isPrerelease(version),
 					})
@@ -472,6 +492,7 @@ func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Source, 
 			SourceID:    source.ID,
 			SourceType:  sourceType,
 			Version:     v.Version,
+			VersionType: v.VersionType,
 			ReleaseDate: v.ReleaseDate,
 			DownloadURL: v.DownloadURL,
 			IsStable:    v.IsStable,
@@ -550,6 +571,42 @@ func isPrerelease(version string) bool {
 		strings.Contains(lower, "-beta") ||
 		strings.Contains(lower, "-dev") ||
 		strings.Contains(lower, "-pre")
+}
+
+// determineKernelVersionType determines the version type for a kernel version
+// Based on kernel.org categorization: mainline, stable, longterm, linux-next
+func determineKernelVersionType(version string) db.VersionType {
+	lower := strings.ToLower(version)
+
+	// linux-next versions
+	if strings.HasPrefix(lower, "next-") {
+		return db.VersionTypeLinuxNext
+	}
+
+	// RC versions are mainline
+	if strings.Contains(lower, "-rc") {
+		return db.VersionTypeMainline
+	}
+
+	// Known LTS (longterm) kernel series
+	// Reference: https://kernel.org/category/releases.html
+	ltsVersions := []string{
+		"6.12", "6.6", "6.1", "5.15", "5.10", "5.4", "4.19", "4.14",
+	}
+
+	// Extract major.minor from version
+	parts := strings.Split(version, ".")
+	if len(parts) >= 2 {
+		majorMinor := parts[0] + "." + parts[1]
+		for _, lts := range ltsVersions {
+			if majorMinor == lts {
+				return db.VersionTypeLongterm
+			}
+		}
+	}
+
+	// Default to stable for non-RC, non-LTS versions
+	return db.VersionTypeStable
 }
 
 // sortVersionsDescending sorts versions in descending order using semver-like comparison
