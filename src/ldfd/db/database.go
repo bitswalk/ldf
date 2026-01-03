@@ -351,9 +351,8 @@ func (d *Database) LoadFromDisk() error {
 
 		if hasIsOptionalCol > 0 {
 			// Compatible schema - delete seeded components and load from disk
-			// ON DELETE CASCADE handles cleanup of related tables (download_jobs,
-			// distribution_source_overrides), and ON DELETE SET NULL handles
-			// source_defaults and user_sources
+			// ON DELETE CASCADE handles cleanup of related tables (download_jobs),
+			// and ON DELETE SET NULL handles upstream_sources
 			if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
 				loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
 			}
@@ -486,19 +485,6 @@ func (d *Database) LoadFromDisk() error {
 			} else if rows, _ := result.RowsAffected(); rows > 0 {
 				loadedTables = append(loadedTables, fmt.Sprintf("user_sources->upstream_sources(%d)", rows))
 			}
-		}
-	}
-
-	// Copy distribution_source_overrides table
-	if d.tableExistsInDiskDB("distribution_source_overrides") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO distribution_source_overrides
-			SELECT * FROM disk_db.distribution_source_overrides
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("distribution_source_overrides: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("distribution_source_overrides(%d)", rows))
 		}
 	}
 

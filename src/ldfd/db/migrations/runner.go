@@ -38,6 +38,7 @@ func (r *Runner) registerAll() {
 		migration002AddVersionType(),
 		migration003MultiComponentSources(),
 		migration004MergeSources(),
+		migration005RemoveDistributionOverrides(),
 	}
 
 	// Sort by version to ensure correct order

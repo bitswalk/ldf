@@ -297,8 +297,8 @@ func (m *Manager) createJobForComponent(dist *db.Distribution, componentName str
 		return nil, fmt.Errorf("component not found: %s", componentName)
 	}
 
-	// Get effective source for this component
-	source, err := m.sourceRepo.GetEffectiveSource(dist.ID, component.ID, userID)
+	// Get effective source for this component (priority-based selection)
+	source, err := m.sourceRepo.GetEffectiveSource(component.ID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get effective source: %w", err)
 	}

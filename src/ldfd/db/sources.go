@@ -367,26 +367,10 @@ func (r *SourceRepository) GetMergedSourcesByComponent(userID, componentID strin
 	return sources, nil
 }
 
-// GetEffectiveSource returns the effective source for a component, considering distribution overrides
-func (r *SourceRepository) GetEffectiveSource(distributionID, componentID, userID string) (*UpstreamSource, error) {
-	// First, check for distribution-specific override
-	override, err := r.GetDistributionOverride(distributionID, componentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get distribution override: %w", err)
-	}
-
-	if override != nil {
-		// Get the source from the override - now we just use the source_id directly
-		src, err := r.GetByID(override.SourceID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get source from override: %w", err)
-		}
-		if src != nil {
-			return src, nil
-		}
-	}
-
-	// Fall back to priority-based selection from merged sources
+// GetEffectiveSource returns the effective source for a component based on priority
+// Sources are selected by priority (ascending) - the first enabled source wins
+func (r *SourceRepository) GetEffectiveSource(componentID, userID string) (*UpstreamSource, error) {
+	// Get sources for this component sorted by priority
 	sources, err := r.GetMergedSourcesByComponent(userID, componentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get merged sources: %w", err)
@@ -400,114 +384,6 @@ func (r *SourceRepository) GetEffectiveSource(distributionID, componentID, userI
 	}
 
 	return nil, nil
-}
-
-// Distribution Source Override operations
-
-// GetDistributionOverride retrieves a distribution source override
-func (r *SourceRepository) GetDistributionOverride(distributionID, componentID string) (*DistributionSourceOverride, error) {
-	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type, created_at
-		FROM distribution_source_overrides
-		WHERE distribution_id = ? AND component_id = ?
-	`
-	row := r.db.DB().QueryRow(query, distributionID, componentID)
-
-	var o DistributionSourceOverride
-	err := row.Scan(&o.ID, &o.DistributionID, &o.ComponentID, &o.SourceID, &o.SourceType, &o.CreatedAt)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to get distribution override: %w", err)
-	}
-
-	return &o, nil
-}
-
-// ListDistributionOverrides retrieves all overrides for a distribution
-func (r *SourceRepository) ListDistributionOverrides(distributionID string) ([]DistributionSourceOverride, error) {
-	query := `
-		SELECT id, distribution_id, component_id, source_id, source_type, created_at
-		FROM distribution_source_overrides
-		WHERE distribution_id = ?
-	`
-	rows, err := r.db.DB().Query(query, distributionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list distribution overrides: %w", err)
-	}
-	defer rows.Close()
-
-	var overrides []DistributionSourceOverride
-	for rows.Next() {
-		var o DistributionSourceOverride
-		if err := rows.Scan(&o.ID, &o.DistributionID, &o.ComponentID, &o.SourceID, &o.SourceType, &o.CreatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan distribution override: %w", err)
-		}
-		overrides = append(overrides, o)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating distribution overrides: %w", err)
-	}
-
-	return overrides, nil
-}
-
-// SetDistributionOverride creates or updates a distribution source override
-func (r *SourceRepository) SetDistributionOverride(o *DistributionSourceOverride) error {
-	if o.ID == "" {
-		o.ID = uuid.New().String()
-	}
-	o.CreatedAt = time.Now()
-
-	// Use INSERT OR REPLACE to handle both create and update
-	query := `
-		INSERT OR REPLACE INTO distribution_source_overrides (id, distribution_id, component_id, source_id, source_type, created_at)
-		VALUES (
-			COALESCE((SELECT id FROM distribution_source_overrides WHERE distribution_id = ? AND component_id = ?), ?),
-			?, ?, ?, ?, ?
-		)
-	`
-	_, err := r.db.DB().Exec(query,
-		o.DistributionID, o.ComponentID, o.ID,
-		o.DistributionID, o.ComponentID, o.SourceID, o.SourceType, o.CreatedAt,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to set distribution override: %w", err)
-	}
-
-	return nil
-}
-
-// RemoveDistributionOverride removes a distribution source override
-func (r *SourceRepository) RemoveDistributionOverride(distributionID, componentID string) error {
-	result, err := r.db.DB().Exec(
-		"DELETE FROM distribution_source_overrides WHERE distribution_id = ? AND component_id = ?",
-		distributionID, componentID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove distribution override: %w", err)
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-	if affected == 0 {
-		return fmt.Errorf("distribution override not found")
-	}
-
-	return nil
-}
-
-// DeleteDistributionOverrides removes all overrides for a distribution
-func (r *SourceRepository) DeleteDistributionOverrides(distributionID string) error {
-	_, err := r.db.DB().Exec("DELETE FROM distribution_source_overrides WHERE distribution_id = ?", distributionID)
-	if err != nil {
-		return fmt.Errorf("failed to delete distribution overrides: %w", err)
-	}
-	return nil
 }
 
 // Helper functions

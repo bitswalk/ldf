@@ -195,16 +195,6 @@ type DownloadJob struct {
 	MaxRetries      int               `json:"max_retries"`
 }
 
-// DistributionSourceOverride represents a per-distribution source binding
-type DistributionSourceOverride struct {
-	ID             string    `json:"id"`
-	DistributionID string    `json:"distribution_id"`
-	ComponentID    string    `json:"component_id"`
-	SourceID       string    `json:"source_id"`
-	SourceType     string    `json:"source_type"`
-	CreatedAt      time.Time `json:"created_at"`
-}
-
 // VersionType represents the type/category of a version
 type VersionType string
 

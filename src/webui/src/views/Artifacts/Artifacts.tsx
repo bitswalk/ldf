@@ -438,8 +438,9 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  {t("artifacts.actions.deleteSelected")} (
-                  {selectedArtifacts().length})
+                  {t("artifacts.actions.deleteSelected", {
+                    count: selectedArtifacts().length,
+                  })}
                 </span>
               </button>
             </footer>
