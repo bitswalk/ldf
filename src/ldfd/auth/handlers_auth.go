@@ -103,15 +103,15 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Generate JWT token
-	token, err := h.jwtService.GenerateToken(user)
+	// Generate JWT token pair (access + refresh)
+	tokenPair, err := h.jwtService.GenerateTokenPair(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Set token in header
-	c.Header("X-Subject-Token", token)
+	// Set access token in header
+	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
 			"id":         user.ID,
@@ -121,6 +121,10 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 			"role_id":    user.RoleID,
 			"created_at": user.CreatedAt,
 		},
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_at":    tokenPair.ExpiresAt,
+		"expires_in":    tokenPair.ExpiresIn,
 	})
 }
 
@@ -161,15 +165,15 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Generate JWT token
-	token, err := h.jwtService.GenerateToken(user)
+	// Generate JWT token pair (access + refresh)
+	tokenPair, err := h.jwtService.GenerateTokenPair(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Set token in header
-	c.Header("X-Subject-Token", token)
+	// Set access token in header
+	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
 			"id":      user.ID,
@@ -178,6 +182,10 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 			"role":    user.RoleName,
 			"role_id": user.RoleID,
 		},
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_at":    tokenPair.ExpiresAt,
+		"expires_in":    tokenPair.ExpiresIn,
 	})
 }
 
@@ -243,4 +251,93 @@ func ExtractTokenFromRequest(c *gin.Context) string {
 	}
 
 	return ""
+}
+
+// RefreshRequest represents the refresh token request body
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// HandleRefresh handles token refresh requests
+func (h *Handler) HandleRefresh(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, errors.ErrInvalidJSON.ToResponse())
+		return
+	}
+
+	if req.RefreshToken == "" {
+		c.JSON(http.StatusBadRequest, errors.ErrMissingRequiredField.WithMessage("refresh_token is required").ToResponse())
+		return
+	}
+
+	// Refresh the access token
+	tokenPair, user, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
+	if err != nil {
+		status := errors.GetHTTPStatus(err)
+		c.JSON(status, errors.NewResponse(err))
+		return
+	}
+
+	if log != nil {
+		log.Debug("Token refreshed", "user", user.Name, "user_id", user.ID)
+	}
+
+	// Set new access token in header
+	c.Header("X-Subject-Token", tokenPair.AccessToken)
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_at":    tokenPair.ExpiresAt,
+		"expires_in":    tokenPair.ExpiresIn,
+		"user": gin.H{
+			"id":      user.ID,
+			"name":    user.Name,
+			"email":   user.Email,
+			"role":    user.RoleName,
+			"role_id": user.RoleID,
+		},
+	})
+}
+
+// HandleValidate validates the current access token and returns user info
+func (h *Handler) HandleValidate(c *gin.Context) {
+	// Get token from header
+	token := c.GetHeader("X-Subject-Token")
+	if token == "" {
+		// Also check Authorization header
+		authHeader := c.GetHeader("Authorization")
+		if t, found := strings.CutPrefix(authHeader, "Bearer "); found {
+			token = t
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, errors.ErrNoToken.ToResponse())
+		return
+	}
+
+	// Validate the token
+	claims, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		status := errors.GetHTTPStatus(err)
+		c.JSON(status, errors.NewResponse(err))
+		return
+	}
+
+	if log != nil {
+		log.Debug("Token validated", "user", claims.UserName, "user_id", claims.UserID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"valid": true,
+		"user": gin.H{
+			"id":          claims.UserID,
+			"name":        claims.UserName,
+			"email":       claims.Email,
+			"role":        claims.RoleName,
+			"role_id":     claims.RoleID,
+			"permissions": claims.Permissions,
+		},
+	})
 }

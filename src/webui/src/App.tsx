@@ -14,7 +14,8 @@ import { Connection } from "./views/Connection";
 import { Settings } from "./views/Settings";
 import { Console } from "./components/Console";
 import { Menu, type MenuItem } from "./components/Menu";
-import { logout, type UserInfo } from "./services/auth";
+import { logout, ensureValidToken, type UserInfo } from "./services/auth";
+import { onAuthChange } from "./services/api";
 import type { APIInfo } from "./services/storage";
 import {
   getServerUrl,
@@ -23,6 +24,8 @@ import {
   getUserInfo,
   setAuthToken,
   setUserInfo,
+  setRefreshToken,
+  setTokenExpiresAt,
   setAPIEndpoints,
   hasServerConnection,
   hasCompleteServerConnection,
@@ -83,6 +86,17 @@ const App: Component = () => {
   >(null);
 
   onMount(async () => {
+    // Subscribe to auth changes from the API client
+    // This handles cases where token refresh fails during API calls
+    const unsubscribe = onAuthChange((isAuthenticated) => {
+      if (!isAuthenticated && isLoggedIn()) {
+        // Auth was invalidated (e.g., refresh token expired)
+        setAuthState((prev) => ({ ...prev, user: null, token: null }));
+        setIsLoggedIn(false);
+        setCurrentView("login");
+      }
+    });
+
     // If we have a server URL but missing endpoints, try to re-discover them
     if (hasServerConnection() && !hasCompleteServerConnection()) {
       const result = await discoverAPIEndpoints();
@@ -101,13 +115,24 @@ const App: Component = () => {
       const serverUrl = getServerUrl()!;
       const token = getAuthToken()!;
       const user = getUserInfo()!;
-      setAuthState({ serverUrl, user, token });
-      setIsLoggedIn(true);
-      setCurrentView("distribution");
-      // Sync devmode setting from server for root users
-      syncDevModeFromServer();
-      // Initialize favicon from server branding
-      initializeFavicon();
+
+      // Validate the stored token against the server
+      const isValid = await ensureValidToken();
+      if (isValid) {
+        // Token is valid (or was successfully refreshed)
+        setAuthState({ serverUrl, user, token: getAuthToken()! });
+        setIsLoggedIn(true);
+        setCurrentView("distribution");
+        // Sync devmode setting from server for root users
+        syncDevModeFromServer();
+        // Initialize favicon from server branding
+        initializeFavicon();
+      } else {
+        // Token is invalid and couldn't be refreshed - redirect to login
+        clearAllAuth();
+        setAuthState((prev) => ({ ...prev, serverUrl }));
+        setCurrentView("login");
+      }
     } else if (hasCompleteServerConnection()) {
       const serverUrl = getServerUrl()!;
       setAuthState((prev) => ({ ...prev, serverUrl }));
@@ -155,9 +180,13 @@ const App: Component = () => {
     serverUrl: string,
     user: UserInfo,
     token: string,
+    refreshToken: string,
+    expiresAt: string,
   ) => {
     setServerUrl(serverUrl);
     setAuthToken(token);
+    setRefreshToken(refreshToken);
+    setTokenExpiresAt(expiresAt);
     setUserInfo(user);
     setAuthState({ serverUrl, user, token });
     setIsLoggedIn(true);
@@ -173,9 +202,16 @@ const App: Component = () => {
     setCurrentView("register");
   };
 
-  const handleRegisterSuccess = (user: UserInfo, token: string) => {
+  const handleRegisterSuccess = (
+    user: UserInfo,
+    token: string,
+    refreshToken: string,
+    expiresAt: string,
+  ) => {
     const serverUrl = authState().serverUrl;
     setAuthToken(token);
+    setRefreshToken(refreshToken);
+    setTokenExpiresAt(expiresAt);
     setUserInfo(user);
     setAuthState({ serverUrl, user, token });
     setIsLoggedIn(true);

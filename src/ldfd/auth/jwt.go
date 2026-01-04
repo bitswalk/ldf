@@ -13,23 +13,26 @@ import (
 
 // JWTService handles JWT token generation and validation
 type JWTService struct {
-	secretKey     []byte
-	issuer        string
-	tokenDuration time.Duration
-	repo          *Repository
+	secretKey            []byte
+	issuer               string
+	tokenDuration        time.Duration
+	refreshTokenDuration time.Duration
+	repo                 *Repository
 }
 
 // JWTConfig holds JWT service configuration
 type JWTConfig struct {
-	Issuer        string
-	TokenDuration time.Duration
+	Issuer               string
+	TokenDuration        time.Duration
+	RefreshTokenDuration time.Duration
 }
 
 // DefaultJWTConfig returns default JWT configuration
 func DefaultJWTConfig() JWTConfig {
 	return JWTConfig{
-		Issuer:        "ldfd",
-		TokenDuration: 24 * time.Hour,
+		Issuer:               "ldfd",
+		TokenDuration:        15 * time.Minute,   // Short-lived access tokens
+		RefreshTokenDuration: 7 * 24 * time.Hour, // 7 days for refresh tokens
 	}
 }
 
@@ -60,10 +63,11 @@ func NewJWTService(cfg JWTConfig, repo *Repository, settings SettingsStore) *JWT
 	}
 
 	return &JWTService{
-		secretKey:     []byte(secretKey),
-		issuer:        cfg.Issuer,
-		tokenDuration: cfg.TokenDuration,
-		repo:          repo,
+		secretKey:            []byte(secretKey),
+		issuer:               cfg.Issuer,
+		tokenDuration:        cfg.TokenDuration,
+		refreshTokenDuration: cfg.RefreshTokenDuration,
+		repo:                 repo,
 	}
 }
 
@@ -78,7 +82,15 @@ type jwtClaims struct {
 	Permissions RolePermissions `json:"permissions"`
 }
 
-// GenerateToken generates a new JWT token for a user
+// TokenPair represents an access token and refresh token pair
+type TokenPair struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	ExpiresIn    int64     `json:"expires_in"` // seconds until access token expiry
+}
+
+// GenerateToken generates a new JWT access token for a user
 func (s *JWTService) GenerateToken(user *User) (string, error) {
 	// Fetch the role to get permissions
 	role, err := s.repo.GetRoleByID(user.RoleID)
@@ -114,6 +126,65 @@ func (s *JWTService) GenerateToken(user *User) (string, error) {
 	}
 
 	return signedToken, nil
+}
+
+// GenerateTokenPair generates both an access token and a refresh token for a user
+func (s *JWTService) GenerateTokenPair(user *User) (*TokenPair, error) {
+	// Generate access token
+	accessToken, err := s.GenerateToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate refresh token
+	refreshToken, _, err := s.repo.CreateRefreshToken(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token: %w", err)
+	}
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(s.tokenDuration)
+
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    expiresAt,
+		ExpiresIn:    int64(s.tokenDuration.Seconds()),
+	}, nil
+}
+
+// RefreshAccessToken validates a refresh token and generates a new access token
+func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User, error) {
+	// Validate the refresh token
+	rt, err := s.repo.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Update last used timestamp
+	s.repo.UpdateRefreshTokenLastUsed(rt.ID)
+
+	// Get the user
+	user, err := s.repo.GetUserByID(rt.UserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Generate new access token
+	accessToken, err := s.GenerateToken(user)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(s.tokenDuration)
+
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken, // Return the same refresh token
+		ExpiresAt:    expiresAt,
+		ExpiresIn:    int64(s.tokenDuration.Seconds()),
+	}, user, nil
 }
 
 // ValidateToken validates a JWT token and returns the claims

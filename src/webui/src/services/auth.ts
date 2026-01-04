@@ -1,6 +1,14 @@
 // Auth service for LDF server communication
 
-import { getAuthEndpointUrl, getAuthToken } from "./storage";
+import {
+  getAuthEndpointUrl,
+  getAuthToken,
+  getRefreshToken,
+  setAuthToken,
+  setRefreshToken,
+  setTokenExpiresAt,
+  clearAllAuth,
+} from "./storage";
 
 export interface AuthRequest {
   auth: {
@@ -36,7 +44,13 @@ export interface AuthSuccessResponse {
 }
 
 export type LoginResult =
-  | { success: true; user: UserInfo; token: string }
+  | {
+      success: true;
+      user: UserInfo;
+      token: string;
+      refreshToken: string;
+      expiresAt: string;
+    }
   | {
       success: false;
       error:
@@ -49,7 +63,13 @@ export type LoginResult =
     };
 
 export type CreateResult =
-  | { success: true; user: UserInfo; token: string }
+  | {
+      success: true;
+      user: UserInfo;
+      token: string;
+      refreshToken: string;
+      expiresAt: string;
+    }
   | {
       success: false;
       error:
@@ -70,6 +90,40 @@ export type LogoutResult =
       error:
         | "not_configured"
         | "not_authenticated"
+        | "internal_error"
+        | "network_error";
+      message: string;
+    };
+
+export type ValidateResult =
+  | { success: true; user: UserInfo }
+  | {
+      success: false;
+      error:
+        | "not_configured"
+        | "not_authenticated"
+        | "token_expired"
+        | "token_invalid"
+        | "internal_error"
+        | "network_error";
+      message: string;
+    };
+
+export type RefreshResult =
+  | {
+      success: true;
+      user: UserInfo;
+      token: string;
+      refreshToken: string;
+      expiresAt: string;
+    }
+  | {
+      success: false;
+      error:
+        | "not_configured"
+        | "not_authenticated"
+        | "refresh_token_invalid"
+        | "refresh_token_expired"
         | "internal_error"
         | "network_error";
       message: string;
@@ -124,8 +178,14 @@ export async function login(
     const token = response.headers.get("X-Subject-Token");
 
     if (response.ok && token) {
-      const data: AuthSuccessResponse = await response.json();
-      return { success: true, user: data.user, token };
+      const data = await response.json();
+      return {
+        success: true,
+        user: data.user,
+        token: data.access_token || token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at,
+      };
     }
 
     const errorData: AuthErrorResponse = await response.json();
@@ -163,6 +223,187 @@ export async function login(
   }
 }
 
+export async function validateToken(): Promise<ValidateResult> {
+  const validateUrl = getAuthEndpointUrl("validate");
+
+  if (!validateUrl) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  const token = getAuthToken();
+
+  if (!token) {
+    return {
+      success: false,
+      error: "not_authenticated",
+      message: "No active session",
+    };
+  }
+
+  try {
+    const response = await fetch(validateUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        user: data.user,
+      };
+    }
+
+    const errorData: AuthErrorResponse = await response.json();
+
+    if (response.status === 401) {
+      // Check if it's an expired token or invalid token
+      if (errorData.error?.includes("token_expired")) {
+        return {
+          success: false,
+          error: "token_expired",
+          message: errorData.message,
+        };
+      }
+      return {
+        success: false,
+        error: "token_invalid",
+        message: errorData.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: errorData.message,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+export async function refreshAccessToken(): Promise<RefreshResult> {
+  const refreshUrl = getAuthEndpointUrl("refresh");
+
+  if (!refreshUrl) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    return {
+      success: false,
+      error: "not_authenticated",
+      message: "No refresh token available",
+    };
+  }
+
+  try {
+    const response = await fetch(refreshUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // Update stored tokens
+      setAuthToken(data.access_token);
+      setRefreshToken(data.refresh_token);
+      setTokenExpiresAt(data.expires_at);
+
+      return {
+        success: true,
+        user: data.user,
+        token: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at,
+      };
+    }
+
+    const errorData: AuthErrorResponse = await response.json();
+
+    if (response.status === 401) {
+      // Check specific error types
+      if (errorData.error?.includes("refresh_token_expired")) {
+        // Clear all auth on refresh token expiry
+        clearAllAuth();
+        return {
+          success: false,
+          error: "refresh_token_expired",
+          message: errorData.message,
+        };
+      }
+      if (errorData.error?.includes("refresh_token_revoked")) {
+        clearAllAuth();
+        return {
+          success: false,
+          error: "refresh_token_invalid",
+          message: errorData.message,
+        };
+      }
+      clearAllAuth();
+      return {
+        success: false,
+        error: "refresh_token_invalid",
+        message: errorData.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: errorData.message,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Helper to try refreshing the token if the access token is expired
+export async function ensureValidToken(): Promise<boolean> {
+  // First try validating the current token
+  const validateResult = await validateToken();
+  if (validateResult.success) {
+    return true;
+  }
+
+  // If token is expired, try to refresh
+  if (
+    validateResult.error === "token_expired" ||
+    validateResult.error === "token_invalid"
+  ) {
+    const refreshResult = await refreshAccessToken();
+    return refreshResult.success;
+  }
+
+  return false;
+}
+
 export async function createUser(
   username: string,
   password: string,
@@ -191,8 +432,14 @@ export async function createUser(
     const token = response.headers.get("X-Subject-Token");
 
     if (response.ok && token) {
-      const data: AuthSuccessResponse = await response.json();
-      return { success: true, user: data.user, token };
+      const data = await response.json();
+      return {
+        success: true,
+        user: data.user,
+        token: data.access_token || token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at,
+      };
     }
 
     const errorData: AuthErrorResponse = await response.json();

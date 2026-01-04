@@ -44,6 +44,18 @@ var (
 	// ErrInsufficientPermissions is returned when user lacks required permissions
 	ErrInsufficientPermissions = New(DomainAuth, "insufficient_permissions", http.StatusForbidden,
 		"Insufficient permissions")
+
+	// ErrRefreshTokenInvalid is returned when a refresh token is invalid or not found
+	ErrRefreshTokenInvalid = New(DomainAuth, "refresh_token_invalid", http.StatusUnauthorized,
+		"Invalid refresh token")
+
+	// ErrRefreshTokenExpired is returned when a refresh token has expired
+	ErrRefreshTokenExpired = New(DomainAuth, "refresh_token_expired", http.StatusUnauthorized,
+		"Refresh token has expired")
+
+	// ErrRefreshTokenRevoked is returned when a refresh token has been revoked
+	ErrRefreshTokenRevoked = New(DomainAuth, "refresh_token_revoked", http.StatusUnauthorized,
+		"Refresh token has been revoked")
 )
 
 // ============================================================================

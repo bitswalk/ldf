@@ -3,6 +3,8 @@
 const STORAGE_KEYS = {
   SERVER_URL: "ldf_server_url",
   AUTH_TOKEN: "ldf_auth_token",
+  REFRESH_TOKEN: "ldf_refresh_token",
+  TOKEN_EXPIRES_AT: "ldf_token_expires_at",
   USER_INFO: "ldf_user_info",
   API_ENDPOINTS: "ldf_api_endpoints",
 } as const;
@@ -18,6 +20,8 @@ export interface AuthEndpoints {
   create: string;
   login: string;
   logout: string;
+  refresh: string;
+  validate: string;
 }
 
 export interface APIEndpoints {
@@ -78,6 +82,49 @@ export function clearAuthToken(): void {
   localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
 }
 
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+}
+
+export function getTokenExpiresAt(): Date | null {
+  const stored = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
+  if (!stored) return null;
+  const date = new Date(stored);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+export function setTokenExpiresAt(expiresAt: Date | string): void {
+  const dateStr =
+    typeof expiresAt === "string" ? expiresAt : expiresAt.toISOString();
+  localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRES_AT, dateStr);
+}
+
+export function clearTokenExpiresAt(): void {
+  localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRES_AT);
+}
+
+export function isTokenExpired(): boolean {
+  const expiresAt = getTokenExpiresAt();
+  if (!expiresAt) return true;
+  // Consider token expired 30 seconds before actual expiry to avoid race conditions
+  return new Date() >= new Date(expiresAt.getTime() - 30000);
+}
+
+export function isTokenExpiringSoon(): boolean {
+  const expiresAt = getTokenExpiresAt();
+  if (!expiresAt) return true;
+  // Consider token expiring soon if less than 2 minutes left
+  return new Date() >= new Date(expiresAt.getTime() - 120000);
+}
+
 export function getUserInfo(): StoredUserInfo | null {
   const stored = localStorage.getItem(STORAGE_KEYS.USER_INFO);
   if (!stored) return null;
@@ -99,6 +146,8 @@ export function clearUserInfo(): void {
 
 export function clearAllAuth(): void {
   clearAuthToken();
+  clearRefreshToken();
+  clearTokenExpiresAt();
   clearUserInfo();
 }
 

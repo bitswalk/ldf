@@ -7,7 +7,13 @@ import { t } from "../../services/i18n";
 
 interface LoginProps {
   serverUrl: string;
-  onLoginSuccess: (serverUrl: string, user: UserInfo, token: string) => void;
+  onLoginSuccess: (
+    serverUrl: string,
+    user: UserInfo,
+    token: string,
+    refreshToken: string,
+    expiresAt: string,
+  ) => void;
   onShowRegister: (username: string) => void;
 }
 
@@ -27,7 +33,13 @@ export const Login: Component<LoginProps> = (props) => {
     setIsLoading(false);
 
     if (result.success) {
-      props.onLoginSuccess(props.serverUrl, result.user, result.token);
+      props.onLoginSuccess(
+        props.serverUrl,
+        result.user,
+        result.token,
+        result.refreshToken,
+        result.expiresAt,
+      );
     } else {
       switch (result.error) {
         case "user_not_found":

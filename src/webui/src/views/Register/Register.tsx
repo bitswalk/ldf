@@ -36,6 +36,8 @@ interface RegisterProps {
   onSuccess: (
     user: { id: string; name: string; email: string; role: string },
     token: string,
+    refreshToken: string,
+    expiresAt: string,
   ) => void;
   onBackToLogin: () => void;
 }
@@ -70,7 +72,12 @@ export const Register: Component<RegisterProps> = (props) => {
     setIsLoading(false);
 
     if (result.success) {
-      props.onSuccess(result.user, result.token);
+      props.onSuccess(
+        result.user,
+        result.token,
+        result.refreshToken,
+        result.expiresAt,
+      );
     } else {
       switch (result.error) {
         case "email_exists":
