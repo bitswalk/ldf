@@ -4,8 +4,11 @@ import { Spinner } from "../Spinner";
 import {
   type Component,
   type CreateComponentRequest,
+  type VersionRule,
   COMPONENT_CATEGORIES,
+  VERSION_RULES,
   getCategoryDisplayName,
+  getVersionRuleLabel,
 } from "../../services/components";
 import { t } from "../../services/i18n";
 
@@ -19,34 +22,46 @@ interface ComponentFormProps {
 export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
   const [name, setName] = createSignal(props.initialData?.name || "");
   const [category, setCategory] = createSignal(
-    props.initialData?.category || "core"
+    props.initialData?.category || "core",
   );
   const [displayName, setDisplayName] = createSignal(
-    props.initialData?.display_name || ""
+    props.initialData?.display_name || "",
   );
   const [description, setDescription] = createSignal(
-    props.initialData?.description || ""
+    props.initialData?.description || "",
   );
   const [artifactPattern, setArtifactPattern] = createSignal(
-    props.initialData?.artifact_pattern || ""
+    props.initialData?.artifact_pattern || "",
   );
   const [defaultUrlTemplate, setDefaultUrlTemplate] = createSignal(
-    props.initialData?.default_url_template || ""
+    props.initialData?.default_url_template || "",
   );
   const [githubNormalizedTemplate, setGithubNormalizedTemplate] = createSignal(
-    props.initialData?.github_normalized_template || ""
+    props.initialData?.github_normalized_template || "",
   );
   const [isOptional, setIsOptional] = createSignal(
-    props.initialData?.is_optional ?? false
+    props.initialData?.is_optional ?? false,
+  );
+  const [defaultVersionRule, setDefaultVersionRule] = createSignal<VersionRule>(
+    props.initialData?.default_version_rule || "latest-stable",
+  );
+  const [defaultVersion, setDefaultVersion] = createSignal(
+    props.initialData?.default_version || "",
   );
   const [errors, setErrors] = createSignal<{
     name?: string;
     displayName?: string;
     category?: string;
+    defaultVersion?: string;
   }>({});
 
   const validateForm = (): boolean => {
-    const newErrors: { name?: string; displayName?: string; category?: string } = {};
+    const newErrors: {
+      name?: string;
+      displayName?: string;
+      category?: string;
+      defaultVersion?: string;
+    } = {};
 
     if (!name().trim()) {
       newErrors.name = t("components.form.name.required");
@@ -60,6 +75,11 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
 
     if (!category()) {
       newErrors.category = t("components.form.category.required");
+    }
+
+    // If pinned version rule, require a version
+    if (defaultVersionRule() === "pinned" && !defaultVersion().trim()) {
+      newErrors.defaultVersion = t("components.form.defaultVersion.required");
     }
 
     setErrors(newErrors);
@@ -91,6 +111,12 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
     }
     if (githubNormalizedTemplate().trim()) {
       request.github_normalized_template = githubNormalizedTemplate().trim();
+    }
+
+    // Add version fields
+    request.default_version_rule = defaultVersionRule();
+    if (defaultVersion().trim()) {
+      request.default_version = defaultVersion().trim();
     }
 
     props.onSubmit(request);
@@ -238,7 +264,9 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
           id="component-github-normalized-template"
           type="text"
           class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors font-mono text-sm"
-          placeholder={t("components.form.githubNormalizedTemplate.placeholder")}
+          placeholder={t(
+            "components.form.githubNormalizedTemplate.placeholder",
+          )}
           value={githubNormalizedTemplate()}
           onInput={(e) => setGithubNormalizedTemplate(e.target.value)}
         />
@@ -264,6 +292,79 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
       <p class="text-xs text-muted-foreground -mt-4">
         {t("components.form.isOptional.help")}
       </p>
+
+      {/* Default Version Section */}
+      <div class="border-t border-border pt-6 mt-2">
+        <h3 class="text-sm font-semibold mb-4">
+          {t("components.form.versionSection.title")}
+        </h3>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="component-version-rule">
+              {t("components.form.versionRule.label")}
+            </label>
+            <select
+              id="component-version-rule"
+              class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors"
+              value={defaultVersionRule()}
+              onChange={(e) => {
+                setDefaultVersionRule(e.target.value as VersionRule);
+                if (errors().defaultVersion) {
+                  setErrors((prev) => ({ ...prev, defaultVersion: undefined }));
+                }
+              }}
+            >
+              <For each={VERSION_RULES}>
+                {(rule) => <option value={rule.value}>{rule.label}</option>}
+              </For>
+            </select>
+            <p class="text-xs text-muted-foreground">
+              {t("components.form.versionRule.help")}
+            </p>
+          </div>
+
+          <Show when={defaultVersionRule() === "pinned"}>
+            <div class="space-y-2">
+              <label
+                class="text-sm font-medium"
+                for="component-default-version"
+              >
+                {t("components.form.defaultVersion.label")}{" "}
+                <span class="text-destructive">*</span>
+              </label>
+              <input
+                id="component-default-version"
+                type="text"
+                class={`w-full px-3 py-2 bg-background border-2 rounded-md focus:outline-none transition-colors font-mono text-sm ${
+                  errors().defaultVersion
+                    ? "border-destructive focus:border-destructive"
+                    : "border-border focus:border-primary"
+                }`}
+                placeholder={t("components.form.defaultVersion.placeholder")}
+                value={defaultVersion()}
+                onInput={(e) => {
+                  setDefaultVersion(e.target.value);
+                  if (errors().defaultVersion) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      defaultVersion: undefined,
+                    }));
+                  }
+                }}
+              />
+              <p class="text-xs text-muted-foreground">
+                {t("components.form.defaultVersion.help")}
+              </p>
+              <Show when={errors().defaultVersion}>
+                <p class="text-xs text-destructive">
+                  {errors().defaultVersion}
+                </p>
+              </Show>
+            </div>
+          </Show>
+        </div>
+      </div>
 
       <nav class="flex justify-end gap-3 pt-4 border-t border-border">
         <button

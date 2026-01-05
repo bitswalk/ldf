@@ -2,6 +2,8 @@
 
 import { getServerUrl, getAuthToken } from "./storage";
 
+export type VersionRule = "pinned" | "latest-stable" | "latest-lts";
+
 export interface Component {
   id: string;
   name: string;
@@ -14,8 +16,38 @@ export interface Component {
   is_optional: boolean;
   is_system: boolean;
   owner_id?: string;
+  default_version?: string;
+  default_version_rule?: VersionRule;
   created_at: string;
   updated_at: string;
+}
+
+export interface SourceVersion {
+  id: string;
+  source_id: string;
+  source_type: string;
+  version: string;
+  version_type: "mainline" | "stable" | "longterm" | "linux-next";
+  release_date?: string;
+  download_url?: string;
+  checksum?: string;
+  checksum_type?: string;
+  file_size?: number;
+  is_stable: boolean;
+  discovered_at: string;
+}
+
+export interface ComponentVersionsResponse {
+  versions: SourceVersion[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ResolvedVersionResponse {
+  rule: string;
+  resolved_version: string;
+  version?: SourceVersion;
 }
 
 export type ListResult =
@@ -55,6 +87,8 @@ export interface CreateComponentRequest {
   default_url_template?: string;
   github_normalized_template?: string;
   is_optional?: boolean;
+  default_version?: string;
+  default_version_rule?: VersionRule;
 }
 
 export interface UpdateComponentRequest {
@@ -66,7 +100,40 @@ export interface UpdateComponentRequest {
   default_url_template?: string;
   github_normalized_template?: string;
   is_optional?: boolean;
+  default_version?: string;
+  default_version_rule?: VersionRule;
 }
+
+export interface VersionQueryParams {
+  limit?: number;
+  offset?: number;
+  version_type?: "all" | "stable" | "longterm" | "mainline";
+}
+
+export type VersionsResult =
+  | { success: true; data: ComponentVersionsResponse }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+export type ResolveVersionResult =
+  | { success: true; data: ResolvedVersionResponse }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "invalid_rule"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
 
 export type CreateResult =
   | { success: true; component: Component }
@@ -558,3 +625,147 @@ export const COMPONENT_CATEGORIES = [
 ] as const;
 
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];
+
+// Version rules
+export const VERSION_RULES: { value: VersionRule; label: string }[] = [
+  { value: "latest-stable", label: "Latest Stable" },
+  { value: "latest-lts", label: "Latest LTS" },
+  { value: "pinned", label: "Pinned Version" },
+];
+
+// Get versions for a component
+export async function getComponentVersions(
+  componentId: string,
+  params?: VersionQueryParams,
+): Promise<VersionsResult> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.set("limit", params.limit.toString());
+  if (params?.offset) queryParams.set("offset", params.offset.toString());
+  if (params?.version_type)
+    queryParams.set("version_type", params.version_type);
+
+  const queryString = queryParams.toString();
+  const url = getApiUrl(
+    `/components/${componentId}/versions${queryString ? `?${queryString}` : ""}`,
+  );
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data: ComponentVersionsResponse = await response.json();
+      return { success: true, data };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Component not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to fetch component versions",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Resolve a version rule to an actual version
+export async function resolveVersionRule(
+  componentId: string,
+  rule: VersionRule,
+): Promise<ResolveVersionResult> {
+  const url = getApiUrl(
+    `/components/${componentId}/resolve-version?rule=${encodeURIComponent(rule)}`,
+  );
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data: ResolvedVersionResponse = await response.json();
+      return { success: true, data };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Component or version not found",
+      };
+    }
+
+    if (response.status === 400) {
+      return {
+        success: false,
+        error: "invalid_rule",
+        message: "Invalid version rule",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to resolve version",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// Get version rule display label
+export function getVersionRuleLabel(rule: VersionRule | undefined): string {
+  if (!rule) return "Latest Stable";
+  const found = VERSION_RULES.find((r) => r.value === rule);
+  return found?.label || rule;
+}
+
+// Get version type display label
+export function getVersionTypeLabel(
+  versionType: SourceVersion["version_type"],
+): string {
+  const labels: Record<SourceVersion["version_type"], string> = {
+    mainline: "Mainline",
+    stable: "Stable",
+    longterm: "LTS",
+    "linux-next": "Linux Next",
+  };
+  return labels[versionType] || versionType;
+}

@@ -79,6 +79,19 @@
       "label": "Composant optionnel",
       "help": "Les composants optionnels ne sont pas requis pour une distribution minimale."
     },
+    "versionSection": {
+      "title": "Version par defaut"
+    },
+    "versionRule": {
+      "label": "Regle de selection de version",
+      "help": "Comment la version par defaut est determinee pour ce composant."
+    },
+    "defaultVersion": {
+      "label": "Version fixee",
+      "placeholder": "ex: 6.12.1",
+      "help": "La version specifique a utiliser lorsque la regle est 'Fixee'.",
+      "required": "La version est requise pour la regle de version fixee"
+    },
     "actions": {
       "cancel": "Annuler",
       "add": "Creer le composant",

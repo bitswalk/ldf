@@ -1,25 +1,20 @@
 import type { Component } from "solid-js";
-import { createSignal, onMount, Show, For, createEffect } from "solid-js";
+import { createSignal, onMount, Show, For } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Modal } from "../../components/Modal";
 import { DownloadStatus } from "../../components/DownloadStatus";
-import {
-  SearchableSelect,
-  type SearchableSelectOption,
-} from "../../components/SearchableSelect";
+import { DistributionEditForm } from "../../components/DistributionEditForm";
 import {
   getDistribution,
   updateDistribution,
+  deleteDistribution,
   type Distribution,
   type DistributionStatus,
   type DistributionConfig,
+  type UpdateDistributionRequest,
 } from "../../services/distribution";
-import { listDefaultSources } from "../../services/sources";
-import {
-  listSourceVersions,
-  type SourceVersion,
-} from "../../services/sourceVersions";
 import { t } from "../../services/i18n";
 
 interface UserInfo {
@@ -32,10 +27,11 @@ interface UserInfo {
 interface DistributionDetailProps {
   distributionId: string;
   onBack: () => void;
+  onDeleted?: () => void;
   user?: UserInfo | null;
 }
 
-// Configuration options (matching DistributionForm)
+// Configuration options for display
 const configOptions = {
   bootloaders: [
     { id: "systemd-boot", name: "systemd-boot" },
@@ -117,62 +113,12 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [isEditing, setIsEditing] = createSignal(false);
-  const [editedConfig, setEditedConfig] =
-    createSignal<DistributionConfig | null>(null);
-  const [saving, setSaving] = createSignal(false);
-  const [kernelVersions, setKernelVersions] = createSignal<SourceVersion[]>([]);
-  const [kernelVersionsLoading, setKernelVersionsLoading] = createSignal(false);
-  const [allKernelVersions, setAllKernelVersions] = createSignal<
-    SourceVersion[]
-  >([]);
+  const [editModalOpen, setEditModalOpen] = createSignal(false);
+  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [isDeleting, setIsDeleting] = createSignal(false);
 
-  const fetchKernelVersions = async () => {
-    setKernelVersionsLoading(true);
-
-    // First, find the kernel source from default sources
-    const sourcesResult = await listDefaultSources();
-    if (!sourcesResult.success) {
-      setKernelVersionsLoading(false);
-      return;
-    }
-
-    // Find a kernel source (look for "kernel" in name)
-    const kernelSource = sourcesResult.sources.find((s) =>
-      s.name.toLowerCase().includes("kernel"),
-    );
-
-    if (!kernelSource) {
-      setKernelVersionsLoading(false);
-      return;
-    }
-
-    // Fetch versions from this source (get more to allow searching)
-    const versionsResult = await listSourceVersions(
-      kernelSource.id,
-      "default",
-      500, // Fetch more for search
-      0,
-      true, // stable only
-    );
-
-    if (versionsResult.success) {
-      setAllKernelVersions(versionsResult.versions);
-      setKernelVersions(versionsResult.versions.slice(0, 10));
-    }
-
-    setKernelVersionsLoading(false);
-  };
-
-  const kernelVersionOptions = (): SearchableSelectOption[] => {
-    return allKernelVersions().map((v) => ({
-      value: v.version,
-      label: v.version,
-      sublabel: v.release_date
-        ? new Date(v.release_date).toLocaleDateString()
-        : undefined,
-    }));
-  };
+  const isAdmin = () => props.user?.role === "root";
 
   const fetchDistribution = async () => {
     setLoading(true);
@@ -184,9 +130,6 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
     if (result.success) {
       setDistribution(result.distribution);
-      if (result.distribution.config) {
-        setEditedConfig(JSON.parse(JSON.stringify(result.distribution.config)));
-      }
     } else {
       setError(result.message);
     }
@@ -194,7 +137,6 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
   onMount(() => {
     fetchDistribution();
-    fetchKernelVersions();
   });
 
   const formatDate = (dateString: string): string => {
@@ -244,101 +186,87 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     }
   };
 
+  const showNotification = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), type === "success" ? 3000 : 5000);
+  };
+
   const handleDownloadSuccess = (message: string) => {
-    setNotification({ type: "success", message });
-    setTimeout(() => setNotification(null), 3000);
+    showNotification("success", message);
   };
 
   const handleDownloadError = (message: string) => {
-    setNotification({ type: "error", message });
-    setTimeout(() => setNotification(null), 5000);
+    showNotification("error", message);
   };
 
-  const handleEditToggle = () => {
-    if (isEditing()) {
-      // Cancel editing - restore original config
-      const dist = distribution();
-      if (dist?.config) {
-        setEditedConfig(JSON.parse(JSON.stringify(dist.config)));
-      }
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
+  const handleEdit = () => {
+    setEditModalOpen(true);
   };
 
-  const handleSaveConfig = async () => {
-    const config = editedConfig();
-    const dist = distribution();
-    if (!config || !dist) return;
+  const handleEditSubmit = async (data: UpdateDistributionRequest) => {
+    setIsSubmitting(true);
+    setError(null);
 
-    setSaving(true);
+    const result = await updateDistribution(props.distributionId, data);
 
-    // Send update to the server
-    const result = await updateDistribution(dist.id, { config });
+    setIsSubmitting(false);
 
     if (result.success) {
-      // Update local state with the response from server
+      setEditModalOpen(false);
       setDistribution(result.distribution);
-      setEditedConfig(JSON.parse(JSON.stringify(result.distribution.config)));
-      setIsEditing(false);
-      setNotification({
-        type: "success",
-        message: t("distribution.detail.info.configSaved"),
-      });
+      showNotification("success", t("distribution.detail.info.configSaved"));
     } else {
-      setNotification({ type: "error", message: result.message });
+      setError(result.message);
     }
-
-    setSaving(false);
-    setTimeout(() => setNotification(null), 3000);
   };
 
-  const updateConfig = (path: string, value: string) => {
-    const config = editedConfig();
-    if (!config) return;
-
-    const newConfig = JSON.parse(JSON.stringify(config));
-    const parts = path.split(".");
-    let current: any = newConfig;
-    for (let i = 0; i < parts.length - 1; i++) {
-      current = current[parts[i]];
-    }
-    current[parts[parts.length - 1]] = value;
-    setEditedConfig(newConfig);
+  const handleEditCancel = () => {
+    setEditModalOpen(false);
   };
 
-  const ConfigSelect: Component<{
+  const handleDeleteClick = () => {
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    setError(null);
+
+    const result = await deleteDistribution(props.distributionId);
+
+    setIsDeleting(false);
+
+    if (result.success) {
+      setDeleteModalOpen(false);
+      showNotification("success", t("distribution.detail.deleteSuccess"));
+      props.onDeleted?.();
+      props.onBack();
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+  };
+
+  const config = () => distribution()?.config;
+
+  // Display row component for config values
+  const ConfigRow: Component<{
     label: string;
     value: string | undefined;
-    options: Array<{ id: string; name: string }>;
-    path: string;
-    disabled?: boolean;
-  }> = (selectProps) => (
+    options?: Array<{ id: string; name: string }>;
+  }> = (rowProps) => (
     <div class="flex items-center justify-between py-2">
-      <span class="text-muted-foreground text-sm">{selectProps.label}</span>
-      <Show
-        when={isEditing() && !selectProps.disabled}
-        fallback={
-          <span class="text-sm font-medium">
-            {getOptionName(selectProps.options, selectProps.value)}
-          </span>
-        }
-      >
-        <select
-          class="px-2 py-1 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary"
-          value={selectProps.value || ""}
-          onChange={(e) => updateConfig(selectProps.path, e.target.value)}
-        >
-          <For each={selectProps.options}>
-            {(opt) => <option value={opt.id}>{opt.name}</option>}
-          </For>
-        </select>
-      </Show>
+      <span class="text-muted-foreground text-sm">{rowProps.label}</span>
+      <span class="text-sm font-medium">
+        {rowProps.options
+          ? getOptionName(rowProps.options, rowProps.value)
+          : rowProps.value || "-"}
+      </span>
     </div>
   );
-
-  const config = () => (isEditing() ? editedConfig() : distribution()?.config);
 
   return (
     <section class="h-full w-full relative">
@@ -353,13 +281,55 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             <Icon name="arrow-left" size="lg" />
           </button>
           <div class="flex-1">
-            <h1 class="text-4xl font-bold">
-              {distribution()?.name || t("distribution.detail.title")}
-            </h1>
+            <div class="flex items-center gap-3">
+              <h1 class="text-4xl font-bold">
+                {distribution()?.name || t("distribution.detail.title")}
+              </h1>
+              <Show when={distribution()}>
+                <span
+                  class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(distribution()!.status)} bg-current/10`}
+                >
+                  {t(`distribution.status.${distribution()!.status}`)}
+                </span>
+                <span
+                  class={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    distribution()!.visibility === "public"
+                      ? "bg-green-500/10 text-green-500"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <Icon
+                    name={
+                      distribution()!.visibility === "public" ? "globe" : "lock"
+                    }
+                    size="xs"
+                  />
+                  {t(`common.visibility.${distribution()!.visibility}`)}
+                </span>
+              </Show>
+            </div>
             <p class="text-muted-foreground mt-1">
               {t("distribution.detail.subtitle")}
             </p>
           </div>
+          <Show when={isAdmin()}>
+            <div class="flex items-center gap-2">
+              <button
+                onClick={handleEdit}
+                class="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors"
+              >
+                <Icon name="pencil" size="sm" />
+                <span>{t("common.actions.edit")}</span>
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                class="flex items-center gap-2 px-4 py-2 border border-destructive/50 text-destructive rounded-md hover:bg-destructive/10 transition-colors"
+              >
+                <Icon name="trash" size="sm" />
+                <span>{t("common.actions.delete")}</span>
+              </button>
+            </div>
+          </Show>
         </header>
 
         {/* Notification */}
@@ -406,46 +376,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
         <Show when={!loading() && distribution()}>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Distribution Info & Configuration */}
-            <Card
-              header={{
-                title: t("distribution.detail.info.title"),
-                actions: (
-                  <div class="flex items-center gap-2">
-                    <Show when={isEditing()}>
-                      <button
-                        onClick={handleSaveConfig}
-                        disabled={saving()}
-                        class="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                      >
-                        <Show when={saving()}>
-                          <Icon
-                            name="spinner-gap"
-                            size="sm"
-                            class="animate-spin"
-                          />
-                        </Show>
-                        <span>{t("distribution.detail.info.save")}</span>
-                      </button>
-                    </Show>
-                    <button
-                      onClick={handleEditToggle}
-                      class={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-md transition-colors ${
-                        isEditing()
-                          ? "border border-border hover:bg-muted"
-                          : "border border-border hover:bg-muted"
-                      }`}
-                    >
-                      <Icon name={isEditing() ? "x" : "pencil"} size="sm" />
-                      <span>
-                        {isEditing()
-                          ? t("distribution.detail.info.cancel")
-                          : t("distribution.detail.info.edit")}
-                      </span>
-                    </button>
-                  </div>
-                ),
-              }}
-            >
+            <Card header={{ title: t("distribution.detail.info.title") }}>
               <div class="space-y-4">
                 {/* Status & Basic Info */}
                 <div class="flex items-center justify-between">
@@ -466,7 +397,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                           : ""
                       }
                     />
-                    <span class="capitalize">{distribution()!.status}</span>
+                    <span class="capitalize">
+                      {t(`distribution.status.${distribution()!.status}`)}
+                    </span>
                   </span>
                 </div>
 
@@ -521,52 +454,24 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.config.coreSystem")}
                     </h4>
                     <div class="space-y-1">
-                      <div class="flex items-center justify-between py-2">
-                        <span class="text-muted-foreground text-sm">
-                          {t("distribution.detail.config.kernelVersion")}
-                        </span>
-                        <Show
-                          when={isEditing()}
-                          fallback={
-                            <span class="text-sm font-mono font-medium">
-                              {config()!.core.kernel.version}
-                            </span>
-                          }
-                        >
-                          <SearchableSelect
-                            value={config()!.core.kernel.version}
-                            options={kernelVersionOptions()}
-                            onChange={(value) =>
-                              updateConfig("core.kernel.version", value)
-                            }
-                            placeholder={t(
-                              "distribution.detail.config.selectVersion",
-                            )}
-                            searchPlaceholder={t(
-                              "distribution.detail.config.searchVersions",
-                            )}
-                            loading={kernelVersionsLoading()}
-                            maxDisplayed={10}
-                          />
-                        </Show>
-                      </div>
-                      <ConfigSelect
+                      <ConfigRow
+                        label={t("distribution.detail.config.kernelVersion")}
+                        value={config()!.core.kernel.version}
+                      />
+                      <ConfigRow
                         label={t("distribution.detail.config.bootloader")}
                         value={config()!.core.bootloader}
                         options={configOptions.bootloaders}
-                        path="core.bootloader"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.partitioningType")}
                         value={config()!.core.partitioning.type}
                         options={configOptions.partitioningTypes}
-                        path="core.partitioning.type"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.partitioningMode")}
                         value={config()!.core.partitioning.mode}
                         options={configOptions.partitioningModes}
-                        path="core.partitioning.mode"
                       />
                     </div>
                   </div>
@@ -576,31 +481,27 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.config.systemServices")}
                     </h4>
                     <div class="space-y-1">
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.initSystem")}
                         value={config()!.system.init}
                         options={configOptions.initSystems}
-                        path="system.init"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.filesystem")}
                         value={config()!.system.filesystem.type}
                         options={configOptions.filesystems}
-                        path="system.filesystem.type"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t(
                           "distribution.detail.config.filesystemHierarchy",
                         )}
                         value={config()!.system.filesystem.hierarchy}
                         options={configOptions.filesystemHierarchies}
-                        path="system.filesystem.hierarchy"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.packageManager")}
                         value={config()!.system.packageManager}
                         options={configOptions.packageManagers}
-                        path="system.packageManager"
                       />
                     </div>
                   </div>
@@ -610,23 +511,20 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.config.securityRuntime")}
                     </h4>
                     <div class="space-y-1">
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.securitySystem")}
                         value={config()!.security.system}
                         options={configOptions.securitySystems}
-                        path="security.system"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.containerRuntime")}
                         value={config()!.runtime.container}
                         options={configOptions.containerRuntimes}
-                        path="runtime.container"
                       />
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.virtualization")}
                         value={config()!.runtime.virtualization}
                         options={configOptions.virtualizationRuntimes}
-                        path="runtime.virtualization"
                       />
                     </div>
                   </div>
@@ -636,30 +534,25 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.config.targetEnvironment")}
                     </h4>
                     <div class="space-y-1">
-                      <ConfigSelect
+                      <ConfigRow
                         label={t("distribution.detail.config.distributionType")}
                         value={config()!.target.type}
                         options={configOptions.distributionTypes}
-                        path="target.type"
                       />
                       <Show when={config()!.target.desktop}>
-                        <ConfigSelect
+                        <ConfigRow
                           label={t(
                             "distribution.detail.config.desktopEnvironment",
                           )}
                           value={config()!.target.desktop?.environment}
                           options={configOptions.desktopEnvironments}
-                          path="target.desktop.environment"
                         />
-                        <div class="flex items-center justify-between py-2">
-                          <span class="text-muted-foreground text-sm">
-                            {t("distribution.detail.config.displayServer")}
-                          </span>
-                          <span class="text-sm font-medium">
-                            {config()!.target.desktop?.displayServer ||
-                              "Wayland"}
-                          </span>
-                        </div>
+                        <ConfigRow
+                          label={t("distribution.detail.config.displayServer")}
+                          value={
+                            config()!.target.desktop?.displayServer || "Wayland"
+                          }
+                        />
                       </Show>
                     </div>
                   </div>
@@ -687,7 +580,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     <span class="text-muted-foreground">
                       {t("distribution.detail.created")}
                     </span>
-                    <span class="font-mono">
+                    <span class="font-mono text-xs">
                       {formatDate(distribution()!.created_at)}
                     </span>
                   </div>
@@ -695,7 +588,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     <span class="text-muted-foreground">
                       {t("distribution.detail.updated")}
                     </span>
-                    <span class="font-mono">
+                    <span class="font-mono text-xs">
                       {formatDate(distribution()!.updated_at)}
                     </span>
                   </div>
@@ -781,6 +674,63 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
           </div>
         </Show>
       </section>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={editModalOpen()}
+        onClose={handleEditCancel}
+        title={t("distribution.editForm.modalTitle")}
+      >
+        <Show when={distribution()}>
+          <DistributionEditForm
+            distribution={distribution()!}
+            onSubmit={handleEditSubmit}
+            onCancel={handleEditCancel}
+            isSubmitting={isSubmitting()}
+          />
+        </Show>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen()}
+        onClose={cancelDelete}
+        title={t("distribution.delete.title")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">
+            {t("distribution.delete.confirmSingle", {
+              name: distribution()?.name || "",
+            })}
+          </p>
+
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={cancelDelete}
+              disabled={isDeleting()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={isDeleting()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={isDeleting()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {isDeleting()
+                  ? t("distribution.delete.deleting")
+                  : t("common.actions.delete")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
     </section>
   );
 };

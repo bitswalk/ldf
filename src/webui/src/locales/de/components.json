@@ -79,6 +79,19 @@
       "label": "Optionale Komponente",
       "help": "Optionale Komponenten sind fur eine minimale Distribution nicht erforderlich."
     },
+    "versionSection": {
+      "title": "Standardversion"
+    },
+    "versionRule": {
+      "label": "Versionsauswahlregel",
+      "help": "Wie die Standardversion fur diese Komponente bestimmt wird."
+    },
+    "defaultVersion": {
+      "label": "Fixierte Version",
+      "placeholder": "z.B. 6.12.1",
+      "help": "Die spezifische Version, die verwendet wird, wenn die Regel 'Fixiert' ist.",
+      "required": "Version ist erforderlich bei fixierter Versionsregel"
+    },
     "actions": {
       "cancel": "Abbrechen",
       "add": "Komponente erstellen",

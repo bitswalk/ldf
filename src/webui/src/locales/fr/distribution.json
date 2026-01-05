@@ -66,6 +66,7 @@
     "size": "Taille",
     "checksum": "Somme de controle",
     "error": "Erreur",
+    "deleteSuccess": "Distribution supprimee avec succes",
     "info": {
       "title": "Informations de la distribution",
       "save": "Enregistrer",
@@ -196,5 +197,30 @@
     "target": {
       "title": "Configuration cible"
     }
+  },
+  "editForm": {
+    "modalTitle": "Modifier la distribution",
+    "basicInfo": "Informations de base",
+    "saving": "Enregistrement...",
+    "selectDesktopEnvironment": "Selectionner un environnement de bureau"
+  },
+  "versionModal": {
+    "title": "Selectionner la version : {{ component }}",
+    "useDefault": "Utiliser la version par defaut",
+    "ruleLatestStable": "Derniere version stable",
+    "ruleLatestLts": "Derniere version LTS",
+    "rulePinned": "Version fixee",
+    "orSelectSpecific": "ou selectionner une version specifique",
+    "searchPlaceholder": "Rechercher des versions...",
+    "filterAll": "Tous les types",
+    "filterStable": "Stable",
+    "filterLts": "LTS",
+    "filterMainline": "Mainline",
+    "noVersions": "Aucune version disponible",
+    "showing": "Affichage {{ start }}-{{ end }} sur {{ total }}",
+    "previous": "Precedent",
+    "next": "Suivant",
+    "apply": "Appliquer",
+    "clickToChange": "Cliquer pour changer la version"
   }
 }

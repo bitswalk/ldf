@@ -66,6 +66,7 @@
     "size": "Size",
     "checksum": "Checksum",
     "error": "Error",
+    "deleteSuccess": "Distribution deleted successfully",
     "info": {
       "title": "Distribution Info",
       "save": "Save",
@@ -163,5 +164,30 @@
       "next": "Next",
       "create": "Create Distribution"
     }
+  },
+  "editForm": {
+    "modalTitle": "Edit Distribution",
+    "basicInfo": "Basic Information",
+    "saving": "Saving...",
+    "selectDesktopEnvironment": "Select desktop environment"
+  },
+  "versionModal": {
+    "title": "Select Version: {{ component }}",
+    "useDefault": "Use default version",
+    "ruleLatestStable": "Latest stable version",
+    "ruleLatestLts": "Latest LTS version",
+    "rulePinned": "Pinned version",
+    "orSelectSpecific": "or select a specific version",
+    "searchPlaceholder": "Search versions...",
+    "filterAll": "All types",
+    "filterStable": "Stable",
+    "filterLts": "LTS",
+    "filterMainline": "Mainline",
+    "noVersions": "No versions available",
+    "showing": "Showing {{ start }}-{{ end }} of {{ total }}",
+    "previous": "Previous",
+    "next": "Next",
+    "apply": "Apply",
+    "clickToChange": "Click to change version"
   }
 }

@@ -79,6 +79,19 @@
       "label": "Optional Component",
       "help": "Optional components are not required for a minimal distribution."
     },
+    "versionSection": {
+      "title": "Default Version"
+    },
+    "versionRule": {
+      "label": "Version Selection Rule",
+      "help": "How the default version is determined for this component."
+    },
+    "defaultVersion": {
+      "label": "Pinned Version",
+      "placeholder": "e.g., 6.12.1",
+      "help": "The specific version to use when rule is set to 'Pinned'.",
+      "required": "Version is required when using pinned version rule"
+    },
     "actions": {
       "cancel": "Cancel",
       "add": "Create Component",

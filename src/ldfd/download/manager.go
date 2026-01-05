@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,15 +41,16 @@ func DefaultConfig() Config {
 
 // Manager coordinates download jobs across multiple workers
 type Manager struct {
-	db            *db.Database
-	storage       storage.Backend
-	jobRepo       *db.DownloadJobRepository
-	componentRepo *db.ComponentRepository
-	sourceRepo    *db.SourceRepository
-	urlBuilder    *URLBuilder
-	verifier      *Verifier
-	downloader    *Downloader
-	config        Config
+	db                *db.Database
+	storage           storage.Backend
+	jobRepo           *db.DownloadJobRepository
+	componentRepo     *db.ComponentRepository
+	sourceRepo        *db.SourceRepository
+	sourceVersionRepo *db.SourceVersionRepository
+	urlBuilder        *URLBuilder
+	verifier          *Verifier
+	downloader        *Downloader
+	config            Config
 
 	jobQueue    chan *db.DownloadJob
 	cancelFuncs map[string]context.CancelFunc
@@ -82,19 +84,21 @@ func NewManager(database *db.Database, storageBackend storage.Backend, cfg Confi
 	jobRepo := db.NewDownloadJobRepository(database)
 	componentRepo := db.NewComponentRepository(database)
 	sourceRepo := db.NewSourceRepository(database)
+	sourceVersionRepo := db.NewSourceVersionRepository(database)
 
 	m := &Manager{
-		db:            database,
-		storage:       storageBackend,
-		jobRepo:       jobRepo,
-		componentRepo: componentRepo,
-		sourceRepo:    sourceRepo,
-		urlBuilder:    NewURLBuilder(componentRepo),
-		verifier:      NewVerifier(httpClient),
-		downloader:    NewDownloader(nil, storageBackend, jobRepo), // nil client = no timeout for downloads
-		config:        cfg,
-		jobQueue:      make(chan *db.DownloadJob, cfg.Workers*2),
-		cancelFuncs:   make(map[string]context.CancelFunc),
+		db:                database,
+		storage:           storageBackend,
+		jobRepo:           jobRepo,
+		componentRepo:     componentRepo,
+		sourceRepo:        sourceRepo,
+		sourceVersionRepo: sourceVersionRepo,
+		urlBuilder:        NewURLBuilder(componentRepo),
+		verifier:          NewVerifier(httpClient),
+		downloader:        NewDownloader(nil, storageBackend, jobRepo), // nil client = no timeout for downloads
+		config:            cfg,
+		jobQueue:          make(chan *db.DownloadJob, cfg.Workers*2),
+		cancelFuncs:       make(map[string]context.CancelFunc),
 	}
 
 	return m
@@ -411,16 +415,109 @@ func (m *Manager) getRequiredComponents(config *db.DistributionConfig) []string 
 }
 
 // getComponentVersion extracts the version for a component from distribution config
+// Priority: 1) Distribution config override 2) Component default (pinned or resolved from rule)
 func (m *Manager) getComponentVersion(config *db.DistributionConfig, componentName string) string {
-	// For kernel, we have an explicit version
-	if componentName == "kernel" {
-		return config.Core.Kernel.Version
+	// First check if distribution config has an explicit version override
+	overrideVersion := m.getDistributionVersionOverride(config, componentName)
+	if overrideVersion != "" {
+		return overrideVersion
 	}
 
-	// For other components, we would need version information
-	// This could come from the source, component registry, or distribution config
-	// For now, return empty to indicate version needs to be resolved differently
+	// No override, resolve from component's default
+	return m.resolveComponentDefaultVersion(componentName)
+}
+
+// getDistributionVersionOverride gets explicit version override from distribution config
+func (m *Manager) getDistributionVersionOverride(config *db.DistributionConfig, componentName string) string {
+	switch componentName {
+	case "kernel":
+		return config.Core.Kernel.Version
+	default:
+		// Check bootloader version
+		if config.Core.Bootloader != "" && containsIgnoreCase(componentName, config.Core.Bootloader) {
+			return config.Core.BootloaderVersion
+		}
+		// Check init system version
+		if config.System.Init != "" && containsIgnoreCase(componentName, config.System.Init) {
+			return config.System.InitVersion
+		}
+		// Check filesystem version
+		if config.System.Filesystem.Type != "" && containsIgnoreCase(componentName, config.System.Filesystem.Type) {
+			return config.System.FilesystemVersion
+		}
+		// Check package manager version
+		if config.System.PackageManager != "" && containsIgnoreCase(componentName, config.System.PackageManager) {
+			return config.System.PackageManagerVersion
+		}
+		// Check security system version
+		if config.Security.System != "" && containsIgnoreCase(componentName, config.Security.System) {
+			return config.Security.SystemVersion
+		}
+		// Check container runtime version
+		if config.Runtime.Container != "" && containsIgnoreCase(componentName, config.Runtime.Container) {
+			return config.Runtime.ContainerVersion
+		}
+		// Check virtualization version
+		if config.Runtime.Virtualization != "" && containsIgnoreCase(componentName, config.Runtime.Virtualization) {
+			return config.Runtime.VirtualizationVersion
+		}
+		// Check desktop environment version
+		if config.Target.Desktop != nil && config.Target.Desktop.Environment != "" &&
+			containsIgnoreCase(componentName, config.Target.Desktop.Environment) {
+			return config.Target.Desktop.EnvironmentVersion
+		}
+		// Check display server version
+		if config.Target.Desktop != nil && config.Target.Desktop.DisplayServer != "" &&
+			containsIgnoreCase(componentName, config.Target.Desktop.DisplayServer) {
+			return config.Target.Desktop.DisplayServerVersion
+		}
+	}
 	return ""
+}
+
+// resolveComponentDefaultVersion resolves the default version for a component
+func (m *Manager) resolveComponentDefaultVersion(componentName string) string {
+	component, err := m.componentRepo.GetByName(componentName)
+	if err != nil || component == nil {
+		log.Warn("Failed to get component for version resolution", "component", componentName, "error", err)
+		return ""
+	}
+
+	// If pinned version, use it directly
+	if component.DefaultVersionRule == db.VersionRulePinned {
+		return component.DefaultVersion
+	}
+
+	// Otherwise, resolve the rule to an actual version
+	var version *db.SourceVersion
+
+	switch component.DefaultVersionRule {
+	case db.VersionRuleLatestStable:
+		version, err = m.sourceVersionRepo.GetLatestStableByComponent(component.ID)
+	case db.VersionRuleLatestLTS:
+		version, err = m.sourceVersionRepo.GetLatestLongtermByComponent(component.ID)
+	default:
+		// Default to latest stable if no rule specified
+		version, err = m.sourceVersionRepo.GetLatestStableByComponent(component.ID)
+	}
+
+	if err != nil {
+		log.Warn("Failed to resolve version for component", "component", componentName, "rule", component.DefaultVersionRule, "error", err)
+		return ""
+	}
+
+	if version == nil {
+		log.Warn("No version found for component", "component", componentName, "rule", component.DefaultVersionRule)
+		return ""
+	}
+
+	return version.Version
+}
+
+// containsIgnoreCase checks if s contains substr (case insensitive)
+func containsIgnoreCase(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		len(substr) > 0 && (strings.Contains(strings.ToLower(s), strings.ToLower(substr))))
 }
 
 // getSourceType determines if a source is "default" or "user"

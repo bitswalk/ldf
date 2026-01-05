@@ -13,9 +13,10 @@ type DistributionConfig struct {
 
 // CoreConfig contains core system configuration
 type CoreConfig struct {
-	Kernel       KernelConfig       `json:"kernel"`
-	Bootloader   string             `json:"bootloader"`
-	Partitioning PartitioningConfig `json:"partitioning"`
+	Kernel            KernelConfig       `json:"kernel"`
+	Bootloader        string             `json:"bootloader"`
+	BootloaderVersion string             `json:"bootloader_version,omitempty"`
+	Partitioning      PartitioningConfig `json:"partitioning"`
 }
 
 // KernelConfig contains kernel configuration
@@ -31,9 +32,12 @@ type PartitioningConfig struct {
 
 // SystemConfig contains system services configuration
 type SystemConfig struct {
-	Init           string           `json:"init"`
-	Filesystem     FilesystemConfig `json:"filesystem"`
-	PackageManager string           `json:"packageManager"`
+	Init                  string           `json:"init"`
+	InitVersion           string           `json:"init_version,omitempty"`
+	Filesystem            FilesystemConfig `json:"filesystem"`
+	FilesystemVersion     string           `json:"filesystem_version,omitempty"`
+	PackageManager        string           `json:"packageManager"`
+	PackageManagerVersion string           `json:"package_manager_version,omitempty"`
 }
 
 // FilesystemConfig contains filesystem configuration
@@ -44,13 +48,16 @@ type FilesystemConfig struct {
 
 // SecurityConfig contains security configuration
 type SecurityConfig struct {
-	System string `json:"system"`
+	System        string `json:"system"`
+	SystemVersion string `json:"system_version,omitempty"`
 }
 
 // RuntimeConfig contains runtime configuration
 type RuntimeConfig struct {
-	Container      string `json:"container"`
-	Virtualization string `json:"virtualization"`
+	Container             string `json:"container"`
+	ContainerVersion      string `json:"container_version,omitempty"`
+	Virtualization        string `json:"virtualization"`
+	VirtualizationVersion string `json:"virtualization_version,omitempty"`
 }
 
 // TargetConfig contains target environment configuration
@@ -61,8 +68,10 @@ type TargetConfig struct {
 
 // DesktopConfig contains desktop environment configuration
 type DesktopConfig struct {
-	Environment   string `json:"environment"`
-	DisplayServer string `json:"displayServer"`
+	Environment          string `json:"environment"`
+	EnvironmentVersion   string `json:"environment_version,omitempty"`
+	DisplayServer        string `json:"displayServer"`
+	DisplayServerVersion string `json:"display_server_version,omitempty"`
 }
 
 // DistributionStatus represents the status of a distribution
@@ -141,21 +150,32 @@ type UserSource = UpstreamSource
 // This maintains backwards compatibility with existing API consumers
 type Source = UpstreamSource
 
+// VersionRule represents how default version is determined for a component
+type VersionRule string
+
+const (
+	VersionRulePinned       VersionRule = "pinned"        // Use exact default_version value
+	VersionRuleLatestStable VersionRule = "latest-stable" // Resolve to newest stable version
+	VersionRuleLatestLTS    VersionRule = "latest-lts"    // Resolve to newest longterm/LTS version
+)
+
 // Component represents a downloadable component in the registry
 type Component struct {
-	ID                       string    `json:"id"`
-	Name                     string    `json:"name"`
-	Category                 string    `json:"category"`
-	DisplayName              string    `json:"display_name"`
-	Description              string    `json:"description,omitempty"`
-	ArtifactPattern          string    `json:"artifact_pattern,omitempty"`
-	DefaultURLTemplate       string    `json:"default_url_template,omitempty"`
-	GitHubNormalizedTemplate string    `json:"github_normalized_template,omitempty"`
-	IsOptional               bool      `json:"is_optional"`
-	IsSystem                 bool      `json:"is_system"`
-	OwnerID                  string    `json:"owner_id,omitempty"`
-	CreatedAt                time.Time `json:"created_at"`
-	UpdatedAt                time.Time `json:"updated_at"`
+	ID                       string      `json:"id"`
+	Name                     string      `json:"name"`
+	Category                 string      `json:"category"`
+	DisplayName              string      `json:"display_name"`
+	Description              string      `json:"description,omitempty"`
+	ArtifactPattern          string      `json:"artifact_pattern,omitempty"`
+	DefaultURLTemplate       string      `json:"default_url_template,omitempty"`
+	GitHubNormalizedTemplate string      `json:"github_normalized_template,omitempty"`
+	IsOptional               bool        `json:"is_optional"`
+	IsSystem                 bool        `json:"is_system"`
+	OwnerID                  string      `json:"owner_id,omitempty"`
+	DefaultVersion           string      `json:"default_version,omitempty"`      // Pinned version or resolved value
+	DefaultVersionRule       VersionRule `json:"default_version_rule,omitempty"` // "pinned", "latest-stable", "latest-lts"
+	CreatedAt                time.Time   `json:"created_at"`
+	UpdatedAt                time.Time   `json:"updated_at"`
 }
 
 // DownloadJobStatus represents the status of a download job

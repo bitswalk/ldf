@@ -66,6 +66,7 @@
     "size": "Grosse",
     "checksum": "Prufsumme",
     "error": "Fehler",
+    "deleteSuccess": "Distribution erfolgreich geloscht",
     "info": {
       "title": "Distributionsinformationen",
       "save": "Speichern",
@@ -196,5 +197,30 @@
     "target": {
       "title": "Zielkonfiguration"
     }
+  },
+  "editForm": {
+    "modalTitle": "Distribution bearbeiten",
+    "basicInfo": "Grundlegende Informationen",
+    "saving": "Speichern...",
+    "selectDesktopEnvironment": "Desktop-Umgebung auswahlen"
+  },
+  "versionModal": {
+    "title": "Version auswahlen: {{ component }}",
+    "useDefault": "Standardversion verwenden",
+    "ruleLatestStable": "Neueste stabile Version",
+    "ruleLatestLts": "Neueste LTS-Version",
+    "rulePinned": "Fixierte Version",
+    "orSelectSpecific": "oder eine bestimmte Version auswahlen",
+    "searchPlaceholder": "Versionen suchen...",
+    "filterAll": "Alle Typen",
+    "filterStable": "Stabil",
+    "filterLts": "LTS",
+    "filterMainline": "Mainline",
+    "noVersions": "Keine Versionen verfugbar",
+    "showing": "Zeige {{ start }}-{{ end }} von {{ total }}",
+    "previous": "Zuruck",
+    "next": "Weiter",
+    "apply": "Anwenden",
+    "clickToChange": "Klicken um Version zu andern"
   }
 }

@@ -23,7 +23,7 @@ func (r *ComponentRepository) List() ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		ORDER BY category ASC, name ASC
 	`
@@ -41,7 +41,7 @@ func (r *ComponentRepository) ListByOwner(ownerID string) ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE owner_id = ?
 		ORDER BY category ASC, name ASC
@@ -60,7 +60,7 @@ func (r *ComponentRepository) ListSystem() ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE is_system = 1
 		ORDER BY category ASC, name ASC
@@ -79,7 +79,7 @@ func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE id = ?
 	`
@@ -92,7 +92,7 @@ func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE name = ?
 	`
@@ -105,7 +105,7 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE category = ?
 		ORDER BY name ASC
@@ -126,7 +126,7 @@ func (r *ComponentRepository) GetByCategoryAndNameContains(category, nameContain
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at
+			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE category = ? AND name LIKE ?
 		ORDER BY is_system DESC, name ASC
@@ -154,16 +154,21 @@ func (r *ComponentRepository) Create(c *Component) error {
 		ownerID = c.OwnerID
 	}
 
+	// Set default version rule if not specified
+	if c.DefaultVersionRule == "" {
+		c.DefaultVersionRule = VersionRuleLatestStable
+	}
+
 	query := `
 		INSERT INTO components (id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
-			created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			default_version, default_version_rule, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
 		c.ID, c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
 		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.IsSystem, ownerID,
-		c.CreatedAt, c.UpdatedAt,
+		c.DefaultVersion, c.DefaultVersionRule, c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create component: %w", err)
@@ -179,12 +184,14 @@ func (r *ComponentRepository) Update(c *Component) error {
 	query := `
 		UPDATE components
 		SET name = ?, category = ?, display_name = ?, description = ?, artifact_pattern = ?,
-			default_url_template = ?, github_normalized_template = ?, is_optional = ?, updated_at = ?
+			default_url_template = ?, github_normalized_template = ?, is_optional = ?,
+			default_version = ?, default_version_rule = ?, updated_at = ?
 		WHERE id = ?
 	`
 	result, err := r.db.DB().Exec(query,
 		c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
-		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.UpdatedAt, c.ID,
+		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional,
+		c.DefaultVersion, c.DefaultVersionRule, c.UpdatedAt, c.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update component: %w", err)
@@ -248,11 +255,13 @@ func (r *ComponentRepository) GetCategories() ([]string, error) {
 func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	var c Component
 	var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
+	var defaultVersion, defaultVersionRule sql.NullString
 
 	err := row.Scan(
 		&c.ID, &c.Name, &c.Category, &c.DisplayName,
 		&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-		&c.IsOptional, &c.IsSystem, &ownerID, &c.CreatedAt, &c.UpdatedAt,
+		&c.IsOptional, &c.IsSystem, &ownerID,
+		&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -266,6 +275,8 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	c.DefaultURLTemplate = defaultTemplate.String
 	c.GitHubNormalizedTemplate = githubTemplate.String
 	c.OwnerID = ownerID.String
+	c.DefaultVersion = defaultVersion.String
+	c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
 
 	return &c, nil
 }
@@ -277,11 +288,13 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 	for rows.Next() {
 		var c Component
 		var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
+		var defaultVersion, defaultVersionRule sql.NullString
 
 		if err := rows.Scan(
 			&c.ID, &c.Name, &c.Category, &c.DisplayName,
 			&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-			&c.IsOptional, &c.IsSystem, &ownerID, &c.CreatedAt, &c.UpdatedAt,
+			&c.IsOptional, &c.IsSystem, &ownerID,
+			&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan component: %w", err)
 		}
@@ -291,6 +304,8 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		c.DefaultURLTemplate = defaultTemplate.String
 		c.GitHubNormalizedTemplate = githubTemplate.String
 		c.OwnerID = ownerID.String
+		c.DefaultVersion = defaultVersion.String
+		c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
 
 		components = append(components, c)
 	}

@@ -1,0 +1,1 @@
+export { ComponentVersionModal } from "./ComponentVersionModal";

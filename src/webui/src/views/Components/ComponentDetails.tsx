@@ -10,6 +10,7 @@ import {
   updateComponent,
   deleteComponent,
   getCategoryDisplayName,
+  getVersionRuleLabel,
   type Component,
   type CreateComponentRequest,
   type UpdateComponentRequest,
@@ -106,6 +107,8 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
       default_url_template: formData.default_url_template,
       github_normalized_template: formData.github_normalized_template,
       is_optional: formData.is_optional,
+      default_version: formData.default_version,
+      default_version_rule: formData.default_version_rule,
     };
 
     const result = await updateComponent(props.componentId, updateReq);
@@ -332,6 +335,33 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
                         ? t("components.table.optional")
                         : t("components.table.required")}
                     </span>
+                  </div>
+
+                  {/* Version Info */}
+                  <div class="border-t border-border pt-4 mt-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-muted-foreground">
+                        {t("components.form.versionRule.label")}
+                      </span>
+                      <span class="text-sm font-medium">
+                        {getVersionRuleLabel(component()!.default_version_rule)}
+                      </span>
+                    </div>
+                    <Show
+                      when={
+                        component()!.default_version_rule === "pinned" &&
+                        component()!.default_version
+                      }
+                    >
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-muted-foreground">
+                          {t("components.form.defaultVersion.label")}
+                        </span>
+                        <span class="font-mono text-sm">
+                          {component()!.default_version}
+                        </span>
+                      </div>
+                    </Show>
                   </div>
 
                   <div class="border-t border-border pt-4 mt-4 space-y-2">

@@ -599,3 +599,98 @@ func GetSourceType(source *UpstreamSource) string {
 	}
 	return "user"
 }
+
+// ListByComponentPaginated retrieves versions for all sources linked to a component
+// Returns deduplicated versions ordered by discovered_at desc, version desc
+func (r *SourceVersionRepository) ListByComponentPaginated(componentID string, limit, offset int, versionTypeFilter string) ([]SourceVersion, int, error) {
+	// Build the query to get versions from sources linked to this component
+	// We use a subquery to find source IDs that contain this component
+	baseWhere := `
+		EXISTS (
+			SELECT 1 FROM upstream_sources us
+			WHERE (us.id = sv.source_id)
+			AND EXISTS (SELECT 1 FROM json_each(us.component_ids) WHERE value = ?)
+		)
+	`
+	args := []interface{}{componentID}
+
+	// Add version type filter if specified
+	if versionTypeFilter != "" && versionTypeFilter != "all" {
+		baseWhere += " AND sv.version_type = ?"
+		args = append(args, versionTypeFilter)
+	}
+
+	// Get total count (distinct by version to avoid duplicates from multiple sources)
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(DISTINCT sv.version)
+		FROM source_versions sv
+		WHERE %s
+	`, baseWhere)
+	var total int
+	if err := r.db.DB().QueryRow(countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count component versions: %w", err)
+	}
+
+	// Get paginated results, deduplicated by version (keep the one with latest discovered_at)
+	query := fmt.Sprintf(`
+		SELECT sv.id, sv.source_id, sv.source_type, sv.version, sv.version_type, sv.release_date,
+		       sv.download_url, sv.checksum, sv.checksum_type, sv.file_size, sv.is_stable, sv.discovered_at
+		FROM source_versions sv
+		WHERE %s
+		GROUP BY sv.version
+		ORDER BY sv.discovered_at DESC, sv.version DESC
+		LIMIT ? OFFSET ?
+	`, baseWhere)
+	queryArgs := append(args, limit, offset)
+
+	rows, err := r.db.DB().Query(query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list component versions: %w", err)
+	}
+	defer rows.Close()
+
+	versions, err := r.scanVersions(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return versions, total, nil
+}
+
+// GetLatestByComponentAndType retrieves the most recent version of a specific type for a component
+func (r *SourceVersionRepository) GetLatestByComponentAndType(componentID string, versionType VersionType) (*SourceVersion, error) {
+	query := `
+		SELECT sv.id, sv.source_id, sv.source_type, sv.version, sv.version_type, sv.release_date,
+		       sv.download_url, sv.checksum, sv.checksum_type, sv.file_size, sv.is_stable, sv.discovered_at
+		FROM source_versions sv
+		WHERE EXISTS (
+			SELECT 1 FROM upstream_sources us
+			WHERE us.id = sv.source_id
+			AND EXISTS (SELECT 1 FROM json_each(us.component_ids) WHERE value = ?)
+		)
+		AND sv.version_type = ?
+		ORDER BY sv.discovered_at DESC, sv.version DESC
+		LIMIT 1
+	`
+	row := r.db.DB().QueryRow(query, componentID, string(versionType))
+
+	v, err := r.scanVersion(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest version by type: %w", err)
+	}
+
+	return v, nil
+}
+
+// GetLatestStableByComponent retrieves the most recent stable version for a component
+func (r *SourceVersionRepository) GetLatestStableByComponent(componentID string) (*SourceVersion, error) {
+	return r.GetLatestByComponentAndType(componentID, VersionTypeStable)
+}
+
+// GetLatestLongtermByComponent retrieves the most recent longterm version for a component
+func (r *SourceVersionRepository) GetLatestLongtermByComponent(componentID string) (*SourceVersion, error) {
+	return r.GetLatestByComponentAndType(componentID, VersionTypeLongterm)
+}
