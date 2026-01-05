@@ -7,7 +7,8 @@ export type VersionRule = "pinned" | "latest-stable" | "latest-lts";
 export interface Component {
   id: string;
   name: string;
-  category: string;
+  category: string; // Primary category (first in categories list)
+  categories?: string[]; // All categories the component belongs to
   display_name: string;
   description?: string;
   artifact_pattern?: string;
@@ -365,16 +366,22 @@ export async function getCategories(): Promise<CategoriesResult> {
 }
 
 // Group components by category
+// Components with multiple categories will appear in each category they belong to
 export function groupByCategory(
   components: Component[],
 ): Record<string, Component[]> {
   return components.reduce(
     (acc, component) => {
-      const category = component.category;
-      if (!acc[category]) {
-        acc[category] = [];
+      // Use categories array if available, otherwise fall back to single category
+      const cats = component.categories?.length
+        ? component.categories
+        : [component.category];
+      for (const category of cats) {
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(component);
       }
-      acc[category].push(component);
       return acc;
     },
     {} as Record<string, Component[]>,
@@ -387,9 +394,12 @@ export function getCategoryDisplayName(category: string): string {
     core: "Core",
     bootloader: "Bootloader",
     init: "Init System",
+    systemd: "systemd",
     runtime: "Runtime",
     security: "Security",
     desktop: "Desktop",
+    container: "Container",
+    virtualization: "Virtualization",
   };
   return (
     names[category] || category.charAt(0).toUpperCase() + category.slice(1)
@@ -619,6 +629,9 @@ export const COMPONENT_CATEGORIES = [
   "core",
   "bootloader",
   "init",
+  "systemd",
+  "container",
+  "virtualization",
   "runtime",
   "security",
   "desktop",

@@ -3,6 +3,7 @@ package migrations
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -408,7 +409,7 @@ func seedDefaultRoles(tx *sql.Tx) error {
 // DefaultComponent represents a system component to be seeded
 type DefaultComponent struct {
 	Name                     string
-	Category                 string
+	Categories               []string // Stored as comma-separated in DB; first is primary
 	DisplayName              string
 	Description              string
 	ArtifactPattern          string
@@ -423,7 +424,7 @@ func DefaultComponents() []DefaultComponent {
 		// Core components
 		{
 			Name:                     "kernel",
-			Category:                 "core",
+			Categories:               []string{"core"},
 			DisplayName:              "Linux Kernel",
 			Description:              "The Linux kernel source code",
 			ArtifactPattern:          "linux-{version}.tar.xz",
@@ -434,7 +435,7 @@ func DefaultComponents() []DefaultComponent {
 		// Bootloader components
 		{
 			Name:                     "systemd-boot",
-			Category:                 "bootloader",
+			Categories:               []string{"bootloader", "systemd"},
 			DisplayName:              "systemd-boot",
 			Description:              "UEFI boot manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -444,7 +445,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "u-boot",
-			Category:                 "bootloader",
+			Categories:               []string{"bootloader"},
 			DisplayName:              "U-Boot",
 			Description:              "Universal Boot Loader for embedded systems",
 			ArtifactPattern:          "u-boot-{version}.tar.bz2",
@@ -454,7 +455,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "grub2",
-			Category:                 "bootloader",
+			Categories:               []string{"bootloader"},
 			DisplayName:              "GRUB2",
 			Description:              "GNU GRand Unified Bootloader version 2",
 			ArtifactPattern:          "grub-{version}.tar.xz",
@@ -465,7 +466,7 @@ func DefaultComponents() []DefaultComponent {
 		// Init system components
 		{
 			Name:                     "systemd",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd",
 			Description:              "System and service manager for Linux",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -475,7 +476,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-networkd",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-networkd",
 			Description:              "Network configuration manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -485,7 +486,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-resolved",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-resolved",
 			Description:              "Network name resolution manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -495,7 +496,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-sysext",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-sysext",
 			Description:              "System extension image manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -505,7 +506,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-confext",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-confext",
 			Description:              "Configuration extension image manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -515,7 +516,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-vmspawn",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-vmspawn",
 			Description:              "Lightweight VM spawner using QEMU from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -525,7 +526,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-nspawn",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-nspawn",
 			Description:              "Lightweight container manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -535,7 +536,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-repart",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-repart",
 			Description:              "Automatic partition growing and creation from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -545,7 +546,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-udevd",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-udevd",
 			Description:              "Device event managing daemon from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -555,7 +556,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-homed",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-homed",
 			Description:              "Portable home directory manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -565,7 +566,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-machined",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-machined",
 			Description:              "Virtual machine and container registration manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -575,7 +576,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-importd",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-importd",
 			Description:              "VM and container image import and export service from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -585,7 +586,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-run",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-run",
 			Description:              "Transient unit execution utility from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -595,7 +596,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-analyze",
-			Category:                 "init",
+			Categories:               []string{"init", "systemd"},
 			DisplayName:              "systemd-analyze",
 			Description:              "System boot-up performance analysis tool from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -605,7 +606,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "openrc",
-			Category:                 "init",
+			Categories:               []string{"init"},
 			DisplayName:              "OpenRC",
 			Description:              "Dependency-based init system",
 			ArtifactPattern:          "openrc-{version}.tar.gz",
@@ -616,7 +617,7 @@ func DefaultComponents() []DefaultComponent {
 		// Virtualization components
 		{
 			Name:                     "cloud-hypervisor",
-			Category:                 "virtualization",
+			Categories:               []string{"virtualization"},
 			DisplayName:              "Cloud Hypervisor",
 			Description:              "Open source Virtual Machine Monitor (VMM) for cloud workloads",
 			ArtifactPattern:          "cloud-hypervisor-v{version}.tar.gz",
@@ -626,7 +627,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "qemu-kvm-libvirt",
-			Category:                 "virtualization",
+			Categories:               []string{"virtualization"},
 			DisplayName:              "QEMU/KVM with libvirt",
 			Description:              "Full virtualization solution with libvirt management",
 			ArtifactPattern:          "qemu-{version}.tar.xz",
@@ -637,7 +638,7 @@ func DefaultComponents() []DefaultComponent {
 		// Container components
 		{
 			Name:                     "docker",
-			Category:                 "container",
+			Categories:               []string{"container"},
 			DisplayName:              "Docker",
 			Description:              "Container runtime and platform for building and running applications",
 			ArtifactPattern:          "docker-{version}.tgz",
@@ -647,7 +648,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "podman",
-			Category:                 "container",
+			Categories:               []string{"container"},
 			DisplayName:              "Podman",
 			Description:              "Daemonless container engine for developing, managing, and running OCI containers",
 			ArtifactPattern:          "podman-{version}.tar.gz",
@@ -657,7 +658,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "runc",
-			Category:                 "container",
+			Categories:               []string{"container"},
 			DisplayName:              "runC",
 			Description:              "CLI tool for running containers according to OCI specification",
 			ArtifactPattern:          "runc-{version}.tar.gz",
@@ -667,7 +668,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "cri-o",
-			Category:                 "container",
+			Categories:               []string{"container"},
 			DisplayName:              "CRI-O",
 			Description:              "Lightweight container runtime for Kubernetes",
 			ArtifactPattern:          "cri-o-{version}.tar.gz",
@@ -678,7 +679,7 @@ func DefaultComponents() []DefaultComponent {
 		// Security components
 		{
 			Name:                     "selinux",
-			Category:                 "security",
+			Categories:               []string{"security"},
 			DisplayName:              "SELinux",
 			Description:              "Security-Enhanced Linux",
 			ArtifactPattern:          "selinux-{version}.tar.gz",
@@ -688,7 +689,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "apparmor",
-			Category:                 "security",
+			Categories:               []string{"security"},
 			DisplayName:              "AppArmor",
 			Description:              "Linux application security framework",
 			ArtifactPattern:          "apparmor-{version}.tar.gz",
@@ -699,7 +700,7 @@ func DefaultComponents() []DefaultComponent {
 		// Desktop environment components
 		{
 			Name:                     "kde",
-			Category:                 "desktop",
+			Categories:               []string{"desktop"},
 			DisplayName:              "KDE Plasma",
 			Description:              "KDE Plasma desktop environment",
 			ArtifactPattern:          "plasma-desktop-{version}.tar.xz",
@@ -709,7 +710,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "gnome",
-			Category:                 "desktop",
+			Categories:               []string{"desktop"},
 			DisplayName:              "GNOME",
 			Description:              "GNOME desktop environment",
 			ArtifactPattern:          "gnome-shell-{version}.tar.xz",
@@ -719,7 +720,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "swaywm",
-			Category:                 "desktop",
+			Categories:               []string{"desktop"},
 			DisplayName:              "SwayWM",
 			Description:              "i3-compatible Wayland compositor",
 			ArtifactPattern:          "sway-{version}.tar.gz",
@@ -745,10 +746,12 @@ func seedDefaultComponents(tx *sql.Tx) error {
 
 	for _, c := range DefaultComponents() {
 		id := uuid.New().String()
+		// Join categories with comma for storage
+		categoryStr := strings.Join(c.Categories, ",")
 		if _, err := stmt.Exec(
 			id,
 			c.Name,
-			c.Category,
+			categoryStr,
 			c.DisplayName,
 			c.Description,
 			c.ArtifactPattern,

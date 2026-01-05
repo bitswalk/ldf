@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,17 +101,23 @@ func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 	return r.scanComponent(row)
 }
 
-// GetByCategory retrieves all components in a category
+// GetByCategory retrieves all components that have the given category
+// This handles comma-separated categories by matching any component where the category field contains the given value
 func (r *ComponentRepository) GetByCategory(category string) ([]Component, error) {
+	// Match exact category or category in comma-separated list
+	// Uses LIKE patterns: "category" OR "category,%" OR "%,category" OR "%,category,%"
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE category = ?
+		   OR category LIKE ?
+		   OR category LIKE ?
+		   OR category LIKE ?
 		ORDER BY name ASC
 	`
-	rows, err := r.db.DB().Query(query, category)
+	rows, err := r.db.DB().Query(query, category, category+",%", "%,"+category, "%,"+category+",%")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list components by category: %w", err)
 	}
@@ -122,19 +129,21 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 // GetByCategoryAndNameContains finds a component by category where name contains the given value
 // This is used for dynamic component lookup based on distribution config values
 // e.g., category="bootloader", nameContains="systemd-boot" could match "bootloader-systemd-boot" or "my-systemd-boot-variant"
+// This handles comma-separated categories by matching any component that includes the given category
 func (r *ComponentRepository) GetByCategoryAndNameContains(category, nameContains string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
-		WHERE category = ? AND name LIKE ?
+		WHERE (category = ? OR category LIKE ? OR category LIKE ? OR category LIKE ?)
+		  AND name LIKE ?
 		ORDER BY is_system DESC, name ASC
 		LIMIT 1
 	`
 	// Use LIKE pattern to find components containing the config value
-	pattern := "%" + nameContains + "%"
-	row := r.db.DB().QueryRow(query, category, pattern)
+	namePattern := "%" + nameContains + "%"
+	row := r.db.DB().QueryRow(query, category, category+",%", "%,"+category, "%,"+category+",%", namePattern)
 	return r.scanComponent(row)
 }
 
@@ -227,38 +236,74 @@ func (r *ComponentRepository) Delete(id string) error {
 }
 
 // GetCategories returns all distinct component categories
+// This handles comma-separated categories by extracting each unique category
 func (r *ComponentRepository) GetCategories() ([]string, error) {
-	query := `SELECT DISTINCT category FROM components ORDER BY category ASC`
+	query := `SELECT DISTINCT category FROM components`
 	rows, err := r.db.DB().Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get categories: %w", err)
 	}
 	defer rows.Close()
 
-	var categories []string
+	// Use a map to collect unique categories
+	categorySet := make(map[string]struct{})
 	for rows.Next() {
-		var category string
-		if err := rows.Scan(&category); err != nil {
+		var categoryRaw string
+		if err := rows.Scan(&categoryRaw); err != nil {
 			return nil, fmt.Errorf("failed to scan category: %w", err)
 		}
-		categories = append(categories, category)
+		// Parse comma-separated categories and add each unique one
+		for _, cat := range parseCategories(categoryRaw) {
+			categorySet[cat] = struct{}{}
+		}
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating categories: %w", err)
 	}
 
+	// Convert map to sorted slice
+	categories := make([]string, 0, len(categorySet))
+	for cat := range categorySet {
+		categories = append(categories, cat)
+	}
+	// Sort alphabetically
+	for i := 0; i < len(categories)-1; i++ {
+		for j := i + 1; j < len(categories); j++ {
+			if categories[i] > categories[j] {
+				categories[i], categories[j] = categories[j], categories[i]
+			}
+		}
+	}
+
 	return categories, nil
+}
+
+// parseCategories splits a comma-separated category string into a slice
+func parseCategories(category string) []string {
+	if category == "" {
+		return nil
+	}
+	parts := strings.Split(category, ",")
+	categories := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			categories = append(categories, trimmed)
+		}
+	}
+	return categories
 }
 
 // scanComponent scans a single component row
 func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	var c Component
+	var categoryRaw string
 	var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
 	var defaultVersion, defaultVersionRule sql.NullString
 
 	err := row.Scan(
-		&c.ID, &c.Name, &c.Category, &c.DisplayName,
+		&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 		&description, &artifactPattern, &defaultTemplate, &githubTemplate,
 		&c.IsOptional, &c.IsSystem, &ownerID,
 		&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
@@ -278,6 +323,15 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	c.DefaultVersion = defaultVersion.String
 	c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
 
+	// Parse categories from comma-separated string
+	c.Categories = parseCategories(categoryRaw)
+	// Set primary category to first one
+	if len(c.Categories) > 0 {
+		c.Category = c.Categories[0]
+	} else {
+		c.Category = categoryRaw
+	}
+
 	return &c, nil
 }
 
@@ -287,11 +341,12 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 
 	for rows.Next() {
 		var c Component
+		var categoryRaw string
 		var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
 		var defaultVersion, defaultVersionRule sql.NullString
 
 		if err := rows.Scan(
-			&c.ID, &c.Name, &c.Category, &c.DisplayName,
+			&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 			&description, &artifactPattern, &defaultTemplate, &githubTemplate,
 			&c.IsOptional, &c.IsSystem, &ownerID,
 			&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
@@ -306,6 +361,15 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		c.OwnerID = ownerID.String
 		c.DefaultVersion = defaultVersion.String
 		c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
+
+		// Parse categories from comma-separated string
+		c.Categories = parseCategories(categoryRaw)
+		// Set primary category to first one
+		if len(c.Categories) > 0 {
+			c.Category = c.Categories[0]
+		} else {
+			c.Category = categoryRaw
+		}
 
 		components = append(components, c)
 	}

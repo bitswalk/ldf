@@ -163,7 +163,8 @@ const (
 type Component struct {
 	ID                       string      `json:"id"`
 	Name                     string      `json:"name"`
-	Category                 string      `json:"category"`
+	Category                 string      `json:"category"`             // Primary category (first in categories list)
+	Categories               []string    `json:"categories,omitempty"` // All categories (stored as comma-separated in DB)
 	DisplayName              string      `json:"display_name"`
 	Description              string      `json:"description,omitempty"`
 	ArtifactPattern          string      `json:"artifact_pattern,omitempty"`
