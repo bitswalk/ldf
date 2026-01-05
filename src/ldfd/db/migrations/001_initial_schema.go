@@ -433,7 +433,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		// Bootloader components
 		{
-			Name:                     "bootloader-systemd-boot",
+			Name:                     "systemd-boot",
 			Category:                 "bootloader",
 			DisplayName:              "systemd-boot",
 			Description:              "UEFI boot manager from systemd",
@@ -443,7 +443,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               false,
 		},
 		{
-			Name:                     "bootloader-u-boot",
+			Name:                     "u-boot",
 			Category:                 "bootloader",
 			DisplayName:              "U-Boot",
 			Description:              "Universal Boot Loader for embedded systems",
@@ -453,7 +453,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               false,
 		},
 		{
-			Name:                     "bootloader-grub2",
+			Name:                     "grub2",
 			Category:                 "bootloader",
 			DisplayName:              "GRUB2",
 			Description:              "GNU GRand Unified Bootloader version 2",
@@ -464,7 +464,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		// Init system components
 		{
-			Name:                     "init-systemd",
+			Name:                     "systemd",
 			Category:                 "init",
 			DisplayName:              "systemd",
 			Description:              "System and service manager for Linux",
@@ -474,7 +474,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               false,
 		},
 		{
-			Name:                     "init-openrc",
+			Name:                     "openrc",
 			Category:                 "init",
 			DisplayName:              "OpenRC",
 			Description:              "Dependency-based init system",
@@ -483,10 +483,10 @@ func DefaultComponents() []DefaultComponent {
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               false,
 		},
-		// Runtime - Virtualization components
+		// Virtualization components
 		{
-			Name:                     "virtualization-cloud-hypervisor",
-			Category:                 "runtime",
+			Name:                     "cloud-hypervisor",
+			Category:                 "virtualization",
 			DisplayName:              "Cloud Hypervisor",
 			Description:              "Open source Virtual Machine Monitor (VMM) for cloud workloads",
 			ArtifactPattern:          "cloud-hypervisor-v{version}.tar.gz",
@@ -495,8 +495,8 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "virtualization-qemu-kvm-libvirt",
-			Category:                 "runtime",
+			Name:                     "qemu-kvm-libvirt",
+			Category:                 "virtualization",
 			DisplayName:              "QEMU/KVM with libvirt",
 			Description:              "Full virtualization solution with libvirt management",
 			ArtifactPattern:          "qemu-{version}.tar.xz",
@@ -504,10 +504,10 @@ func DefaultComponents() []DefaultComponent {
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
 		},
-		// Runtime - Container components
+		// Container components
 		{
-			Name:                     "container-docker-podman",
-			Category:                 "runtime",
+			Name:                     "docker-podman",
+			Category:                 "container",
 			DisplayName:              "Docker/Podman",
 			Description:              "Container runtime with Docker/Podman compatibility",
 			ArtifactPattern:          "podman-{version}.tar.gz",
@@ -516,8 +516,8 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "container-runc",
-			Category:                 "runtime",
+			Name:                     "runc",
+			Category:                 "container",
 			DisplayName:              "runC",
 			Description:              "CLI tool for running containers according to OCI specification",
 			ArtifactPattern:          "runc-{version}.tar.gz",
@@ -526,8 +526,8 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "container-cri-o",
-			Category:                 "runtime",
+			Name:                     "cri-o",
+			Category:                 "container",
 			DisplayName:              "CRI-O",
 			Description:              "Lightweight container runtime for Kubernetes",
 			ArtifactPattern:          "cri-o-{version}.tar.gz",
@@ -537,7 +537,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		// Security components
 		{
-			Name:                     "security-selinux",
+			Name:                     "selinux",
 			Category:                 "security",
 			DisplayName:              "SELinux",
 			Description:              "Security-Enhanced Linux",
@@ -547,7 +547,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "security-apparmor",
+			Name:                     "apparmor",
 			Category:                 "security",
 			DisplayName:              "AppArmor",
 			Description:              "Linux application security framework",
@@ -558,7 +558,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		// Desktop environment components
 		{
-			Name:                     "desktop-kde",
+			Name:                     "kde",
 			Category:                 "desktop",
 			DisplayName:              "KDE Plasma",
 			Description:              "KDE Plasma desktop environment",
@@ -568,7 +568,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "desktop-gnome",
+			Name:                     "gnome",
 			Category:                 "desktop",
 			DisplayName:              "GNOME",
 			Description:              "GNOME desktop environment",
@@ -578,7 +578,7 @@ func DefaultComponents() []DefaultComponent {
 			IsOptional:               true,
 		},
 		{
-			Name:                     "desktop-swaywm",
+			Name:                     "swaywm",
 			Category:                 "desktop",
 			DisplayName:              "SwayWM",
 			Description:              "i3-compatible Wayland compositor",

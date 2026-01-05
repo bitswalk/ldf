@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, Show, For, onMount, createResource } from "solid-js";
 import { t } from "../../services/i18n";
+import { debugLog } from "../../lib/utils";
 import { listSources } from "../../services/sources";
 import {
   listSourceVersions,
@@ -9,6 +10,7 @@ import {
 } from "../../services/sourceVersions";
 import {
   listComponents,
+  groupByCategory,
   type Component as LDFComponent,
 } from "../../services/components";
 import {
@@ -29,13 +31,33 @@ interface DistributionEditFormProps {
   isSubmitting?: boolean;
 }
 
-// Configuration options
-const configOptions = {
-  bootloaders: [
-    { id: "systemd-boot", name: "systemd-boot" },
-    { id: "u-boot", name: "U-Boot" },
-    { id: "grub2", name: "GRUB2" },
-  ],
+// Component option structure
+interface ComponentOption {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Components grouped by category
+interface ComponentsByCategory {
+  bootloader: ComponentOption[];
+  init: ComponentOption[];
+  filesystem: ComponentOption[];
+  security: ComponentOption[];
+  container: ComponentOption[];
+  virtualization: ComponentOption[];
+  desktop: ComponentOption[];
+  // Static options
+  partitioningTypes: ComponentOption[];
+  partitioningModes: ComponentOption[];
+  filesystemHierarchies: ComponentOption[];
+  packageManagers: ComponentOption[];
+  distributionTypes: ComponentOption[];
+  visibilities: ComponentOption[];
+}
+
+// Static options for items that don't come from component database
+const staticOptions = {
   partitioningTypes: [
     { id: "a-b", name: "A/B Partitioning" },
     { id: "single", name: "Single Partition" },
@@ -43,15 +65,6 @@ const configOptions = {
   partitioningModes: [
     { id: "lvm", name: "LVM" },
     { id: "raw", name: "Raw" },
-  ],
-  initSystems: [
-    { id: "systemd", name: "systemd" },
-    { id: "openrc", name: "OpenRC" },
-  ],
-  filesystems: [
-    { id: "btrfs", name: "Btrfs" },
-    { id: "xfs", name: "XFS" },
-    { id: "ext4", name: "ext4" },
   ],
   filesystemHierarchies: [
     { id: "fhs", name: "FHS" },
@@ -62,36 +75,70 @@ const configOptions = {
     { id: "rpm-dnf5", name: "RPM/DNF5" },
     { id: "none", name: "None" },
   ],
-  securitySystems: [
-    { id: "selinux", name: "SELinux" },
-    { id: "apparmor", name: "AppArmor" },
-    { id: "none", name: "None" },
-  ],
-  containerRuntimes: [
-    { id: "docker-podman", name: "Docker/Podman" },
-    { id: "runc", name: "runC" },
-    { id: "cri-o", name: "CRI-O" },
-    { id: "none", name: "None" },
-  ],
-  virtualizationRuntimes: [
-    { id: "cloud-hypervisor", name: "Cloud Hypervisor" },
-    { id: "qemu-kvm-libvirt", name: "QEMU/KVM" },
-    { id: "none", name: "None" },
-  ],
   distributionTypes: [
     { id: "desktop", name: "Desktop" },
     { id: "server", name: "Server" },
-  ],
-  desktopEnvironments: [
-    { id: "kde", name: "KDE Plasma" },
-    { id: "gnome", name: "GNOME" },
-    { id: "swaywm", name: "SwayWM" },
   ],
   visibilities: [
     { id: "public", name: "Public" },
     { id: "private", name: "Private" },
   ],
 };
+
+// Function to fetch and group components by category
+async function fetchComponentOptions(): Promise<ComponentsByCategory> {
+  const defaultOptions: ComponentsByCategory = {
+    bootloader: [],
+    init: [],
+    filesystem: [],
+    security: [],
+    container: [],
+    virtualization: [],
+    desktop: [],
+    ...staticOptions,
+  };
+
+  try {
+    const result = await listComponents();
+    if (!result.success) {
+      debugLog("Failed to fetch components:", result.message);
+      return defaultOptions;
+    }
+
+    const grouped = groupByCategory(result.components);
+
+    // Map components to option format
+    const mapToOptions = (
+      components: LDFComponent[] | undefined,
+    ): ComponentOption[] => {
+      if (!components) return [];
+      return components.map((c) => ({
+        id: c.name,
+        name: c.display_name,
+        description: c.description,
+      }));
+    };
+
+    // Add "none" option helper
+    const withNoneOption = (options: ComponentOption[]): ComponentOption[] => {
+      return [...options, { id: "none", name: "None" }];
+    };
+
+    return {
+      bootloader: mapToOptions(grouped["bootloader"]),
+      init: mapToOptions(grouped["init"]),
+      filesystem: mapToOptions(grouped["filesystem"]),
+      security: withNoneOption(mapToOptions(grouped["security"])),
+      container: withNoneOption(mapToOptions(grouped["container"])),
+      virtualization: withNoneOption(mapToOptions(grouped["virtualization"])),
+      desktop: mapToOptions(grouped["desktop"]),
+      ...staticOptions,
+    };
+  } catch (err) {
+    debugLog("Error fetching components:", err);
+    return defaultOptions;
+  }
+}
 
 // Kernel version type
 interface KernelVersion {
@@ -199,6 +246,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
   props,
 ) => {
   const [kernelVersions] = createResource(fetchKernelVersions);
+  const [componentOptions] = createResource(fetchComponentOptions);
   const [name, setName] = createSignal(props.distribution.name);
   const [visibility, setVisibility] = createSignal(
     props.distribution.visibility,
@@ -222,7 +270,10 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
         packageManager: "apt-deb",
       },
       security: { system: "selinux" },
-      runtime: { container: "docker-podman", virtualization: "cloud-hypervisor" },
+      runtime: {
+        container: "docker-podman",
+        virtualization: "cloud-hypervisor",
+      },
       target: { type: "desktop" },
     };
   }
@@ -289,7 +340,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               {t("distribution.table.columns.visibility")}
             </label>
             <div class="grid grid-cols-2 gap-2">
-              <For each={configOptions.visibilities}>
+              <For each={componentOptions()?.visibilities || []}>
                 {(option) => (
                   <label
                     class={`flex items-center justify-center p-2 border rounded-md cursor-pointer transition-colors ${
@@ -308,7 +359,9 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                       }
                       class="sr-only"
                     />
-                    <span class="text-sm">{t(`common.visibility.${option.id}`)}</span>
+                    <span class="text-sm">
+                      {t(`common.visibility.${option.id}`)}
+                    </span>
                   </label>
                 )}
               </For>
@@ -349,7 +402,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               value={config().core.bootloader}
               onChange={(e) => updateConfig("core.bootloader", e.target.value)}
             >
-              <For each={configOptions.bootloaders}>
+              <For each={componentOptions()?.bootloader || []}>
                 {(opt) => <option value={opt.id}>{opt.name}</option>}
               </For>
             </select>
@@ -368,7 +421,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("core.partitioning.type", e.target.value)
                 }
               >
-                <For each={configOptions.partitioningTypes}>
+                <For each={componentOptions()?.partitioningTypes || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -384,7 +437,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("core.partitioning.mode", e.target.value)
                 }
               >
-                <For each={configOptions.partitioningModes}>
+                <For each={componentOptions()?.partitioningModes || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -408,7 +461,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               value={config().system.init}
               onChange={(e) => updateConfig("system.init", e.target.value)}
             >
-              <For each={configOptions.initSystems}>
+              <For each={componentOptions()?.init || []}>
                 {(opt) => <option value={opt.id}>{opt.name}</option>}
               </For>
             </select>
@@ -427,7 +480,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("system.filesystem.type", e.target.value)
                 }
               >
-                <For each={configOptions.filesystems}>
+                <For each={componentOptions()?.filesystem || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -443,7 +496,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("system.filesystem.hierarchy", e.target.value)
                 }
               >
-                <For each={configOptions.filesystemHierarchies}>
+                <For each={componentOptions()?.filesystemHierarchies || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -462,7 +515,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                 updateConfig("system.packageManager", e.target.value)
               }
             >
-              <For each={configOptions.packageManagers}>
+              <For each={componentOptions()?.packageManagers || []}>
                 {(opt) => <option value={opt.id}>{opt.name}</option>}
               </For>
             </select>
@@ -485,7 +538,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               value={config().security.system}
               onChange={(e) => updateConfig("security.system", e.target.value)}
             >
-              <For each={configOptions.securitySystems}>
+              <For each={componentOptions()?.security || []}>
                 {(opt) => <option value={opt.id}>{opt.name}</option>}
               </For>
             </select>
@@ -504,7 +557,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("runtime.container", e.target.value)
                 }
               >
-                <For each={configOptions.containerRuntimes}>
+                <For each={componentOptions()?.container || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -520,7 +573,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   updateConfig("runtime.virtualization", e.target.value)
                 }
               >
-                <For each={configOptions.virtualizationRuntimes}>
+                <For each={componentOptions()?.virtualization || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>
@@ -540,7 +593,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               {t("distribution.detail.config.distributionType")}
             </label>
             <div class="grid grid-cols-2 gap-2">
-              <For each={configOptions.distributionTypes}>
+              <For each={componentOptions()?.distributionTypes || []}>
                 {(option) => (
                   <label
                     class={`flex items-center justify-center p-3 border rounded-md cursor-pointer transition-colors ${
@@ -558,7 +611,9 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                         updateConfig("target.type", e.target.value);
                         if (e.target.value === "server") {
                           // Clear desktop config when switching to server
-                          const newConfig = JSON.parse(JSON.stringify(config()));
+                          const newConfig = JSON.parse(
+                            JSON.stringify(config()),
+                          );
                           delete newConfig.target.desktop;
                           setConfig(newConfig);
                         }
@@ -597,7 +652,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                 <option value="">
                   {t("distribution.editForm.selectDesktopEnvironment")}
                 </option>
-                <For each={configOptions.desktopEnvironments}>
+                <For each={componentOptions()?.desktop || []}>
                   {(opt) => <option value={opt.id}>{opt.name}</option>}
                 </For>
               </select>

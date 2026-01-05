@@ -1,5 +1,12 @@
 import type { Component } from "solid-js";
-import { createSignal, Show, For, onMount, createResource } from "solid-js";
+import {
+  createSignal,
+  Show,
+  For,
+  onMount,
+  createResource,
+  createMemo,
+} from "solid-js";
 import { debugLog } from "../../lib/utils";
 import { t } from "../../services/i18n";
 import { listSources, type Source } from "../../services/sources";
@@ -10,6 +17,7 @@ import {
 } from "../../services/sourceVersions";
 import {
   listComponents,
+  groupByCategory,
   type Component as LDFComponent,
 } from "../../services/components";
 import {
@@ -17,25 +25,28 @@ import {
   type SearchableSelectOption,
 } from "../SearchableSelect";
 
-// Mock API response structure from LDF server
-interface LDFServerOptions {
-  kernels: Array<{ version: string; type: "stable" | "lts" | "mainline" }>;
-  bootloaders: Array<{ id: string; name: string; description: string }>;
-  partitioningTypes: Array<{ id: string; name: string; description: string }>;
-  initSystems: Array<{ id: string; name: string }>;
-  filesystems: Array<{ id: string; name: string }>;
-  partitioningModes: Array<{ id: string; name: string }>;
-  filesystemHierarchies: Array<{
-    id: string;
-    name: string;
-    description: string;
-  }>;
-  packageManagers: Array<{ id: string; name: string }>;
-  securitySystems: Array<{ id: string; name: string }>;
-  containerRuntimes: Array<{ id: string; name: string }>;
-  virtualizationRuntimes: Array<{ id: string; name: string }>;
-  distributionTypes: Array<{ id: string; name: string; description: string }>;
-  desktopEnvironments: Array<{ id: string; name: string }>;
+// Component option structure for form display
+interface ComponentOption {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Components grouped by category
+interface ComponentsByCategory {
+  bootloader: ComponentOption[];
+  init: ComponentOption[];
+  filesystem: ComponentOption[];
+  security: ComponentOption[];
+  container: ComponentOption[];
+  virtualization: ComponentOption[];
+  desktop: ComponentOption[];
+  // Keep static options for items that don't come from components
+  partitioningTypes: ComponentOption[];
+  partitioningModes: ComponentOption[];
+  filesystemHierarchies: ComponentOption[];
+  packageManagers: ComponentOption[];
+  distributionTypes: ComponentOption[];
 }
 
 // Form data structure (internal state)
@@ -216,26 +227,8 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
   }
 }
 
-// Mock data simulating LDF server API response (kept for other options)
-const mockLDFServerOptions: LDFServerOptions = {
-  kernels: [], // Now fetched dynamically
-  bootloaders: [
-    {
-      id: "systemd-boot",
-      name: "systemd-boot",
-      description: "Simple UEFI boot manager",
-    },
-    {
-      id: "u-boot",
-      name: "U-Boot",
-      description: "Universal bootloader for embedded systems",
-    },
-    {
-      id: "grub2",
-      name: "GRUB2",
-      description: "GRand Unified Bootloader v2",
-    },
-  ],
+// Static options for items that don't come from component database
+const staticOptions = {
   partitioningTypes: [
     {
       id: "a-b",
@@ -247,15 +240,6 @@ const mockLDFServerOptions: LDFServerOptions = {
       name: "Single Partition",
       description: "Traditional single partition layout",
     },
-  ],
-  initSystems: [
-    { id: "systemd", name: "systemd" },
-    { id: "openrc", name: "OpenRC" },
-  ],
-  filesystems: [
-    { id: "btrfs", name: "Btrfs" },
-    { id: "xfs", name: "XFS" },
-    { id: "ext4", name: "ext4" },
   ],
   partitioningModes: [
     { id: "lvm", name: "LVM" },
@@ -278,22 +262,6 @@ const mockLDFServerOptions: LDFServerOptions = {
     { id: "rpm-dnf5", name: "RPM/DNF5 (Red Hat-based)" },
     { id: "none", name: "None (Immutable system)" },
   ],
-  securitySystems: [
-    { id: "selinux", name: "SELinux" },
-    { id: "apparmor", name: "AppArmor" },
-    { id: "none", name: "None" },
-  ],
-  containerRuntimes: [
-    { id: "docker-podman", name: "Docker/Podman" },
-    { id: "runc", name: "runC" },
-    { id: "cri-o", name: "CRI-O" },
-    { id: "none", name: "None" },
-  ],
-  virtualizationRuntimes: [
-    { id: "cloud-hypervisor", name: "Cloud Hypervisor" },
-    { id: "qemu-kvm-libvirt", name: "QEMU/KVM with libvirt" },
-    { id: "none", name: "None" },
-  ],
   distributionTypes: [
     {
       id: "desktop",
@@ -306,16 +274,67 @@ const mockLDFServerOptions: LDFServerOptions = {
       description: "Text-only interface (TTY)",
     },
   ],
-  desktopEnvironments: [
-    { id: "kde", name: "KDE Plasma" },
-    { id: "gnome", name: "GNOME" },
-    { id: "swaywm", name: "SwayWM" },
-  ],
 };
+
+// Function to fetch and group components by category
+async function fetchComponentOptions(): Promise<ComponentsByCategory> {
+  const defaultOptions: ComponentsByCategory = {
+    bootloader: [],
+    init: [],
+    filesystem: [],
+    security: [],
+    container: [],
+    virtualization: [],
+    desktop: [],
+    ...staticOptions,
+  };
+
+  try {
+    const result = await listComponents();
+    if (!result.success) {
+      debugLog("Failed to fetch components:", result.message);
+      return defaultOptions;
+    }
+
+    const grouped = groupByCategory(result.components);
+
+    // Map components to option format
+    const mapToOptions = (
+      components: LDFComponent[] | undefined,
+    ): ComponentOption[] => {
+      if (!components) return [];
+      return components.map((c) => ({
+        id: c.name,
+        name: c.display_name,
+        description: c.description,
+      }));
+    };
+
+    // Add "none" option helper
+    const withNoneOption = (options: ComponentOption[]): ComponentOption[] => {
+      return [...options, { id: "none", name: "None" }];
+    };
+
+    return {
+      bootloader: mapToOptions(grouped["bootloader"]),
+      init: mapToOptions(grouped["init"]),
+      filesystem: mapToOptions(grouped["filesystem"]),
+      security: withNoneOption(mapToOptions(grouped["security"])),
+      container: withNoneOption(mapToOptions(grouped["container"])),
+      virtualization: withNoneOption(mapToOptions(grouped["virtualization"])),
+      desktop: mapToOptions(grouped["desktop"]),
+      ...staticOptions,
+    };
+  } catch (err) {
+    debugLog("Error fetching components:", err);
+    return defaultOptions;
+  }
+}
 
 export const DistributionForm: Component<DistributionFormProps> = (props) => {
   const [currentStep, setCurrentStep] = createSignal(1);
   const [kernelVersions] = createResource(fetchKernelVersions);
+  const [componentOptions] = createResource(fetchComponentOptions);
   const [formData, setFormData] = createSignal<DistributionFormData>({
     name: "",
     kernelVersion: "",
@@ -561,7 +580,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.bootloader")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.bootloaders}>
+                <For each={componentOptions()?.bootloader || []}>
                   {(bootloader) => (
                     <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -592,7 +611,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.partitioningSystem")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.partitioningTypes}>
+                <For each={componentOptions()?.partitioningTypes || []}>
                   {(option) => (
                     <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -637,7 +656,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.initSystem")}
               </label>
               <div class="grid grid-cols-2 gap-2">
-                <For each={mockLDFServerOptions.initSystems}>
+                <For each={componentOptions()?.init || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -663,7 +682,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.filesystem")}
               </label>
               <div class="grid grid-cols-3 gap-2">
-                <For each={mockLDFServerOptions.filesystems}>
+                <For each={componentOptions()?.filesystem || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -689,7 +708,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.partitioning")}
               </label>
               <div class="grid grid-cols-2 gap-2">
-                <For each={mockLDFServerOptions.partitioningModes}>
+                <For each={componentOptions()?.partitioningModes || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -715,7 +734,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.filesystemHierarchy")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.filesystemHierarchies}>
+                <For each={componentOptions()?.filesystemHierarchies || []}>
                   {(option) => (
                     <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -746,7 +765,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.packageManager")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.packageManagers}>
+                <For each={componentOptions()?.packageManagers || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -786,7 +805,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.securitySystem")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.securitySystems}>
+                <For each={componentOptions()?.security || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -812,7 +831,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.containerRuntime")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.containerRuntimes}>
+                <For each={componentOptions()?.container || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -838,7 +857,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.virtualizationRuntime")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.virtualizationRuntimes}>
+                <For each={componentOptions()?.virtualization || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -881,7 +900,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 {t("distribution.form.fields.targetEnvironment")}
               </label>
               <div class="grid grid-cols-1 gap-2">
-                <For each={mockLDFServerOptions.distributionTypes}>
+                <For each={componentOptions()?.distributionTypes || []}>
                   {(option) => (
                     <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                       <input
@@ -916,7 +935,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                   {t("distribution.form.fields.desktopEnvironment.waylandOnly")}
                 </p>
                 <div class="grid grid-cols-1 gap-2">
-                  <For each={mockLDFServerOptions.desktopEnvironments}>
+                  <For each={componentOptions()?.desktop || []}>
                     {(option) => (
                       <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
                         <input
