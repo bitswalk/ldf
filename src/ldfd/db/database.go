@@ -594,8 +594,8 @@ func (d *Database) GetAllSettings() (map[string]string, error) {
 }
 
 // ResetToDefaults resets the database to its default state by:
-// 1. Clearing all tables except schema_migrations
-// 2. Re-running seeding migrations
+// 1. Dropping all tables (including schema_migrations)
+// 2. Re-running all migrations from scratch
 // This is a destructive operation that should only be performed by root users.
 func (d *Database) ResetToDefaults() error {
 	d.mu.Lock()
@@ -610,12 +610,11 @@ func (d *Database) ResetToDefaults() error {
 		}
 	}
 
-	// Get list of all tables except sqlite internal tables and schema_migrations
+	// Get list of all tables except sqlite internal tables
 	rows, err := d.db.Query(`
 		SELECT name FROM sqlite_master
 		WHERE type='table'
 		AND name NOT LIKE 'sqlite_%'
-		AND name != 'schema_migrations'
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to list tables: %w", err)
@@ -632,17 +631,17 @@ func (d *Database) ResetToDefaults() error {
 	}
 	rows.Close()
 
-	// Disable foreign keys temporarily to allow deletion in any order
+	// Disable foreign keys temporarily to allow dropping in any order
 	if _, err := d.db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("failed to disable foreign keys: %w", err)
 	}
 
-	// Delete all data from all tables
+	// Drop all tables (not just delete data) so migrations can recreate them
 	for _, table := range tables {
-		if _, err := d.db.Exec(fmt.Sprintf("DELETE FROM %s", table)); err != nil {
+		if _, err := d.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)); err != nil {
 			// Re-enable foreign keys before returning
 			d.db.Exec("PRAGMA foreign_keys = ON")
-			return fmt.Errorf("failed to clear table %s: %w", table, err)
+			return fmt.Errorf("failed to drop table %s: %w", table, err)
 		}
 	}
 
@@ -651,12 +650,7 @@ func (d *Database) ResetToDefaults() error {
 		return fmt.Errorf("failed to re-enable foreign keys: %w", err)
 	}
 
-	// Clear schema_migrations to force re-running all migrations
-	if _, err := d.db.Exec("DELETE FROM schema_migrations"); err != nil {
-		return fmt.Errorf("failed to clear schema_migrations: %w", err)
-	}
-
-	// Re-run all migrations to seed default data
+	// Re-run all migrations from scratch to recreate tables and seed default data
 	runner := migrations.NewRunner(d.db)
 	if err := runner.Run(); err != nil {
 		return fmt.Errorf("failed to run migrations after reset: %w", err)

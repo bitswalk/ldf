@@ -506,10 +506,20 @@ func DefaultComponents() []DefaultComponent {
 		},
 		// Container components
 		{
-			Name:                     "docker-podman",
+			Name:                     "docker",
 			Category:                 "container",
-			DisplayName:              "Docker/Podman",
-			Description:              "Container runtime with Docker/Podman compatibility",
+			DisplayName:              "Docker",
+			Description:              "Container runtime and platform for building and running applications",
+			ArtifactPattern:          "docker-{version}.tgz",
+			DefaultURLTemplate:       "{base_url}/docker-{version}.tgz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
+			IsOptional:               true,
+		},
+		{
+			Name:                     "podman",
+			Category:                 "container",
+			DisplayName:              "Podman",
+			Description:              "Daemonless container engine for developing, managing, and running OCI containers",
 			ArtifactPattern:          "podman-{version}.tar.gz",
 			DefaultURLTemplate:       "{base_url}/podman-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
