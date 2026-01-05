@@ -159,11 +159,29 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
       core: "bg-blue-500/10 text-blue-500",
       bootloader: "bg-orange-500/10 text-orange-500",
       init: "bg-green-500/10 text-green-500",
+      systemd: "bg-emerald-500/10 text-emerald-500",
+      network: "bg-cyan-500/10 text-cyan-500",
+      dns: "bg-teal-500/10 text-teal-500",
+      storage: "bg-amber-500/10 text-amber-500",
+      device: "bg-yellow-500/10 text-yellow-500",
+      user: "bg-indigo-500/10 text-indigo-500",
+      extensions: "bg-violet-500/10 text-violet-500",
+      tools: "bg-slate-500/10 text-slate-500",
       runtime: "bg-purple-500/10 text-purple-500",
       security: "bg-red-500/10 text-red-500",
       desktop: "bg-pink-500/10 text-pink-500",
+      container: "bg-sky-500/10 text-sky-500",
+      virtualization: "bg-fuchsia-500/10 text-fuchsia-500",
     };
     return colorMap[category] || "bg-muted text-muted-foreground";
+  };
+
+  // Get all categories for a component (use categories array if available, otherwise fall back to single category)
+  const getComponentCategories = (comp: Component): string[] => {
+    if (comp.categories && comp.categories.length > 0) {
+      return comp.categories;
+    }
+    return [comp.category];
   };
 
   return (
@@ -300,9 +318,15 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
                     <span class="text-sm text-muted-foreground">
                       {t("components.detail.category")}
                     </span>
-                    <p class="font-medium">
-                      {getCategoryDisplayName(component()!.category)}
-                    </p>
+                    <div class="flex flex-wrap gap-1.5 mt-1">
+                      {getComponentCategories(component()!).map((cat) => (
+                        <span
+                          class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(cat)}`}
+                        >
+                          {getCategoryDisplayName(cat)}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <Show when={component()!.description}>
