@@ -15,6 +15,7 @@ import {
   cancelDownload,
   retryDownload,
   startDownloads,
+  flushDownloads,
   getStatusDisplayText,
   getStatusColor,
   isJobActive,
@@ -35,21 +36,22 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
   const [error, setError] = createSignal<string | null>(null);
   const [starting, setStarting] = createSignal(false);
   const [actionInProgress, setActionInProgress] = createSignal<string | null>(
-    null
+    null,
   );
+  const [flushing, setFlushing] = createSignal(false);
 
   const pollInterval = () => props.pollInterval ?? 3000;
 
   const hasActiveJobs = createMemo(() =>
-    jobs().some((job) => isJobActive(job.status))
+    jobs().some((job) => isJobActive(job.status)),
   );
 
   const completedCount = createMemo(
-    () => jobs().filter((job) => job.status === "completed").length
+    () => jobs().filter((job) => job.status === "completed").length,
   );
 
   const failedCount = createMemo(
-    () => jobs().filter((job) => job.status === "failed").length
+    () => jobs().filter((job) => job.status === "failed").length,
   );
 
   const fetchJobs = async () => {
@@ -114,6 +116,18 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     setActionInProgress(null);
   };
 
+  const handleFlush = async () => {
+    setFlushing(true);
+    const result = await flushDownloads(props.distributionId);
+    if (result.success) {
+      setJobs([]);
+      props.onSuccess?.("Download history cleared");
+    } else {
+      props.onError?.(result.message);
+    }
+    setFlushing(false);
+  };
+
   const getStatusIcon = (status: DownloadJobStatus): string => {
     switch (status) {
       case "pending":
@@ -133,9 +147,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     }
   };
 
-  const getStatusColorClass = (
-    status: DownloadJobStatus
-  ): string => {
+  const getStatusColorClass = (status: DownloadJobStatus): string => {
     const color = getStatusColor(status);
     switch (color) {
       case "primary":
@@ -166,32 +178,55 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
           <Show when={jobs().length > 0}>
             <span class="text-sm text-muted-foreground">
               ({completedCount()}/{jobs().length} completed
-              <Show when={failedCount() > 0}>
-                , {failedCount()} failed
-              </Show>
-              )
+              <Show when={failedCount() > 0}>, {failedCount()} failed</Show>)
             </span>
           </Show>
         </div>
-        <button
-          onClick={handleStartDownloads}
-          disabled={starting() || hasActiveJobs()}
-          class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <Show
-            when={!starting()}
-            fallback={<Icon name="spinner-gap" size="sm" class="animate-spin" />}
-          >
-            <Icon name="download" size="sm" />
+        <div class="flex items-center gap-2">
+          <Show when={jobs().length > 0}>
+            <button
+              onClick={handleFlush}
+              disabled={flushing() || hasActiveJobs()}
+              class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Clear download history"
+            >
+              <Show
+                when={!flushing()}
+                fallback={
+                  <Icon name="spinner-gap" size="sm" class="animate-spin" />
+                }
+              >
+                <Icon name="trash" size="sm" />
+              </Show>
+              <span>{flushing() ? "Clearing..." : "Clear"}</span>
+            </button>
           </Show>
-          <span>{starting() ? "Starting..." : "Start Downloads"}</span>
-        </button>
+          <button
+            onClick={handleStartDownloads}
+            disabled={starting() || hasActiveJobs()}
+            class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Show
+              when={!starting()}
+              fallback={
+                <Icon name="spinner-gap" size="sm" class="animate-spin" />
+              }
+            >
+              <Icon name="download" size="sm" />
+            </Show>
+            <span>{starting() ? "Starting..." : "Start Downloads"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Loading state */}
       <Show when={loading()}>
         <div class="flex items-center justify-center py-8">
-          <Icon name="spinner-gap" size="xl" class="animate-spin text-primary" />
+          <Icon
+            name="spinner-gap"
+            size="xl"
+            class="animate-spin text-primary"
+          />
         </div>
       </Show>
 
@@ -208,9 +243,15 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
       {/* Empty state */}
       <Show when={!loading() && jobs().length === 0 && !error()}>
         <div class="text-center py-8 text-muted-foreground">
-          <Icon name="cloud-arrow-down" size="2xl" class="mx-auto mb-2 opacity-50" />
+          <Icon
+            name="cloud-arrow-down"
+            size="2xl"
+            class="mx-auto mb-2 opacity-50"
+          />
           <p>No downloads yet</p>
-          <p class="text-sm">Click "Start Downloads" to begin fetching components</p>
+          <p class="text-sm">
+            Click "Start Downloads" to begin fetching components
+          </p>
         </div>
       </Show>
 
@@ -239,12 +280,12 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                           job.status === "completed"
                             ? "bg-green-500/20 text-green-500"
                             : job.status === "failed"
-                            ? "bg-red-500/20 text-red-500"
-                            : job.status === "cancelled"
-                            ? "bg-yellow-500/20 text-yellow-500"
-                            : isJobActive(job.status)
-                            ? "bg-primary/20 text-primary"
-                            : "bg-muted text-muted-foreground"
+                              ? "bg-red-500/20 text-red-500"
+                              : job.status === "cancelled"
+                                ? "bg-yellow-500/20 text-yellow-500"
+                                : isJobActive(job.status)
+                                  ? "bg-primary/20 text-primary"
+                                  : "bg-muted text-muted-foreground"
                         }`}
                       >
                         {getStatusDisplayText(job.status)}
@@ -265,7 +306,9 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                     </div>
 
                     {/* Progress bar for active downloads */}
-                    <Show when={job.status === "downloading" && job.total_bytes > 0}>
+                    <Show
+                      when={job.status === "downloading" && job.total_bytes > 0}
+                    >
                       <div class="space-y-1">
                         <div class="h-2 bg-muted rounded-full overflow-hidden">
                           <div
@@ -284,7 +327,12 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                     </Show>
 
                     {/* Indeterminate progress for verifying/pending */}
-                    <Show when={job.status === "verifying" || (job.status === "downloading" && job.total_bytes === 0)}>
+                    <Show
+                      when={
+                        job.status === "verifying" ||
+                        (job.status === "downloading" && job.total_bytes === 0)
+                      }
+                    >
                       <div class="h-2 bg-muted rounded-full overflow-hidden">
                         <div class="h-full bg-primary w-1/3 animate-pulse" />
                       </div>
@@ -293,13 +341,19 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                     {/* Error message */}
                     <Show when={job.error_message}>
                       <div class="mt-2 text-sm text-red-500 flex items-start gap-1">
-                        <Icon name="warning" size="sm" class="mt-0.5 flex-shrink-0" />
+                        <Icon
+                          name="warning"
+                          size="sm"
+                          class="mt-0.5 flex-shrink-0"
+                        />
                         <span>{job.error_message}</span>
                       </div>
                     </Show>
 
                     {/* Completed info */}
-                    <Show when={job.status === "completed" && job.artifact_path}>
+                    <Show
+                      when={job.status === "completed" && job.artifact_path}
+                    >
                       <div class="mt-2 text-sm text-green-500 flex items-center gap-1">
                         <Icon name="check" size="sm" />
                         <span class="truncate" title={job.artifact_path}>
@@ -327,7 +381,13 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                       >
                         <Show
                           when={actionInProgress() !== job.id}
-                          fallback={<Icon name="spinner-gap" size="md" class="animate-spin" />}
+                          fallback={
+                            <Icon
+                              name="spinner-gap"
+                              size="md"
+                              class="animate-spin"
+                            />
+                          }
                         >
                           <Icon name="x-circle" size="md" />
                         </Show>
@@ -343,7 +403,13 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
                       >
                         <Show
                           when={actionInProgress() !== job.id}
-                          fallback={<Icon name="spinner-gap" size="md" class="animate-spin" />}
+                          fallback={
+                            <Icon
+                              name="spinner-gap"
+                              size="md"
+                              class="animate-spin"
+                            />
+                          }
                         >
                           <Icon name="arrow-counter-clockwise" size="md" />
                         </Show>

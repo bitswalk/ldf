@@ -116,7 +116,7 @@ function getAuthHeaders(): Record<string, string> {
 // Start downloads for a distribution
 export async function startDownloads(
   distributionId: string,
-  components?: string[]
+  components?: string[],
 ): Promise<StartResult> {
   const url = getApiUrl(`/distributions/${distributionId}/downloads`);
 
@@ -187,7 +187,7 @@ export async function startDownloads(
 
 // List downloads for a distribution
 export async function listDownloads(
-  distributionId: string
+  distributionId: string,
 ): Promise<ListResult> {
   const url = getApiUrl(`/distributions/${distributionId}/downloads`);
 
@@ -435,6 +435,69 @@ export async function retryDownload(jobId: string): Promise<GetResult> {
   }
 }
 
+// Flush (delete) all downloads for a distribution
+export async function flushDownloads(
+  distributionId: string,
+): Promise<ActionResult> {
+  const url = getApiUrl(`/distributions/${distributionId}/downloads`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok || response.status === 204) {
+      return { success: true };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Write access required",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Distribution not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to flush downloads",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
 // List active downloads (admin only)
 export async function listActiveDownloads(): Promise<ListResult> {
   const url = getApiUrl("/downloads/active");
@@ -505,7 +568,7 @@ export function getStatusDisplayText(status: DownloadJobStatus): string {
 
 // Get status color class
 export function getStatusColor(
-  status: DownloadJobStatus
+  status: DownloadJobStatus,
 ): "default" | "primary" | "success" | "warning" | "danger" {
   const colors: Record<
     DownloadJobStatus,
@@ -523,7 +586,9 @@ export function getStatusColor(
 
 // Check if job is active (can be cancelled)
 export function isJobActive(status: DownloadJobStatus): boolean {
-  return status === "pending" || status === "verifying" || status === "downloading";
+  return (
+    status === "pending" || status === "verifying" || status === "downloading"
+  );
 }
 
 // Check if job can be retried
