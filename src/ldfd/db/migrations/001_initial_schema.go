@@ -476,7 +476,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-networkd",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"network", "systemd"},
 			DisplayName:              "systemd-networkd",
 			Description:              "Network configuration manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -486,7 +486,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-resolved",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"dns", "network", "systemd"},
 			DisplayName:              "systemd-resolved",
 			Description:              "Network name resolution manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -496,7 +496,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-sysext",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"extensions", "systemd"},
 			DisplayName:              "systemd-sysext",
 			Description:              "System extension image manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -506,7 +506,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-confext",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"extensions", "systemd"},
 			DisplayName:              "systemd-confext",
 			Description:              "Configuration extension image manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -516,7 +516,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-vmspawn",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"virtualization", "systemd"},
 			DisplayName:              "systemd-vmspawn",
 			Description:              "Lightweight VM spawner using QEMU from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -526,7 +526,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-nspawn",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"container", "systemd"},
 			DisplayName:              "systemd-nspawn",
 			Description:              "Lightweight container manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -536,7 +536,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-repart",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"storage", "systemd"},
 			DisplayName:              "systemd-repart",
 			Description:              "Automatic partition growing and creation from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -546,7 +546,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-udevd",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"device", "systemd"},
 			DisplayName:              "systemd-udevd",
 			Description:              "Device event managing daemon from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -556,7 +556,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-homed",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"user", "systemd"},
 			DisplayName:              "systemd-homed",
 			Description:              "Portable home directory manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -566,7 +566,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-machined",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"virtualization", "container", "systemd"},
 			DisplayName:              "systemd-machined",
 			Description:              "Virtual machine and container registration manager from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -576,7 +576,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-importd",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"virtualization", "container", "systemd"},
 			DisplayName:              "systemd-importd",
 			Description:              "VM and container image import and export service from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -586,7 +586,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-run",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"tools", "systemd"},
 			DisplayName:              "systemd-run",
 			Description:              "Transient unit execution utility from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
@@ -596,7 +596,7 @@ func DefaultComponents() []DefaultComponent {
 		},
 		{
 			Name:                     "systemd-analyze",
-			Categories:               []string{"init", "systemd"},
+			Categories:               []string{"tools", "systemd"},
 			DisplayName:              "systemd-analyze",
 			Description:              "System boot-up performance analysis tool from systemd",
 			ArtifactPattern:          "systemd-{version}.tar.gz",
