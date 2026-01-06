@@ -100,9 +100,6 @@ debug.test
 *.prof
 *.ppof
 
-# Core dumps
-core
-
 # Vim
 Session.vim
 .netrwhist
