@@ -20,6 +20,8 @@ interface SearchableSelectProps {
   class?: string;
   /** When true, the trigger button and dropdown will take full width of the container */
   fullWidth?: boolean;
+  /** When true, removes borders and integrates seamlessly into parent container */
+  seamless?: boolean;
 }
 
 export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
@@ -125,21 +127,30 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
     setHighlightedIndex(0);
   });
 
+  const triggerClasses = () => {
+    if (props.seamless) {
+      return `flex items-center justify-between gap-2 px-3 text-sm bg-transparent hover:bg-muted/50 focus:outline-none focus:bg-muted/50 transition-colors h-full ${
+        props.fullWidth ? "w-full" : "min-w-[140px]"
+      }`;
+    }
+    return `flex items-center justify-between gap-2 px-3 py-2 text-sm bg-background border-2 border-border rounded-md hover:border-primary focus:outline-none focus:border-primary ${
+      props.fullWidth ? "w-full" : "min-w-[140px]"
+    }`;
+  };
+
   return (
-    <div
+    <section
       ref={containerRef}
-      class={`relative ${props.class || ""}`}
+      class={`relative ${props.seamless ? "h-full" : ""} ${props.class || ""}`}
       onKeyDown={handleKeyDown}
     >
       {/* Trigger button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen())}
-        class={`flex items-center justify-between gap-2 px-3 py-2 text-sm bg-background border-2 border-border rounded-md hover:border-primary focus:outline-none focus:border-primary ${
-          props.fullWidth ? "w-full" : "min-w-[140px]"
-        }`}
+        class={triggerClasses()}
       >
-        <span class="truncate">
+        <span class="truncate text-muted-foreground">
           {selectedOption()?.label ||
             props.value ||
             props.placeholder ||
@@ -154,10 +165,10 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
 
       {/* Dropdown */}
       <Show when={isOpen()}>
-        <div
-          class={`absolute left-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg z-50 overflow-hidden ${
-            props.fullWidth ? "w-full min-w-[280px]" : "w-64"
-          }`}
+        <aside
+          class={`absolute right-0 bg-popover border border-border rounded-md shadow-lg z-50 overflow-hidden ${
+            props.seamless ? "top-full" : "top-full mt-1"
+          } ${props.fullWidth ? "w-52" : "w-64"}`}
         >
           {/* Search input */}
           <div class="p-2 border-b border-border">
@@ -238,8 +249,8 @@ export const SearchableSelect: Component<SearchableSelectProps> = (props) => {
               results
             </div>
           </Show>
-        </div>
+        </aside>
       </Show>
-    </div>
+    </section>
   );
 };

@@ -166,7 +166,8 @@
     },
     "version": {
       "notSynced": "Not synced",
-      "loading": "Loading..."
+      "loading": "Loading...",
+      "select": "Select"
     }
   },
   "editForm": {
