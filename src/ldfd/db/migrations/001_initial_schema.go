@@ -728,6 +728,58 @@ func DefaultComponents() []DefaultComponent {
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               true,
 		},
+
+		// Filesystem components
+		{
+			Name:                     "ext4",
+			Categories:               []string{"filesystem"},
+			DisplayName:              "ext4",
+			Description:              "Fourth extended filesystem - default Linux filesystem",
+			ArtifactPattern:          "e2fsprogs-{version}.tar.gz",
+			DefaultURLTemplate:       "{base_url}/e2fsprogs-{version}.tar.gz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
+			IsOptional:               false,
+		},
+		{
+			Name:                     "btrfs",
+			Categories:               []string{"filesystem"},
+			DisplayName:              "Btrfs",
+			Description:              "B-tree filesystem with copy-on-write, snapshots, and RAID support",
+			ArtifactPattern:          "btrfs-progs-{version}.tar.xz",
+			DefaultURLTemplate:       "{base_url}/btrfs-progs-{version}.tar.xz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
+			IsOptional:               false,
+		},
+		{
+			Name:                     "xfs",
+			Categories:               []string{"filesystem"},
+			DisplayName:              "XFS",
+			Description:              "High-performance 64-bit journaling filesystem",
+			ArtifactPattern:          "xfsprogs-{version}.tar.xz",
+			DefaultURLTemplate:       "{base_url}/xfsprogs-{version}.tar.xz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
+			IsOptional:               false,
+		},
+		{
+			Name:                     "f2fs",
+			Categories:               []string{"filesystem"},
+			DisplayName:              "F2FS",
+			Description:              "Flash-Friendly File System optimized for NAND flash storage",
+			ArtifactPattern:          "f2fs-tools-{version}.tar.gz",
+			DefaultURLTemplate:       "{base_url}/f2fs-tools-{version}.tar.gz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
+			IsOptional:               false,
+		},
+		{
+			Name:                     "zfs",
+			Categories:               []string{"filesystem"},
+			DisplayName:              "ZFS",
+			Description:              "Advanced filesystem with built-in volume management and data integrity",
+			ArtifactPattern:          "zfs-{version}.tar.gz",
+			DefaultURLTemplate:       "{base_url}/zfs-{version}.tar.gz",
+			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/zfs-{version}.tar.gz",
+			IsOptional:               false,
+		},
 	}
 }
 
