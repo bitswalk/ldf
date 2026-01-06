@@ -44,14 +44,14 @@ export const Modal: Component<ModalProps> = (props) => {
           {/* Side panel */}
           <article
             ref={panelRef}
-            class="relative w-[90vw] md:w-[50vw] lg:w-[40vw] bg-card border-l border-border shadow-lg overflow-y-auto flex flex-col mt-12"
+            class="relative w-[90vw] md:w-[50vw] lg:w-[40vw] bg-card border-l border-border shadow-lg flex flex-col mt-12"
             style={{
               animation: "slideInRight 0.3s ease-out",
               height: "calc(100% - 3rem)",
             }}
           >
             {/* Header */}
-            <header class="flex items-center justify-between p-6 border-b border-border">
+            <header class="flex-shrink-0 flex items-center justify-between p-6 border-b border-border">
               <h2 class="text-xl font-semibold">{props.title || "Modal"}</h2>
               <button
                 onClick={props.onClose}
@@ -63,7 +63,7 @@ export const Modal: Component<ModalProps> = (props) => {
             </header>
 
             {/* Content */}
-            <section class="flex-1 p-6 overflow-x-hidden">
+            <section class="flex-1 p-6 overflow-y-auto min-h-0">
               {props.children}
             </section>
           </article>

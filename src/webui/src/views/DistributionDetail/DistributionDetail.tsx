@@ -256,16 +256,24 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const ConfigRow: Component<{
     label: string;
     value: string | undefined;
+    version?: string;
     options?: Array<{ id: string; name: string }>;
   }> = (rowProps) => (
-    <div class="flex items-center justify-between py-2">
+    <article class="flex items-center justify-between py-2">
       <span class="text-muted-foreground text-sm">{rowProps.label}</span>
-      <span class="text-sm font-medium">
-        {rowProps.options
-          ? getOptionName(rowProps.options, rowProps.value)
-          : rowProps.value || "-"}
+      <span class="text-sm font-medium flex items-center gap-2">
+        <span>
+          {rowProps.options
+            ? getOptionName(rowProps.options, rowProps.value)
+            : rowProps.value || "-"}
+        </span>
+        <Show when={rowProps.version}>
+          <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {rowProps.version}
+          </span>
+        </Show>
       </span>
-    </div>
+    </article>
   );
 
   return (
@@ -453,7 +461,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
                       {t("distribution.detail.config.coreSystem")}
                     </h4>
-                    <div class="space-y-1">
+                    <section class="space-y-1">
                       <ConfigRow
                         label={t("distribution.detail.config.kernelVersion")}
                         value={config()!.core.kernel.version}
@@ -461,6 +469,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       <ConfigRow
                         label={t("distribution.detail.config.bootloader")}
                         value={config()!.core.bootloader}
+                        version={config()!.core.bootloader_version}
                         options={configOptions.bootloaders}
                       />
                       <ConfigRow
@@ -473,22 +482,24 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                         value={config()!.core.partitioning.mode}
                         options={configOptions.partitioningModes}
                       />
-                    </div>
+                    </section>
                   </div>
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
                       {t("distribution.detail.config.systemServices")}
                     </h4>
-                    <div class="space-y-1">
+                    <section class="space-y-1">
                       <ConfigRow
                         label={t("distribution.detail.config.initSystem")}
                         value={config()!.system.init}
+                        version={config()!.system.init_version}
                         options={configOptions.initSystems}
                       />
                       <ConfigRow
                         label={t("distribution.detail.config.filesystem")}
                         value={config()!.system.filesystem.type}
+                        version={config()!.system.filesystem_version}
                         options={configOptions.filesystems}
                       />
                       <ConfigRow
@@ -501,39 +512,43 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       <ConfigRow
                         label={t("distribution.detail.config.packageManager")}
                         value={config()!.system.packageManager}
+                        version={config()!.system.package_manager_version}
                         options={configOptions.packageManagers}
                       />
-                    </div>
+                    </section>
                   </div>
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
                       {t("distribution.detail.config.securityRuntime")}
                     </h4>
-                    <div class="space-y-1">
+                    <section class="space-y-1">
                       <ConfigRow
                         label={t("distribution.detail.config.securitySystem")}
                         value={config()!.security.system}
+                        version={config()!.security.system_version}
                         options={configOptions.securitySystems}
                       />
                       <ConfigRow
                         label={t("distribution.detail.config.containerRuntime")}
                         value={config()!.runtime.container}
+                        version={config()!.runtime.container_version}
                         options={configOptions.containerRuntimes}
                       />
                       <ConfigRow
                         label={t("distribution.detail.config.virtualization")}
                         value={config()!.runtime.virtualization}
+                        version={config()!.runtime.virtualization_version}
                         options={configOptions.virtualizationRuntimes}
                       />
-                    </div>
+                    </section>
                   </div>
 
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
                       {t("distribution.detail.config.targetEnvironment")}
                     </h4>
-                    <div class="space-y-1">
+                    <section class="space-y-1">
                       <ConfigRow
                         label={t("distribution.detail.config.distributionType")}
                         value={config()!.target.type}
@@ -545,6 +560,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                             "distribution.detail.config.desktopEnvironment",
                           )}
                           value={config()!.target.desktop?.environment}
+                          version={
+                            config()!.target.desktop?.environment_version
+                          }
                           options={configOptions.desktopEnvironments}
                         />
                         <ConfigRow
@@ -552,9 +570,12 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                           value={
                             config()!.target.desktop?.displayServer || "Wayland"
                           }
+                          version={
+                            config()!.target.desktop?.display_server_version
+                          }
                         />
                       </Show>
-                    </div>
+                    </section>
                   </div>
                 </Show>
 

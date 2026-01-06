@@ -41,6 +41,7 @@ export interface DistributionConfig {
       version: string;
     };
     bootloader: string;
+    bootloader_version?: string;
     partitioning: {
       type: string;
       mode: string;
@@ -48,24 +49,32 @@ export interface DistributionConfig {
   };
   system: {
     init: string;
+    init_version?: string;
     filesystem: {
       type: string;
       hierarchy: string;
     };
+    filesystem_version?: string;
     packageManager: string;
+    package_manager_version?: string;
   };
   security: {
     system: string;
+    system_version?: string;
   };
   runtime: {
     container: string;
+    container_version?: string;
     virtualization: string;
+    virtualization_version?: string;
   };
   target: {
     type: string;
     desktop?: {
       environment: string;
+      environment_version?: string;
       displayServer: string;
+      display_server_version?: string;
     };
   };
 }
