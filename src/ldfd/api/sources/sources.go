@@ -98,6 +98,11 @@ type SyncStatusResponse struct {
 
 // triggerAutoSync starts a background version sync for a newly created source
 func (h *Handler) triggerAutoSync(source *db.UpstreamSource, sourceType string) {
+	// Skip auto-sync if version discovery is not configured
+	if h.versionDiscovery == nil {
+		return
+	}
+
 	job := &db.VersionSyncJob{
 		SourceID:   source.ID,
 		SourceType: sourceType,
