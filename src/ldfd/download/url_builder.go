@@ -20,7 +20,7 @@ func NewURLBuilder(componentRepo *db.ComponentRepository) *URLBuilder {
 }
 
 // BuildURL constructs the final download URL from a source and component
-func (b *URLBuilder) BuildURL(source *db.Source, component *db.Component, version string) (string, error) {
+func (b *URLBuilder) BuildURL(source *db.UpstreamSource, component *db.Component, version string) (string, error) {
 	if source == nil {
 		return "", fmt.Errorf("source is nil")
 	}
@@ -45,7 +45,7 @@ func (b *URLBuilder) BuildURL(source *db.Source, component *db.Component, versio
 }
 
 // selectTemplate determines which template to use based on source and component
-func (b *URLBuilder) selectTemplate(source *db.Source, component *db.Component) string {
+func (b *URLBuilder) selectTemplate(source *db.UpstreamSource, component *db.Component) string {
 	// Priority:
 	// 1. Source-specific URL template (user-defined override)
 	// 2. GitHub normalized template (if URL is GitHub)
@@ -162,7 +162,7 @@ func buildCompactVersion(version string) string {
 }
 
 // BuildGitCloneURL constructs a URL suitable for git clone operations
-func (b *URLBuilder) BuildGitCloneURL(source *db.Source) string {
+func (b *URLBuilder) BuildGitCloneURL(source *db.UpstreamSource) string {
 	baseURL := b.normalizeBaseURL(source.URL)
 
 	// Ensure .git suffix for clone operations
@@ -180,7 +180,7 @@ func (b *URLBuilder) BuildGitRef(version string) string {
 }
 
 // PreviewURL generates a preview of what the final URL would look like
-func (b *URLBuilder) PreviewURL(source *db.Source, component *db.Component, exampleVersion string) (string, error) {
+func (b *URLBuilder) PreviewURL(source *db.UpstreamSource, component *db.Component, exampleVersion string) (string, error) {
 	if exampleVersion == "" {
 		exampleVersion = "1.0.0"
 	}

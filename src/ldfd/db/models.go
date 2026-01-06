@@ -138,18 +138,6 @@ type UpstreamSource struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-// SourceDefault is an alias for UpstreamSource for backwards compatibility
-// Deprecated: Use UpstreamSource instead
-type SourceDefault = UpstreamSource
-
-// UserSource is an alias for UpstreamSource for backwards compatibility
-// Deprecated: Use UpstreamSource instead
-type UserSource = UpstreamSource
-
-// Source is an alias for UpstreamSource for API responses
-// This maintains backwards compatibility with existing API consumers
-type Source = UpstreamSource
-
 // VersionRule represents how default version is determined for a component
 type VersionRule string
 

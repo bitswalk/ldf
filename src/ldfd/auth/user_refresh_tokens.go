@@ -41,7 +41,7 @@ func hashToken(token string) string {
 
 // CreateRefreshToken creates a new refresh token for a user
 // Returns the plain token (to send to client) and the stored record
-func (r *Repository) CreateRefreshToken(userID string) (string, *RefreshToken, error) {
+func (m *UserManager) CreateRefreshToken(userID string) (string, *RefreshToken, error) {
 	plainToken, err := generateRefreshToken()
 	if err != nil {
 		return "", nil, errors.ErrInternal.WithCause(err)
@@ -59,7 +59,7 @@ func (r *Repository) CreateRefreshToken(userID string) (string, *RefreshToken, e
 		Revoked:   false,
 	}
 
-	_, err = r.db.Exec(`
+	_, err = m.db.Exec(`
 		INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, revoked)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, refreshToken.ID, refreshToken.UserID, refreshToken.TokenHash,
@@ -73,13 +73,13 @@ func (r *Repository) CreateRefreshToken(userID string) (string, *RefreshToken, e
 }
 
 // ValidateRefreshToken validates a refresh token and returns the associated record
-func (r *Repository) ValidateRefreshToken(plainToken string) (*RefreshToken, error) {
+func (m *UserManager) ValidateRefreshToken(plainToken string) (*RefreshToken, error) {
 	tokenHash := hashToken(plainToken)
 
 	var rt RefreshToken
 	var lastUsedAt *time.Time
 
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT id, user_id, token_hash, expires_at, created_at, last_used_at, revoked
 		FROM refresh_tokens
 		WHERE token_hash = ?
@@ -108,8 +108,8 @@ func (r *Repository) ValidateRefreshToken(plainToken string) (*RefreshToken, err
 }
 
 // UpdateRefreshTokenLastUsed updates the last_used_at timestamp
-func (r *Repository) UpdateRefreshTokenLastUsed(tokenID string) error {
-	_, err := r.db.Exec(`
+func (m *UserManager) UpdateRefreshTokenLastUsed(tokenID string) error {
+	_, err := m.db.Exec(`
 		UPDATE refresh_tokens
 		SET last_used_at = ?
 		WHERE id = ?
@@ -123,8 +123,8 @@ func (r *Repository) UpdateRefreshTokenLastUsed(tokenID string) error {
 }
 
 // RevokeRefreshToken revokes a specific refresh token
-func (r *Repository) RevokeRefreshToken(tokenID string) error {
-	_, err := r.db.Exec(`
+func (m *UserManager) RevokeRefreshToken(tokenID string) error {
+	_, err := m.db.Exec(`
 		UPDATE refresh_tokens
 		SET revoked = TRUE
 		WHERE id = ?
@@ -138,10 +138,10 @@ func (r *Repository) RevokeRefreshToken(tokenID string) error {
 }
 
 // RevokeRefreshTokenByHash revokes a refresh token by its plain token value
-func (r *Repository) RevokeRefreshTokenByHash(plainToken string) error {
+func (m *UserManager) RevokeRefreshTokenByHash(plainToken string) error {
 	tokenHash := hashToken(plainToken)
 
-	result, err := r.db.Exec(`
+	result, err := m.db.Exec(`
 		UPDATE refresh_tokens
 		SET revoked = TRUE
 		WHERE token_hash = ?
@@ -164,8 +164,8 @@ func (r *Repository) RevokeRefreshTokenByHash(plainToken string) error {
 }
 
 // RevokeAllUserRefreshTokens revokes all refresh tokens for a user
-func (r *Repository) RevokeAllUserRefreshTokens(userID string) error {
-	_, err := r.db.Exec(`
+func (m *UserManager) RevokeAllUserRefreshTokens(userID string) error {
+	_, err := m.db.Exec(`
 		UPDATE refresh_tokens
 		SET revoked = TRUE
 		WHERE user_id = ?
@@ -179,8 +179,8 @@ func (r *Repository) RevokeAllUserRefreshTokens(userID string) error {
 }
 
 // CleanupExpiredRefreshTokens removes expired refresh tokens
-func (r *Repository) CleanupExpiredRefreshTokens() error {
-	_, err := r.db.Exec(`
+func (m *UserManager) CleanupExpiredRefreshTokens() error {
+	_, err := m.db.Exec(`
 		DELETE FROM refresh_tokens
 		WHERE expires_at < ? OR revoked = TRUE
 	`, time.Now().UTC())
@@ -193,9 +193,9 @@ func (r *Repository) CleanupExpiredRefreshTokens() error {
 }
 
 // GetUserRefreshTokenCount returns the count of active refresh tokens for a user
-func (r *Repository) GetUserRefreshTokenCount(userID string) (int, error) {
+func (m *UserManager) GetUserRefreshTokenCount(userID string) (int, error) {
 	var count int
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT COUNT(*)
 		FROM refresh_tokens
 		WHERE user_id = ? AND revoked = FALSE AND expires_at > ?

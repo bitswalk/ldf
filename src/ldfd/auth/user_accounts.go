@@ -7,8 +7,8 @@ import (
 )
 
 // CreateUser creates a new user in the database using a transaction to ensure atomicity
-func (r *Repository) CreateUser(user *User) error {
-	tx, err := r.db.Begin()
+func (m *UserManager) CreateUser(user *User) error {
+	tx, err := m.db.Begin()
 	if err != nil {
 		return errors.ErrDatabaseTransaction.WithCause(err)
 	}
@@ -58,9 +58,9 @@ func (r *Repository) CreateUser(user *User) error {
 }
 
 // GetUserByName retrieves a user by username with role information
-func (r *Repository) GetUserByName(name string) (*User, error) {
+func (m *UserManager) GetUserByName(name string) (*User, error) {
 	user := &User{}
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT u.id, u.name, u.email, u.password_hash, u.role_id, r.name, u.created_at, u.updated_at
 		FROM users u
 		JOIN roles r ON u.role_id = r.id
@@ -78,9 +78,9 @@ func (r *Repository) GetUserByName(name string) (*User, error) {
 }
 
 // GetUserByID retrieves a user by ID with role information
-func (r *Repository) GetUserByID(id string) (*User, error) {
+func (m *UserManager) GetUserByID(id string) (*User, error) {
 	user := &User{}
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT u.id, u.name, u.email, u.password_hash, u.role_id, r.name, u.created_at, u.updated_at
 		FROM users u
 		JOIN roles r ON u.role_id = r.id
@@ -98,9 +98,9 @@ func (r *Repository) GetUserByID(id string) (*User, error) {
 }
 
 // GetUserByEmail retrieves a user by email with role information
-func (r *Repository) GetUserByEmail(email string) (*User, error) {
+func (m *UserManager) GetUserByEmail(email string) (*User, error) {
 	user := &User{}
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT u.id, u.name, u.email, u.password_hash, u.role_id, r.name, u.created_at, u.updated_at
 		FROM users u
 		JOIN roles r ON u.role_id = r.id
@@ -118,31 +118,31 @@ func (r *Repository) GetUserByEmail(email string) (*User, error) {
 }
 
 // CountUsers returns the total number of users
-func (r *Repository) CountUsers() (int, error) {
+func (m *UserManager) CountUsers() (int, error) {
 	var count int
-	if err := r.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+	if err := m.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count); err != nil {
 		return 0, errors.ErrDatabaseQuery.WithCause(err)
 	}
 	return count, nil
 }
 
 // HasRootUser checks if a root user exists
-func (r *Repository) HasRootUser() (bool, error) {
+func (m *UserManager) HasRootUser() (bool, error) {
 	var count int
-	if err := r.db.QueryRow("SELECT COUNT(*) FROM users WHERE role_id = ?", RoleIDRoot).Scan(&count); err != nil {
+	if err := m.db.QueryRow("SELECT COUNT(*) FROM users WHERE role_id = ?", RoleIDRoot).Scan(&count); err != nil {
 		return false, errors.ErrDatabaseQuery.WithCause(err)
 	}
 	return count > 0, nil
 }
 
 // GetUserWithRole retrieves a user with full role information
-func (r *Repository) GetUserWithRole(userID string) (*User, *RoleRecord, error) {
-	user, err := r.GetUserByID(userID)
+func (m *UserManager) GetUserWithRole(userID string) (*User, *RoleRecord, error) {
+	user, err := m.GetUserByID(userID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	role, err := r.GetRoleByID(user.RoleID)
+	role, err := m.GetRoleByID(user.RoleID)
 	if err != nil {
 		return nil, nil, err
 	}

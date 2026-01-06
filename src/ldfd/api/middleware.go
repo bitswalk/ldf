@@ -81,35 +81,6 @@ func (a *API) writeAccessRequired() gin.HandlerFunc {
 	}
 }
 
-// deleteAccessRequired is a middleware that requires authenticated user with delete access
-func (a *API) deleteAccessRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		claims := a.getTokenClaims(c)
-		if claims == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{
-				Error:   "Unauthorized",
-				Code:    http.StatusUnauthorized,
-				Message: "Authentication required",
-			})
-			return
-		}
-
-		// Check if user has delete permission
-		if !claims.HasDeleteAccess() {
-			c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Delete access denied",
-			})
-			return
-		}
-
-		// Store claims in context for handlers to use
-		c.Set("claims", claims)
-		c.Next()
-	}
-}
-
 // adminAccessRequired is a middleware that requires authenticated user with admin access
 func (a *API) adminAccessRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {

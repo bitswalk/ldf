@@ -1,14 +1,42 @@
-package api
+package distributions
 
 import (
 	"net/http"
 	"strconv"
 
+	"github.com/bitswalk/ldf/src/common/logs"
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
 
-// Note: Distribution IDs are now UUIDs (strings), not integers
+var log *logs.Logger
+
+// SetLogger sets the logger for the distributions package
+func SetLogger(l *logs.Logger) {
+	log = l
+}
+
+// Handler handles distribution-related HTTP requests
+type Handler struct {
+	distRepo   *db.DistributionRepository
+	jwtService *auth.JWTService
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	DistRepo   *db.DistributionRepository
+	JWTService *auth.JWTService
+}
+
+// NewHandler creates a new distributions handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		distRepo:   cfg.DistRepo,
+		jwtService: cfg.JWTService,
+	}
+}
 
 // CreateDistributionRequest represents the request to create a distribution
 type CreateDistributionRequest struct {
@@ -44,32 +72,50 @@ type DistributionStatsResponse struct {
 	Stats map[string]int64 `json:"stats"`
 }
 
-// handleListDistributions returns a list of distributions accessible to the current user
-// - Anonymous users: only public distributions
-// - Authenticated users: public + their own private distributions
-// - Admins: all distributions
-func (a *API) handleListDistributions(c *gin.Context) {
+// getTokenClaims extracts and validates JWT claims from the request
+func (h *Handler) getTokenClaims(c *gin.Context) *auth.TokenClaims {
+	token := c.GetHeader("X-Subject-Token")
+	if token == "" {
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+	}
+
+	if token == "" {
+		return nil
+	}
+
+	claims, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		return nil
+	}
+
+	return claims
+}
+
+// HandleList returns a list of distributions accessible to the current user
+func (h *Handler) HandleList(c *gin.Context) {
 	var statusFilter *db.DistributionStatus
 	if statusParam := c.Query("status"); statusParam != "" {
 		status := db.DistributionStatus(statusParam)
 		statusFilter = &status
 	}
 
-	// Get user context (may be nil for anonymous)
-	claims := a.getTokenClaims(c)
+	claims := h.getTokenClaims(c)
 	var userID string
 	var isAdmin bool
 	if claims != nil {
 		userID = claims.UserID
 		isAdmin = claims.HasAdminAccess()
-		log.Printf("[DEBUG] ListDistributions: authenticated user=%s (name=%s), isAdmin=%v", userID, claims.UserName, isAdmin)
+		log.Debug("ListDistributions: authenticated user", "user_id", userID, "user_name", claims.UserName, "is_admin", isAdmin)
 	} else {
-		log.Printf("[DEBUG] ListDistributions: anonymous user (no valid token)")
+		log.Debug("ListDistributions: anonymous user (no valid token)")
 	}
 
-	distributions, err := a.distRepo.ListAccessible(userID, isAdmin, statusFilter)
+	distributions, err := h.distRepo.ListAccessible(userID, isAdmin, statusFilter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -87,11 +133,11 @@ func (a *API) handleListDistributions(c *gin.Context) {
 	})
 }
 
-// handleCreateDistribution creates a new distribution record
-func (a *API) handleCreateDistribution(c *gin.Context) {
+// HandleCreate creates a new distribution record
+func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateDistributionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -99,10 +145,9 @@ func (a *API) handleCreateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Check if distribution with same name exists
-	existing, err := a.distRepo.GetByName(req.Name)
+	existing, err := h.distRepo.GetByName(req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -110,7 +155,7 @@ func (a *API) handleCreateDistribution(c *gin.Context) {
 		return
 	}
 	if existing != nil {
-		c.JSON(http.StatusConflict, ErrorResponse{
+		c.JSON(http.StatusConflict, common.ErrorResponse{
 			Error:   "Conflict",
 			Code:    http.StatusConflict,
 			Message: "Distribution with this name already exists",
@@ -118,23 +163,19 @@ func (a *API) handleCreateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Set distribution version (not kernel version - that's stored in config)
 	version := req.Version
 	if version == "" {
 		version = "1.0.0"
 	}
 
-	// Parse visibility (default to private)
 	visibility := db.VisibilityPrivate
 	if req.Visibility == "public" {
 		visibility = db.VisibilityPublic
 	}
 
-	// Get owner from authenticated user (set by writeAccessRequired middleware)
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		// This shouldn't happen as writeAccessRequired middleware should have rejected
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -154,8 +195,8 @@ func (a *API) handleCreateDistribution(c *gin.Context) {
 		OwnerID:    ownerID,
 	}
 
-	if err := a.distRepo.Create(dist); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.distRepo.Create(dist); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -163,17 +204,16 @@ func (a *API) handleCreateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Add creation log
-	a.distRepo.AddLog(dist.ID, "info", "Distribution created")
+	h.distRepo.AddLog(dist.ID, "info", "Distribution created")
 
 	c.JSON(http.StatusCreated, dist)
 }
 
-// handleGetDistribution returns a distribution by ID if the user has access
-func (a *API) handleGetDistribution(c *gin.Context) {
+// HandleGet returns a distribution by ID if the user has access
+func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -181,8 +221,7 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 		return
 	}
 
-	// Get user context (may be nil for anonymous)
-	claims := a.getTokenClaims(c)
+	claims := h.getTokenClaims(c)
 	var userID string
 	var isAdmin bool
 	if claims != nil {
@@ -190,10 +229,9 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 		isAdmin = claims.HasAdminAccess()
 	}
 
-	// Check if user can access this distribution
-	canAccess, err := a.distRepo.CanUserAccess(id, userID, isAdmin)
+	canAccess, err := h.distRepo.CanUserAccess(id, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -201,8 +239,7 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 		return
 	}
 	if !canAccess {
-		// Return 404 instead of 403 to not reveal existence of private distributions
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -210,9 +247,9 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 		return
 	}
 
-	dist, err := a.distRepo.GetByID(id)
+	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -220,7 +257,7 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -231,11 +268,11 @@ func (a *API) handleGetDistribution(c *gin.Context) {
 	c.JSON(http.StatusOK, dist)
 }
 
-// handleUpdateDistribution updates an existing distribution (owner or admin only)
-func (a *API) handleUpdateDistribution(c *gin.Context) {
+// HandleUpdate updates an existing distribution (owner or admin only)
+func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -243,10 +280,9 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -254,9 +290,9 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 
-	dist, err := a.distRepo.GetByID(id)
+	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -264,7 +300,7 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -272,9 +308,8 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Check ownership or admin access
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "You can only update your own distributions",
@@ -284,7 +319,7 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 
 	var req UpdateDistributionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -292,7 +327,6 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 
-	// Update fields if provided
 	if req.Name != "" {
 		dist.Name = req.Name
 	}
@@ -322,8 +356,8 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		dist.Config = req.Config
 	}
 
-	if err := a.distRepo.Update(dist); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.distRepo.Update(dist); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -331,16 +365,16 @@ func (a *API) handleUpdateDistribution(c *gin.Context) {
 		return
 	}
 
-	a.distRepo.AddLog(dist.ID, "info", "Distribution updated")
+	h.distRepo.AddLog(dist.ID, "info", "Distribution updated")
 
 	c.JSON(http.StatusOK, dist)
 }
 
-// handleDeleteDistribution deletes a distribution by ID (owner or admin only)
-func (a *API) handleDeleteDistribution(c *gin.Context) {
+// HandleDelete deletes a distribution by ID (owner or admin only)
+func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -348,10 +382,9 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 		return
 	}
 
-	// Get authenticated user
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -359,10 +392,9 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 		return
 	}
 
-	// Check if distribution exists and user has access
-	dist, err := a.distRepo.GetByID(id)
+	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -370,7 +402,7 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -378,9 +410,8 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 		return
 	}
 
-	// Check ownership or admin access
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "You can only delete your own distributions",
@@ -388,8 +419,8 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 		return
 	}
 
-	if err := a.distRepo.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.distRepo.Delete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -400,11 +431,11 @@ func (a *API) handleDeleteDistribution(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// handleGetDistributionLogs returns logs for a distribution if the user has access
-func (a *API) handleGetDistributionLogs(c *gin.Context) {
+// HandleGetLogs returns logs for a distribution if the user has access
+func (h *Handler) HandleGetLogs(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -412,8 +443,7 @@ func (a *API) handleGetDistributionLogs(c *gin.Context) {
 		return
 	}
 
-	// Get user context (may be nil for anonymous)
-	claims := a.getTokenClaims(c)
+	claims := h.getTokenClaims(c)
 	var userID string
 	var isAdmin bool
 	if claims != nil {
@@ -421,10 +451,9 @@ func (a *API) handleGetDistributionLogs(c *gin.Context) {
 		isAdmin = claims.HasAdminAccess()
 	}
 
-	// Check if user can access this distribution
-	canAccess, err := a.distRepo.CanUserAccess(id, userID, isAdmin)
+	canAccess, err := h.distRepo.CanUserAccess(id, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -432,7 +461,7 @@ func (a *API) handleGetDistributionLogs(c *gin.Context) {
 		return
 	}
 	if !canAccess {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -447,9 +476,9 @@ func (a *API) handleGetDistributionLogs(c *gin.Context) {
 		}
 	}
 
-	logs, err := a.distRepo.GetLogs(id, limit)
+	logs, err := h.distRepo.GetLogs(id, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -464,11 +493,11 @@ func (a *API) handleGetDistributionLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, logs)
 }
 
-// handleGetDistributionStats returns statistics about distributions grouped by status
-func (a *API) handleGetDistributionStats(c *gin.Context) {
-	stats, err := a.distRepo.GetStats()
+// HandleGetStats returns statistics about distributions grouped by status
+func (h *Handler) HandleGetStats(c *gin.Context) {
+	stats, err := h.distRepo.GetStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),

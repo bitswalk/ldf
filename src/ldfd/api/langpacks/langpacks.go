@@ -1,4 +1,4 @@
-package api
+package langpacks
 
 import (
 	"archive/tar"
@@ -9,10 +9,28 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 	"github.com/ulikunitz/xz"
 )
+
+// Handler handles language pack HTTP requests
+type Handler struct {
+	langPackRepo *db.LanguagePackRepository
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	LangPackRepo *db.LanguagePackRepository
+}
+
+// NewHandler creates a new langpacks handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		langPackRepo: cfg.LangPackRepo,
+	}
+}
 
 // LanguagePackMeta represents the metadata from a language pack's meta.json
 type LanguagePackMeta struct {
@@ -36,12 +54,11 @@ type LanguagePackResponse struct {
 	Dictionary json.RawMessage `json:"dictionary"`
 }
 
-// handleListLanguagePacks returns all available custom language packs
-// GET /v1/language-packs
-func (a *API) handleListLanguagePacks(c *gin.Context) {
-	packs, err := a.langPackRepo.List()
+// HandleList returns all available custom language packs
+func (h *Handler) HandleList(c *gin.Context) {
+	packs, err := h.langPackRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to list language packs: %v", err),
@@ -58,14 +75,13 @@ func (a *API) handleListLanguagePacks(c *gin.Context) {
 	})
 }
 
-// handleGetLanguagePack returns a specific language pack by locale
-// GET /v1/language-packs/:locale
-func (a *API) handleGetLanguagePack(c *gin.Context) {
+// HandleGet returns a specific language pack by locale
+func (h *Handler) HandleGet(c *gin.Context) {
 	locale := c.Param("locale")
 
-	pack, err := a.langPackRepo.Get(locale)
+	pack, err := h.langPackRepo.Get(locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to get language pack: %v", err),
@@ -74,7 +90,7 @@ func (a *API) handleGetLanguagePack(c *gin.Context) {
 	}
 
 	if pack == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprintf("Language pack '%s' not found", locale),
@@ -91,13 +107,11 @@ func (a *API) handleGetLanguagePack(c *gin.Context) {
 	})
 }
 
-// handleUploadLanguagePack handles uploading a new language pack archive
-// POST /v1/language-packs
-func (a *API) handleUploadLanguagePack(c *gin.Context) {
-	// Get the uploaded file
+// HandleUpload handles uploading a new language pack archive
+func (h *Handler) HandleUpload(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "No file provided. Please upload a .tar.xz, .tar.gz, or .xz archive.",
@@ -108,7 +122,6 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 
 	filename := header.Filename
 
-	// Determine archive type and extract
 	var meta *LanguagePackMeta
 	var dictionary map[string]interface{}
 
@@ -117,10 +130,9 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	} else if strings.HasSuffix(filename, ".tar.gz") || strings.HasSuffix(filename, ".tgz") {
 		meta, dictionary, err = extractTarGZ(file)
 	} else if strings.HasSuffix(filename, ".xz") {
-		// Single .xz file containing JSON
 		meta, dictionary, err = extractXZ(file)
 	} else {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Unsupported archive format. Please use .tar.xz, .tar.gz, or .xz",
@@ -129,7 +141,7 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("Failed to extract archive: %v", err),
@@ -138,7 +150,7 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	}
 
 	if meta == nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Archive must contain a meta.json file with locale, name, and version fields",
@@ -147,7 +159,7 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	}
 
 	if meta.Locale == "" || meta.Name == "" || meta.Version == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "meta.json must contain locale, name, and version fields",
@@ -155,10 +167,9 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 		return
 	}
 
-	// Convert dictionary to JSON string
 	dictJSON, err := json.Marshal(dictionary)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to serialize dictionary: %v", err),
@@ -166,10 +177,9 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 		return
 	}
 
-	// Check if pack already exists
-	exists, err := a.langPackRepo.Exists(meta.Locale)
+	exists, err := h.langPackRepo.Exists(meta.Locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to check language pack existence: %v", err),
@@ -186,9 +196,8 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	}
 
 	if exists {
-		// Update existing pack
-		if err := a.langPackRepo.Update(pack); err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorResponse{
+		if err := h.langPackRepo.Update(pack); err != nil {
+			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 				Error:   "Internal server error",
 				Code:    http.StatusInternalServerError,
 				Message: fmt.Sprintf("Failed to update language pack: %v", err),
@@ -202,9 +211,8 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 			"version": meta.Version,
 		})
 	} else {
-		// Create new pack
-		if err := a.langPackRepo.Create(pack); err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorResponse{
+		if err := h.langPackRepo.Create(pack); err != nil {
+			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 				Error:   "Internal server error",
 				Code:    http.StatusInternalServerError,
 				Message: fmt.Sprintf("Failed to create language pack: %v", err),
@@ -220,15 +228,13 @@ func (a *API) handleUploadLanguagePack(c *gin.Context) {
 	}
 }
 
-// handleDeleteLanguagePack deletes a language pack by locale
-// DELETE /v1/language-packs/:locale
-func (a *API) handleDeleteLanguagePack(c *gin.Context) {
+// HandleDelete deletes a language pack by locale
+func (h *Handler) HandleDelete(c *gin.Context) {
 	locale := c.Param("locale")
 
-	// Check if it exists first
-	exists, err := a.langPackRepo.Exists(locale)
+	exists, err := h.langPackRepo.Exists(locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to check language pack: %v", err),
@@ -237,7 +243,7 @@ func (a *API) handleDeleteLanguagePack(c *gin.Context) {
 	}
 
 	if !exists {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprintf("Language pack '%s' not found", locale),
@@ -245,8 +251,8 @@ func (a *API) handleDeleteLanguagePack(c *gin.Context) {
 		return
 	}
 
-	if err := a.langPackRepo.Delete(locale); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.langPackRepo.Delete(locale); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to delete language pack: %v", err),
@@ -301,7 +307,6 @@ func extractTar(r io.Reader) (*LanguagePackMeta, map[string]interface{}, error) 
 			continue
 		}
 
-		// Get the filename without directory prefix
 		name := header.Name
 		if idx := strings.LastIndex(name, "/"); idx >= 0 {
 			name = name[idx+1:]
@@ -323,12 +328,10 @@ func extractTar(r io.Reader) (*LanguagePackMeta, map[string]interface{}, error) 
 			}
 			meta = &m
 		} else {
-			// Merge this JSON file into the dictionary
 			var data map[string]interface{}
 			if err := json.Unmarshal(content, &data); err != nil {
 				return nil, nil, fmt.Errorf("failed to parse %s: %w", name, err)
 			}
-			// Use filename without .json as namespace
 			namespace := strings.TrimSuffix(name, ".json")
 			dictionary[namespace] = data
 		}
@@ -349,7 +352,6 @@ func extractXZ(r io.Reader) (*LanguagePackMeta, map[string]interface{}, error) {
 		return nil, nil, fmt.Errorf("failed to read xz content: %w", err)
 	}
 
-	// Parse as a combined JSON with meta and translations
 	var combined struct {
 		Meta       LanguagePackMeta       `json:"meta"`
 		Dictionary map[string]interface{} `json:"dictionary"`

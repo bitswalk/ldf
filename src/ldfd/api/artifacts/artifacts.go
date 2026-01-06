@@ -1,4 +1,4 @@
-package api
+package artifacts
 
 import (
 	"fmt"
@@ -9,9 +9,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/auth"
+	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
 )
+
+// Handler handles artifact-related HTTP requests
+type Handler struct {
+	distRepo   *db.DistributionRepository
+	storage    storage.Backend
+	jwtService *auth.JWTService
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	DistRepo   *db.DistributionRepository
+	Storage    storage.Backend
+	JWTService *auth.JWTService
+}
+
+// NewHandler creates a new artifacts handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		distRepo:   cfg.DistRepo,
+		storage:    cfg.Storage,
+		jwtService: cfg.JWTService,
+	}
+}
 
 // ArtifactUploadResponse represents the response after uploading an artifact
 type ArtifactUploadResponse struct {
@@ -61,28 +87,45 @@ type GlobalArtifactListResponse struct {
 	Artifacts []GlobalArtifact `json:"artifacts"`
 }
 
+// getTokenClaims extracts and validates JWT claims from the request
+func (h *Handler) getTokenClaims(c *gin.Context) *auth.TokenClaims {
+	token := c.GetHeader("X-Subject-Token")
+	if token == "" {
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+	}
+
+	if token == "" {
+		return nil
+	}
+
+	claims, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		return nil
+	}
+
+	return claims
+}
+
 // getArtifactPrefix returns the S3 key prefix for a distribution's artifacts
-// Path structure: distribution/<ownerID>/<distributionID>/
 func getArtifactPrefix(ownerID, distributionID string) string {
 	return fmt.Sprintf("distribution/%s/%s/", ownerID, distributionID)
 }
 
 // getArtifactKey returns the full S3 key for an artifact
-// Path structure: distribution/<ownerID>/<distributionID>/<path>
 func getArtifactKey(ownerID, distributionID, path string) string {
-	// Clean the path and remove leading slashes
 	path = strings.TrimPrefix(path, "/")
 	return fmt.Sprintf("distribution/%s/%s/%s", ownerID, distributionID, path)
 }
 
 // checkDistributionAccess verifies the user has access to the distribution
-// Returns the distribution info if access is granted, nil and error response if not
-func (a *API) checkDistributionAccess(c *gin.Context, distID string) (*struct {
+func (h *Handler) checkDistributionAccess(c *gin.Context, distID string) (*struct {
 	OwnerID string
 	ID      string
 }, bool) {
-	// Get user context (may be nil for anonymous)
-	claims := a.getTokenClaims(c)
+	claims := h.getTokenClaims(c)
 	var userID string
 	var isAdmin bool
 	if claims != nil {
@@ -90,10 +133,9 @@ func (a *API) checkDistributionAccess(c *gin.Context, distID string) (*struct {
 		isAdmin = claims.HasAdminAccess()
 	}
 
-	// Check if user can access this distribution
-	canAccess, err := a.distRepo.CanUserAccess(distID, userID, isAdmin)
+	canAccess, err := h.distRepo.CanUserAccess(distID, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -101,7 +143,7 @@ func (a *API) checkDistributionAccess(c *gin.Context, distID string) (*struct {
 		return nil, false
 	}
 	if !canAccess {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -109,10 +151,9 @@ func (a *API) checkDistributionAccess(c *gin.Context, distID string) (*struct {
 		return nil, false
 	}
 
-	// Fetch the distribution to get OwnerID for artifact path construction
-	dist, err := a.distRepo.GetByID(distID)
+	dist, err := h.distRepo.GetByID(distID)
 	if err != nil || dist == nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to retrieve distribution details",
@@ -126,10 +167,10 @@ func (a *API) checkDistributionAccess(c *gin.Context, distID string) (*struct {
 	}{OwnerID: dist.OwnerID, ID: dist.ID}, true
 }
 
-// handleUploadArtifact uploads an artifact file for a distribution
-func (a *API) handleUploadArtifact(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleUpload uploads an artifact file for a distribution
+func (h *Handler) HandleUpload(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -137,10 +178,9 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Get distribution ID from URL parameter
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -148,10 +188,9 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Verify distribution exists
-	dist, err := a.distRepo.GetByID(distID)
+	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -159,7 +198,7 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -167,10 +206,9 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Get uploaded file
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "No file provided: " + err.Error(),
@@ -179,24 +217,20 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Determine artifact path
 	artifactPath := c.PostForm("path")
 	if artifactPath == "" {
 		artifactPath = header.Filename
 	}
 
-	// Generate S3 key using owner ID and distribution ID
 	key := getArtifactKey(dist.OwnerID, dist.ID, artifactPath)
 
-	// Detect content type
 	contentType := header.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 
-	// Upload to S3
-	if err := a.storage.Upload(c.Request.Context(), key, file, header.Size, contentType); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.storage.Upload(c.Request.Context(), key, file, header.Size, contentType); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to upload artifact: " + err.Error(),
@@ -204,8 +238,7 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Log the upload
-	a.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size))
+	h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size))
 
 	c.JSON(http.StatusCreated, ArtifactUploadResponse{
 		Key:     key,
@@ -214,10 +247,10 @@ func (a *API) handleUploadArtifact(c *gin.Context) {
 	})
 }
 
-// handleListArtifacts lists all artifacts for a distribution (requires access)
-func (a *API) handleListArtifacts(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleList lists all artifacts for a distribution
+func (h *Handler) HandleList(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -225,10 +258,9 @@ func (a *API) handleListArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Get distribution ID from URL parameter
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -236,17 +268,15 @@ func (a *API) handleListArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Verify user has access to distribution
-	distInfo, ok := a.checkDistributionAccess(c, distID)
+	distInfo, ok := h.checkDistributionAccess(c, distID)
 	if !ok {
 		return
 	}
 
-	// List artifacts using owner ID and distribution ID
 	prefix := getArtifactPrefix(distInfo.OwnerID, distInfo.ID)
-	artifacts, err := a.storage.List(c.Request.Context(), prefix)
+	artifacts, err := h.storage.List(c.Request.Context(), prefix)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to list artifacts: " + err.Error(),
@@ -254,7 +284,6 @@ func (a *API) handleListArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Strip prefix from keys for cleaner response
 	for i := range artifacts {
 		artifacts[i].Key = strings.TrimPrefix(artifacts[i].Key, prefix)
 	}
@@ -266,10 +295,10 @@ func (a *API) handleListArtifacts(c *gin.Context) {
 	})
 }
 
-// handleDownloadArtifact downloads an artifact file from a distribution (requires access)
-func (a *API) handleDownloadArtifact(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleDownload downloads an artifact file from a distribution
+func (h *Handler) HandleDownload(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -277,10 +306,9 @@ func (a *API) handleDownloadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Get distribution ID from URL parameter
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -288,16 +316,14 @@ func (a *API) handleDownloadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Verify user has access to distribution
-	distInfo, ok := a.checkDistributionAccess(c, distID)
+	distInfo, ok := h.checkDistributionAccess(c, distID)
 	if !ok {
 		return
 	}
 
-	// Get artifact path
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Artifact path required",
@@ -305,13 +331,11 @@ func (a *API) handleDownloadArtifact(c *gin.Context) {
 		return
 	}
 
-	// Generate S3 key using owner ID and distribution ID
 	key := getArtifactKey(distInfo.OwnerID, distInfo.ID, artifactPath)
 
-	// Download from S3
-	reader, info, err := a.storage.Download(c.Request.Context(), key)
+	reader, info, err := h.storage.Download(c.Request.Context(), key)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Artifact not found: " + err.Error(),
@@ -320,22 +344,20 @@ func (a *API) handleDownloadArtifact(c *gin.Context) {
 	}
 	defer reader.Close()
 
-	// Set headers
 	filename := filepath.Base(artifactPath)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	c.Header("Content-Type", info.ContentType)
 	c.Header("Content-Length", strconv.FormatInt(info.Size, 10))
 	c.Header("ETag", info.ETag)
 
-	// Stream the file
 	c.Status(http.StatusOK)
 	io.Copy(c.Writer, reader)
 }
 
-// handleDeleteArtifact deletes an artifact from a distribution
-func (a *API) handleDeleteArtifact(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleDelete deletes an artifact from a distribution
+func (h *Handler) HandleDelete(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -343,10 +365,9 @@ func (a *API) handleDeleteArtifact(c *gin.Context) {
 		return
 	}
 
-	// Get distribution ID from URL parameter
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -354,16 +375,14 @@ func (a *API) handleDeleteArtifact(c *gin.Context) {
 		return
 	}
 
-	// Verify user has access to distribution and get distribution info
-	distInfo, ok := a.checkDistributionAccess(c, distID)
+	distInfo, ok := h.checkDistributionAccess(c, distID)
 	if !ok {
 		return
 	}
 
-	// Get artifact path
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Artifact path required",
@@ -371,12 +390,10 @@ func (a *API) handleDeleteArtifact(c *gin.Context) {
 		return
 	}
 
-	// Generate S3 key using owner ID and distribution ID
 	key := getArtifactKey(distInfo.OwnerID, distInfo.ID, artifactPath)
 
-	// Delete from S3
-	if err := a.storage.Delete(c.Request.Context(), key); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.storage.Delete(c.Request.Context(), key); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to delete artifact: " + err.Error(),
@@ -384,16 +401,15 @@ func (a *API) handleDeleteArtifact(c *gin.Context) {
 		return
 	}
 
-	// Log the deletion
-	a.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath))
+	h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath))
 
 	c.Status(http.StatusNoContent)
 }
 
-// handleGetArtifactURL generates a presigned URL for direct artifact download (requires access)
-func (a *API) handleGetArtifactURL(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleGetURL generates a presigned URL for direct artifact download
+func (h *Handler) HandleGetURL(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -401,10 +417,9 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 		return
 	}
 
-	// Get distribution ID from URL parameter
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -412,16 +427,14 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 		return
 	}
 
-	// Verify user has access to distribution
-	distInfo, ok := a.checkDistributionAccess(c, distID)
+	distInfo, ok := h.checkDistributionAccess(c, distID)
 	if !ok {
 		return
 	}
 
-	// Get artifact path
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Artifact path required",
@@ -429,21 +442,18 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 		return
 	}
 
-	// Parse expiry
-	expiry := 3600 // Default 1 hour
+	expiry := 3600
 	if expiryStr := c.Query("expiry"); expiryStr != "" {
 		if e, err := strconv.Atoi(expiryStr); err == nil && e > 0 {
 			expiry = e
 		}
 	}
 
-	// Generate S3 key using owner ID and distribution ID
 	key := getArtifactKey(distInfo.OwnerID, distInfo.ID, artifactPath)
 
-	// Check if artifact exists
-	exists, err := a.storage.Exists(c.Request.Context(), key)
+	exists, err := h.storage.Exists(c.Request.Context(), key)
 	if err != nil || !exists {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Artifact not found",
@@ -451,10 +461,9 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 		return
 	}
 
-	// Generate presigned URL
-	url, err := a.storage.GetPresignedURL(c.Request.Context(), key, time.Duration(expiry)*time.Second)
+	url, err := h.storage.GetPresignedURL(c.Request.Context(), key, time.Duration(expiry)*time.Second)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to generate presigned URL: " + err.Error(),
@@ -462,8 +471,7 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 		return
 	}
 
-	// Get web URL for direct access via web gateway (e.g., GarageHQ)
-	webURL := a.storage.GetWebURL(key)
+	webURL := h.storage.GetWebURL(key)
 
 	c.JSON(http.StatusOK, ArtifactURLResponse{
 		URL:       url,
@@ -472,11 +480,10 @@ func (a *API) handleGetArtifactURL(c *gin.Context) {
 	})
 }
 
-// handleListAllArtifacts lists all artifacts across all accessible distributions
-// GET /v1/artifacts
-func (a *API) handleListAllArtifacts(c *gin.Context) {
-	if a.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+// HandleListAll lists all artifacts across all accessible distributions
+func (h *Handler) HandleListAll(c *gin.Context) {
+	if h.storage == nil {
+		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
 			Error:   "Service unavailable",
 			Code:    http.StatusServiceUnavailable,
 			Message: "Storage service not configured",
@@ -484,8 +491,7 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Get user context (may be nil for anonymous)
-	claims := a.getTokenClaims(c)
+	claims := h.getTokenClaims(c)
 	var userID string
 	var isAdmin bool
 	if claims != nil {
@@ -493,10 +499,9 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 		isAdmin = claims.HasAdminAccess()
 	}
 
-	// Get all distributions the user can access (any status)
-	distributions, err := a.distRepo.ListAccessible(userID, isAdmin, nil)
+	distributions, err := h.distRepo.ListAccessible(userID, isAdmin, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -504,7 +509,6 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Build a map of distribution ID to distribution info for quick lookup
 	distMap := make(map[string]struct {
 		Name    string
 		OwnerID string
@@ -519,10 +523,9 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 		}
 	}
 
-	// List all artifacts from storage with "distribution/" prefix
-	allStorageArtifacts, err := a.storage.List(c.Request.Context(), "distribution/")
+	allStorageArtifacts, err := h.storage.List(c.Request.Context(), "distribution/")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to list artifacts: " + err.Error(),
@@ -530,26 +533,22 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 		return
 	}
 
-	// Filter artifacts to only include those from accessible distributions
 	var artifacts []GlobalArtifact
 	for _, obj := range allStorageArtifacts {
-		// Parse distribution info from key (format: distribution/{ownerID}/{distributionID}/...)
 		parts := strings.SplitN(obj.Key, "/", 4)
 		if len(parts) < 4 {
-			continue // Invalid key format
+			continue
 		}
 
 		ownerID := parts[1]
 		distID := parts[2]
 
-		// Check if user has access to this distribution
 		distInfo, hasAccess := distMap[distID]
 		if !hasAccess {
 			continue
 		}
 
-		// Build the artifact entry
-		artifactKey := parts[3] // The path within the distribution
+		artifactKey := parts[3]
 		artifacts = append(artifacts, GlobalArtifact{
 			Key:              artifactKey,
 			FullKey:          obj.Key,
@@ -569,9 +568,9 @@ func (a *API) handleListAllArtifacts(c *gin.Context) {
 	})
 }
 
-// handleStorageStatus returns the status of the storage backend
-func (a *API) handleStorageStatus(c *gin.Context) {
-	if a.storage == nil {
+// HandleStorageStatus returns the status of the storage backend
+func (h *Handler) HandleStorageStatus(c *gin.Context) {
+	if h.storage == nil {
 		c.JSON(http.StatusOK, StorageStatusResponse{
 			Available: false,
 			Message:   "Storage service not configured",
@@ -579,13 +578,12 @@ func (a *API) handleStorageStatus(c *gin.Context) {
 		return
 	}
 
-	// Ping storage
-	err := a.storage.Ping(c.Request.Context())
+	err := h.storage.Ping(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusOK, StorageStatusResponse{
 			Available: false,
-			Type:      a.storage.Type(),
-			Location:  a.storage.Location(),
+			Type:      h.storage.Type(),
+			Location:  h.storage.Location(),
 			Message:   "Storage unreachable: " + err.Error(),
 		})
 		return
@@ -593,8 +591,8 @@ func (a *API) handleStorageStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, StorageStatusResponse{
 		Available: true,
-		Type:      a.storage.Type(),
-		Location:  a.storage.Location(),
+		Type:      h.storage.Type(),
+		Location:  h.storage.Location(),
 		Message:   "Storage is operational",
 	})
 }

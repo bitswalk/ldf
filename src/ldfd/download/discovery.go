@@ -63,7 +63,7 @@ func (d *VersionDiscovery) DetectDiscoveryMethod(url string) DiscoveryMethod {
 }
 
 // DiscoverVersions discovers available versions from an upstream source
-func (d *VersionDiscovery) DiscoverVersions(ctx context.Context, source *db.Source) ([]DiscoveredVersion, error) {
+func (d *VersionDiscovery) DiscoverVersions(ctx context.Context, source *db.UpstreamSource) ([]DiscoveredVersion, error) {
 	method := d.DetectDiscoveryMethod(source.URL)
 
 	switch method {
@@ -471,7 +471,7 @@ func (d *VersionDiscovery) discoverHTTPDirectoryVersions(ctx context.Context, ba
 }
 
 // SyncVersions performs a full version sync for a source
-func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Source, sourceType string, job *db.VersionSyncJob) error {
+func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.UpstreamSource, sourceType string, job *db.VersionSyncJob) error {
 	// Mark job as running
 	if err := d.versionRepo.MarkSyncJobRunning(job.ID); err != nil {
 		return fmt.Errorf("failed to mark job running: %w", err)

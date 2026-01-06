@@ -1,4 +1,4 @@
-package api
+package settings
 
 import (
 	"encoding/json"
@@ -6,19 +6,45 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/common/logs"
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
+var log *logs.Logger
+
+// SetLogger sets the logger for the settings package
+func SetLogger(l *logs.Logger) {
+	log = l
+}
+
+// Handler handles settings-related HTTP requests
+type Handler struct {
+	database *db.Database
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	Database *db.Database
+}
+
+// NewHandler creates a new settings handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		database: cfg.Database,
+	}
+}
+
 // SettingDefinition represents a single server setting with metadata
 type SettingDefinition struct {
 	Key            string      `json:"key"`
 	Value          interface{} `json:"value"`
-	Type           string      `json:"type"` // string, int, bool
+	Type           string      `json:"type"`
 	Description    string      `json:"description"`
-	RebootRequired bool        `json:"rebootRequired"` // True for port, bind, etc.
-	Category       string      `json:"category"`       // server, log, database, storage
+	RebootRequired bool        `json:"rebootRequired"`
+	Category       string      `json:"category"`
 }
 
 // SettingsResponse represents the response for GET /v1/settings
@@ -46,7 +72,7 @@ type SettingMeta struct {
 	Description    string
 	RebootRequired bool
 	Category       string
-	Sensitive      bool // If true, value is masked in responses
+	Sensitive      bool
 }
 
 // settingsRegistry defines all available settings with their metadata
@@ -84,10 +110,8 @@ func GetSettingsRegistry() []SettingMeta {
 }
 
 // getSettingValue retrieves a setting value from viper with proper type handling
-// If reveal is true, sensitive values are returned unmasked (for authorized users)
 func getSettingValue(key, valueType string, sensitive bool, reveal bool) interface{} {
 	if sensitive && !reveal {
-		// Return masked value for sensitive settings
 		val := viper.GetString(key)
 		if val != "" {
 			return "********"
@@ -115,11 +139,8 @@ func findSettingByKey(key string) *SettingMeta {
 	return nil
 }
 
-// handleGetSettings returns all server settings with metadata
-// GET /v1/settings
-// Query params:
-//   - reveal=true: Return unmasked sensitive values (root only, already enforced by middleware)
-func (a *API) handleGetSettings(c *gin.Context) {
+// HandleGetAll returns all server settings with metadata
+func (h *Handler) HandleGetAll(c *gin.Context) {
 	reveal := c.Query("reveal") == "true"
 	settings := make([]SettingDefinition, 0, len(settingsRegistry))
 
@@ -139,28 +160,19 @@ func (a *API) handleGetSettings(c *gin.Context) {
 	})
 }
 
-// handleGetSetting returns a single setting by key
-// GET /v1/settings/:key
-// Query params:
-//   - reveal=true: Return unmasked sensitive values (root only, already enforced by middleware)
-func (a *API) handleGetSetting(c *gin.Context) {
+// HandleGet returns a single setting by key
+func (h *Handler) HandleGet(c *gin.Context) {
 	reveal := c.Query("reveal") == "true"
 
-	// The key uses dot notation but gin splits on slashes
-	// So we need to handle keys like "server.port" passed as path parameter
 	key := c.Param("key")
-
-	// Handle wildcard path for nested keys like storage.s3.endpoint
 	if wildcard := c.Param("path"); wildcard != "" {
 		key = key + wildcard
 	}
-
-	// Clean up leading slash if present
 	key = strings.TrimPrefix(key, "/")
 
 	reg := findSettingByKey(key)
 	if reg == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprintf("Setting '%s' not found", key),
@@ -178,10 +190,8 @@ func (a *API) handleGetSetting(c *gin.Context) {
 	})
 }
 
-// handleUpdateSetting updates a setting value
-// PUT /v1/settings/:key
-func (a *API) handleUpdateSetting(c *gin.Context) {
-	// Handle the key parameter
+// HandleUpdate updates a setting value
+func (h *Handler) HandleUpdate(c *gin.Context) {
 	key := c.Param("key")
 	if wildcard := c.Param("path"); wildcard != "" {
 		key = key + wildcard
@@ -190,7 +200,7 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 
 	reg := findSettingByKey(key)
 	if reg == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprintf("Setting '%s' not found", key),
@@ -200,7 +210,7 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 
 	var req UpdateSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -208,7 +218,6 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 		return
 	}
 
-	// Validate and convert the value based on expected type
 	var typedValue interface{}
 	var stringValue string
 
@@ -224,7 +233,7 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 		case json.Number:
 			intVal, err := v.Int64()
 			if err != nil {
-				c.JSON(http.StatusBadRequest, ErrorResponse{
+				c.JSON(http.StatusBadRequest, common.ErrorResponse{
 					Error:   "Bad request",
 					Code:    http.StatusBadRequest,
 					Message: fmt.Sprintf("Invalid integer value for '%s'", key),
@@ -234,7 +243,7 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 			typedValue = int(intVal)
 			stringValue = fmt.Sprintf("%d", intVal)
 		default:
-			c.JSON(http.StatusBadRequest, ErrorResponse{
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: fmt.Sprintf("Expected integer value for '%s', got %T", key, req.Value),
@@ -247,20 +256,20 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 			typedValue = v
 			stringValue = fmt.Sprintf("%t", v)
 		default:
-			c.JSON(http.StatusBadRequest, ErrorResponse{
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: fmt.Sprintf("Expected boolean value for '%s', got %T", key, req.Value),
 			})
 			return
 		}
-	default: // string
+	default:
 		switch v := req.Value.(type) {
 		case string:
 			typedValue = v
 			stringValue = v
 		default:
-			c.JSON(http.StatusBadRequest, ErrorResponse{
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: fmt.Sprintf("Expected string value for '%s', got %T", key, req.Value),
@@ -269,12 +278,10 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 		}
 	}
 
-	// Update viper in-memory configuration
 	viper.Set(key, typedValue)
 
-	// Persist to database for restart persistence
-	if err := a.database.SetSetting(key, stringValue); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.database.SetSetting(key, stringValue); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to persist setting: %v", err),
@@ -282,18 +289,15 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 		return
 	}
 
-	// Apply hot-reload for supported settings
 	if !reg.RebootRequired {
-		a.applySettingChange(key, typedValue)
+		h.applySettingChange(key, typedValue)
 	}
 
-	// Prepare response message
 	message := "Setting updated successfully"
 	if reg.RebootRequired {
 		message = "Setting updated. Server reboot required for changes to take effect."
 	}
 
-	// Mask sensitive values in response
 	responseValue := typedValue
 	if reg.Sensitive {
 		responseValue = "********"
@@ -308,17 +312,12 @@ func (a *API) handleUpdateSetting(c *gin.Context) {
 }
 
 // applySettingChange applies hot-reloadable settings immediately
-func (a *API) applySettingChange(key string, value interface{}) {
+func (h *Handler) applySettingChange(key string, value interface{}) {
 	switch key {
 	case "log.level":
 		if level, ok := value.(string); ok {
-			// Update the global log level
-			// The log package from common/logs should support SetLevel
 			log.SetLevel(level)
 		}
-	case "log.output":
-		// Log output change would require recreating the logger
-		// For now, this will take effect on restart
 	}
 }
 
@@ -333,13 +332,11 @@ type ResetDatabaseResponse struct {
 	Message string `json:"message"`
 }
 
-// handleResetDatabase resets the database to its default state
-// POST /v1/settings/database/reset
-// This is a destructive operation that requires confirmation
-func (a *API) handleResetDatabase(c *gin.Context) {
+// HandleResetDatabase resets the database to its default state
+func (h *Handler) HandleResetDatabase(c *gin.Context) {
 	var req ResetDatabaseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -347,9 +344,8 @@ func (a *API) handleResetDatabase(c *gin.Context) {
 		return
 	}
 
-	// Require explicit confirmation string to prevent accidental resets
 	if req.Confirmation != "RESET_DATABASE" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Invalid confirmation. Send confirmation: \"RESET_DATABASE\" to proceed.",
@@ -357,9 +353,8 @@ func (a *API) handleResetDatabase(c *gin.Context) {
 		return
 	}
 
-	// Perform the reset
-	if err := a.database.ResetToDefaults(); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.database.ResetToDefaults(); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: fmt.Sprintf("Failed to reset database: %v", err),
@@ -374,15 +369,12 @@ func (a *API) handleResetDatabase(c *gin.Context) {
 }
 
 // LoadConfigFromDatabase loads settings from the database into viper.
-// Database settings have the highest priority and override CLI/config file values.
-// This should be called at server startup after the database is initialized.
 func LoadConfigFromDatabase(database *db.Database) error {
 	settings, err := database.GetAllSettings()
 	if err != nil {
 		return fmt.Errorf("failed to get settings from database: %w", err)
 	}
 
-	// If no settings in database, nothing to load
 	if len(settings) == 0 {
 		return nil
 	}
@@ -390,11 +382,9 @@ func LoadConfigFromDatabase(database *db.Database) error {
 	for _, meta := range settingsRegistry {
 		value, exists := settings[meta.Key]
 		if !exists {
-			// Setting not in database, keep current viper value
 			continue
 		}
 
-		// Convert string value to appropriate type and set in viper
 		switch meta.Type {
 		case "int":
 			var intVal int
@@ -415,8 +405,6 @@ func LoadConfigFromDatabase(database *db.Database) error {
 }
 
 // SyncConfigToDatabase syncs viper configuration values to the database settings table.
-// Only writes settings that don't already exist in the database (preserves DB values).
-// This ensures new settings are persisted while respecting user-configured values.
 func SyncConfigToDatabase(database *db.Database) error {
 	existingSettings, err := database.GetAllSettings()
 	if err != nil {
@@ -424,12 +412,10 @@ func SyncConfigToDatabase(database *db.Database) error {
 	}
 
 	for _, meta := range settingsRegistry {
-		// Skip if setting already exists in database
 		if _, exists := existingSettings[meta.Key]; exists {
 			continue
 		}
 
-		// Setting doesn't exist in DB, write current viper value
 		var stringValue string
 
 		switch meta.Type {

@@ -1,17 +1,42 @@
-package api
+package downloads
 
 import (
 	"net/http"
 
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/gin-gonic/gin"
 )
+
+// Handler handles download-related HTTP requests
+type Handler struct {
+	distRepo        *db.DistributionRepository
+	componentRepo   *db.ComponentRepository
+	downloadManager *download.Manager
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	DistRepo        *db.DistributionRepository
+	ComponentRepo   *db.ComponentRepository
+	DownloadManager *download.Manager
+}
+
+// NewHandler creates a new downloads handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		distRepo:        cfg.DistRepo,
+		componentRepo:   cfg.ComponentRepo,
+		downloadManager: cfg.DownloadManager,
+	}
+}
 
 // DownloadJobResponse represents a download job with additional info
 type DownloadJobResponse struct {
 	db.DownloadJob
 	ComponentName string  `json:"component_name,omitempty"`
-	Progress      float64 `json:"progress"` // 0-100
+	Progress      float64 `json:"progress"`
 }
 
 // DownloadJobsListResponse represents a list of download jobs
@@ -22,7 +47,7 @@ type DownloadJobsListResponse struct {
 
 // StartDownloadsRequest represents the request to start downloads
 type StartDownloadsRequest struct {
-	Components []string `json:"components"` // Component IDs to download, empty = all required
+	Components []string `json:"components"`
 }
 
 // StartDownloadsResponse represents the response after starting downloads
@@ -31,11 +56,19 @@ type StartDownloadsResponse struct {
 	Jobs  []DownloadJobResponse `json:"jobs"`
 }
 
-// handleStartDistributionDownloads starts downloads for a distribution
-func (a *API) handleStartDistributionDownloads(c *gin.Context) {
+// calculateProgress calculates download progress as a percentage
+func calculateProgress(progressBytes, totalBytes int64) float64 {
+	if totalBytes <= 0 {
+		return 0
+	}
+	return float64(progressBytes) / float64(totalBytes) * 100
+}
+
+// HandleStartDistributionDownloads starts downloads for a distribution
+func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -43,9 +76,9 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -53,10 +86,9 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check distribution exists and user has write access
-	dist, err := a.distRepo.GetByID(distID)
+	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -64,7 +96,7 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -72,9 +104,8 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check write access
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "Write access required",
@@ -84,14 +115,12 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 
 	var req StartDownloadsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Empty body is OK, means download all required components
 		req = StartDownloadsRequest{}
 	}
 
-	// Create jobs for distribution
-	jobs, err := a.downloadManager.CreateJobsForDistribution(dist, claims.UserID)
+	jobs, err := h.downloadManager.CreateJobsForDistribution(dist, claims.UserID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -99,7 +128,6 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Filter by requested components if specified
 	if len(req.Components) > 0 {
 		componentSet := make(map[string]bool)
 		for _, id := range req.Components {
@@ -115,7 +143,6 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 		jobs = filteredJobs
 	}
 
-	// Build response with component names
 	response := make([]DownloadJobResponse, 0, len(jobs))
 	for _, job := range jobs {
 		resp := DownloadJobResponse{
@@ -123,7 +150,7 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
 		}
 
-		if component, err := a.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
 			resp.ComponentName = component.DisplayName
 		}
 
@@ -136,11 +163,11 @@ func (a *API) handleStartDistributionDownloads(c *gin.Context) {
 	})
 }
 
-// handleListDistributionDownloads lists download jobs for a distribution
-func (a *API) handleListDistributionDownloads(c *gin.Context) {
+// HandleListDistributionDownloads lists download jobs for a distribution
+func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -148,10 +175,9 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check distribution exists
-	dist, err := a.distRepo.GetByID(distID)
+	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -159,7 +185,7 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -167,11 +193,10 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check access
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, ErrorResponse{
+			c.JSON(http.StatusForbidden, common.ErrorResponse{
 				Error:   "Forbidden",
 				Code:    http.StatusForbidden,
 				Message: "Access denied to private distribution",
@@ -180,9 +205,9 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 		}
 	}
 
-	jobs, err := a.downloadManager.JobRepo().ListByDistribution(distID)
+	jobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -190,7 +215,6 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Build response with component names
 	response := make([]DownloadJobResponse, 0, len(jobs))
 	for _, job := range jobs {
 		resp := DownloadJobResponse{
@@ -198,7 +222,7 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
 		}
 
-		if component, err := a.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
 			resp.ComponentName = component.DisplayName
 		}
 
@@ -211,11 +235,11 @@ func (a *API) handleListDistributionDownloads(c *gin.Context) {
 	})
 }
 
-// handleGetDownloadJob returns a single download job
-func (a *API) handleGetDownloadJob(c *gin.Context) {
+// HandleGetDownloadJob returns a single download job
+func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Job ID required",
@@ -223,9 +247,9 @@ func (a *API) handleGetDownloadJob(c *gin.Context) {
 		return
 	}
 
-	job, err := a.downloadManager.JobRepo().GetByID(jobID)
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -233,7 +257,7 @@ func (a *API) handleGetDownloadJob(c *gin.Context) {
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Download job not found",
@@ -241,10 +265,9 @@ func (a *API) handleGetDownloadJob(c *gin.Context) {
 		return
 	}
 
-	// Check access via distribution
-	dist, err := a.distRepo.GetByID(job.DistributionID)
+	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -252,10 +275,10 @@ func (a *API) handleGetDownloadJob(c *gin.Context) {
 		return
 	}
 
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if dist != nil && dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, ErrorResponse{
+			c.JSON(http.StatusForbidden, common.ErrorResponse{
 				Error:   "Forbidden",
 				Code:    http.StatusForbidden,
 				Message: "Access denied",
@@ -269,18 +292,18 @@ func (a *API) handleGetDownloadJob(c *gin.Context) {
 		Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
 	}
 
-	if component, err := a.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+	if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
 		resp.ComponentName = component.DisplayName
 	}
 
 	c.JSON(http.StatusOK, resp)
 }
 
-// handleCancelDownload cancels a download job
-func (a *API) handleCancelDownload(c *gin.Context) {
+// HandleCancelDownload cancels a download job
+func (h *Handler) HandleCancelDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Job ID required",
@@ -288,9 +311,9 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 		return
 	}
 
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -298,9 +321,9 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 		return
 	}
 
-	job, err := a.downloadManager.JobRepo().GetByID(jobID)
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -308,7 +331,7 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Download job not found",
@@ -316,10 +339,9 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 		return
 	}
 
-	// Check write access via distribution
-	dist, err := a.distRepo.GetByID(job.DistributionID)
+	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -328,7 +350,7 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 	}
 
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "Write access required",
@@ -336,8 +358,8 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 		return
 	}
 
-	if err := a.downloadManager.CancelJob(jobID); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.downloadManager.CancelJob(jobID); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -348,11 +370,11 @@ func (a *API) handleCancelDownload(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// handleRetryDownload retries a failed download job
-func (a *API) handleRetryDownload(c *gin.Context) {
+// HandleRetryDownload retries a failed download job
+func (h *Handler) HandleRetryDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Job ID required",
@@ -360,9 +382,9 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -370,9 +392,9 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 
-	job, err := a.downloadManager.JobRepo().GetByID(jobID)
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -380,7 +402,7 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Download job not found",
@@ -388,10 +410,9 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 
-	// Check write access via distribution
-	dist, err := a.distRepo.GetByID(job.DistributionID)
+	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -400,7 +421,7 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 	}
 
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "Write access required",
@@ -408,8 +429,8 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 
-	if err := a.downloadManager.RetryJob(jobID); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+	if err := h.downloadManager.RetryJob(jobID); err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -417,15 +438,14 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 		return
 	}
 
-	// Return updated job
-	job, _ = a.downloadManager.JobRepo().GetByID(jobID)
+	job, _ = h.downloadManager.JobRepo().GetByID(jobID)
 	if job != nil {
 		resp := DownloadJobResponse{
 			DownloadJob: *job,
 			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
 		}
 
-		if component, err := a.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
 			resp.ComponentName = component.DisplayName
 		}
 
@@ -436,11 +456,11 @@ func (a *API) handleRetryDownload(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
-// handleListActiveDownloads lists all active downloads (admin only)
-func (a *API) handleListActiveDownloads(c *gin.Context) {
-	jobs, err := a.downloadManager.JobRepo().ListActive()
+// HandleListActiveDownloads lists all active downloads (admin only)
+func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
+	jobs, err := h.downloadManager.JobRepo().ListActive()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -448,7 +468,6 @@ func (a *API) handleListActiveDownloads(c *gin.Context) {
 		return
 	}
 
-	// Build response with component names
 	response := make([]DownloadJobResponse, 0, len(jobs))
 	for _, job := range jobs {
 		resp := DownloadJobResponse{
@@ -456,7 +475,7 @@ func (a *API) handleListActiveDownloads(c *gin.Context) {
 			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
 		}
 
-		if component, err := a.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
 			resp.ComponentName = component.DisplayName
 		}
 
@@ -469,11 +488,11 @@ func (a *API) handleListActiveDownloads(c *gin.Context) {
 	})
 }
 
-// handleFlushDistributionDownloads deletes all download jobs for a distribution
-func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
+// HandleFlushDistributionDownloads deletes all download jobs for a distribution
+func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Distribution ID required",
@@ -481,9 +500,9 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	claims := getClaimsFromContext(c)
+	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
 			Error:   "Unauthorized",
 			Code:    http.StatusUnauthorized,
 			Message: "Authentication required",
@@ -491,10 +510,9 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check distribution exists and user has write access
-	dist, err := a.distRepo.GetByID(distID)
+	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -502,7 +520,7 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Distribution not found",
@@ -510,9 +528,8 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Check write access
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, ErrorResponse{
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
 			Error:   "Forbidden",
 			Code:    http.StatusForbidden,
 			Message: "Write access required",
@@ -520,10 +537,9 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 		return
 	}
 
-	// Cancel any active jobs first
-	activeJobs, err := a.downloadManager.JobRepo().ListByDistribution(distID)
+	activeJobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -533,13 +549,12 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 
 	for _, job := range activeJobs {
 		if job.Status == "pending" || job.Status == "verifying" || job.Status == "downloading" {
-			_ = a.downloadManager.CancelJob(job.ID)
+			_ = h.downloadManager.CancelJob(job.ID)
 		}
 	}
 
-	// Delete all download jobs for this distribution
-	if err := a.downloadManager.JobRepo().DeleteByDistribution(distID); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.downloadManager.JobRepo().DeleteByDistribution(distID); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -548,12 +563,4 @@ func (a *API) handleFlushDistributionDownloads(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-// calculateProgress calculates download progress as a percentage
-func calculateProgress(progressBytes, totalBytes int64) float64 {
-	if totalBytes <= 0 {
-		return 0
-	}
-	return float64(progressBytes) / float64(totalBytes) * 100
 }

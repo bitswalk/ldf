@@ -1,12 +1,33 @@
-package api
+package components
 
 import (
 	"net/http"
 	"strconv"
 
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
+
+// Handler handles component-related HTTP requests
+type Handler struct {
+	componentRepo     *db.ComponentRepository
+	sourceVersionRepo *db.SourceVersionRepository
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	ComponentRepo     *db.ComponentRepository
+	SourceVersionRepo *db.SourceVersionRepository
+}
+
+// NewHandler creates a new components handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		componentRepo:     cfg.ComponentRepo,
+		sourceVersionRepo: cfg.SourceVersionRepo,
+	}
+}
 
 // ComponentListResponse represents a list of components
 type ComponentListResponse struct {
@@ -57,11 +78,11 @@ type ResolvedVersionResponse struct {
 	Version         *db.SourceVersion `json:"version,omitempty"`
 }
 
-// handleListComponents returns all components
-func (a *API) handleListComponents(c *gin.Context) {
-	components, err := a.componentRepo.List()
+// HandleList returns all components
+func (h *Handler) HandleList(c *gin.Context) {
+	components, err := h.componentRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -79,11 +100,11 @@ func (a *API) handleListComponents(c *gin.Context) {
 	})
 }
 
-// handleGetComponent returns a single component by ID
-func (a *API) handleGetComponent(c *gin.Context) {
+// HandleGet returns a single component by ID
+func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Component ID required",
@@ -91,9 +112,9 @@ func (a *API) handleGetComponent(c *gin.Context) {
 		return
 	}
 
-	component, err := a.componentRepo.GetByID(id)
+	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -102,7 +123,7 @@ func (a *API) handleGetComponent(c *gin.Context) {
 	}
 
 	if component == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Component not found",
@@ -113,11 +134,11 @@ func (a *API) handleGetComponent(c *gin.Context) {
 	c.JSON(http.StatusOK, component)
 }
 
-// handleListComponentsByCategory returns components in a specific category
-func (a *API) handleListComponentsByCategory(c *gin.Context) {
+// HandleListByCategory returns components in a specific category
+func (h *Handler) HandleListByCategory(c *gin.Context) {
 	category := c.Param("category")
 	if category == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Category required",
@@ -125,9 +146,9 @@ func (a *API) handleListComponentsByCategory(c *gin.Context) {
 		return
 	}
 
-	components, err := a.componentRepo.GetByCategory(category)
+	components, err := h.componentRepo.GetByCategory(category)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -145,11 +166,11 @@ func (a *API) handleListComponentsByCategory(c *gin.Context) {
 	})
 }
 
-// handleGetComponentCategories returns all distinct component categories
-func (a *API) handleGetComponentCategories(c *gin.Context) {
-	categories, err := a.componentRepo.GetCategories()
+// HandleGetCategories returns all distinct component categories
+func (h *Handler) HandleGetCategories(c *gin.Context) {
+	categories, err := h.componentRepo.GetCategories()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -167,11 +188,11 @@ func (a *API) handleGetComponentCategories(c *gin.Context) {
 	})
 }
 
-// handleCreateComponent creates a new component (root only)
-func (a *API) handleCreateComponent(c *gin.Context) {
+// HandleCreate creates a new component (root only)
+func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateComponentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -184,11 +205,10 @@ func (a *API) handleCreateComponent(c *gin.Context) {
 		isOptional = *req.IsOptional
 	}
 
-	// Validate version rule if provided
 	versionRule := db.VersionRule(req.DefaultVersionRule)
 	if req.DefaultVersionRule != "" {
 		if !isValidVersionRule(versionRule) {
-			c.JSON(http.StatusBadRequest, ErrorResponse{
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
@@ -210,8 +230,8 @@ func (a *API) handleCreateComponent(c *gin.Context) {
 		DefaultVersionRule:       versionRule,
 	}
 
-	if err := a.componentRepo.Create(component); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.componentRepo.Create(component); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -222,11 +242,11 @@ func (a *API) handleCreateComponent(c *gin.Context) {
 	c.JSON(http.StatusCreated, component)
 }
 
-// handleUpdateComponent updates an existing component (root only)
-func (a *API) handleUpdateComponent(c *gin.Context) {
+// HandleUpdate updates an existing component (root only)
+func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Component ID required",
@@ -234,9 +254,9 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 		return
 	}
 
-	component, err := a.componentRepo.GetByID(id)
+	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -244,7 +264,7 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Component not found",
@@ -254,7 +274,7 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 
 	var req UpdateComponentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
@@ -262,11 +282,10 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 		return
 	}
 
-	// Check if new name conflicts with existing component (if name is being changed)
 	if req.Name != "" && req.Name != component.Name {
-		existing, err := a.componentRepo.GetByName(req.Name)
+		existing, err := h.componentRepo.GetByName(req.Name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, ErrorResponse{
+			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 				Error:   "Internal server error",
 				Code:    http.StatusInternalServerError,
 				Message: err.Error(),
@@ -274,7 +293,7 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 			return
 		}
 		if existing != nil {
-			c.JSON(http.StatusConflict, ErrorResponse{
+			c.JSON(http.StatusConflict, common.ErrorResponse{
 				Error:   "Conflict",
 				Code:    http.StatusConflict,
 				Message: "A component with this name already exists",
@@ -310,7 +329,7 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 	if req.DefaultVersionRule != "" {
 		versionRule := db.VersionRule(req.DefaultVersionRule)
 		if !isValidVersionRule(versionRule) {
-			c.JSON(http.StatusBadRequest, ErrorResponse{
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
@@ -320,8 +339,8 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 		component.DefaultVersionRule = versionRule
 	}
 
-	if err := a.componentRepo.Update(component); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.componentRepo.Update(component); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -332,11 +351,11 @@ func (a *API) handleUpdateComponent(c *gin.Context) {
 	c.JSON(http.StatusOK, component)
 }
 
-// handleDeleteComponent deletes a component (root only)
-func (a *API) handleDeleteComponent(c *gin.Context) {
+// HandleDelete deletes a component (root only)
+func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Component ID required",
@@ -344,8 +363,8 @@ func (a *API) handleDeleteComponent(c *gin.Context) {
 		return
 	}
 
-	if err := a.componentRepo.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+	if err := h.componentRepo.Delete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -356,11 +375,11 @@ func (a *API) handleDeleteComponent(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// handleGetComponentVersions returns paginated versions for a component
-func (a *API) handleGetComponentVersions(c *gin.Context) {
+// HandleGetVersions returns paginated versions for a component
+func (h *Handler) HandleGetVersions(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Component ID required",
@@ -368,10 +387,9 @@ func (a *API) handleGetComponentVersions(c *gin.Context) {
 		return
 	}
 
-	// Verify component exists
-	component, err := a.componentRepo.GetByID(id)
+	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -379,7 +397,7 @@ func (a *API) handleGetComponentVersions(c *gin.Context) {
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Component not found",
@@ -387,10 +405,9 @@ func (a *API) handleGetComponentVersions(c *gin.Context) {
 		return
 	}
 
-	// Parse pagination parameters
 	limit := 50
 	offset := 0
-	versionType := c.Query("version_type") // "all", "stable", "longterm", "mainline"
+	versionType := c.Query("version_type")
 
 	if l := c.Query("limit"); l != "" {
 		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
@@ -403,9 +420,9 @@ func (a *API) handleGetComponentVersions(c *gin.Context) {
 		}
 	}
 
-	versions, total, err := a.sourceVersionRepo.ListByComponentPaginated(id, limit, offset, versionType)
+	versions, total, err := h.sourceVersionRepo.ListByComponentPaginated(id, limit, offset, versionType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -425,11 +442,11 @@ func (a *API) handleGetComponentVersions(c *gin.Context) {
 	})
 }
 
-// handleResolveComponentVersion resolves a version rule to an actual version
-func (a *API) handleResolveComponentVersion(c *gin.Context) {
+// HandleResolveVersion resolves a version rule to an actual version
+func (h *Handler) HandleResolveVersion(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Component ID required",
@@ -439,7 +456,7 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 
 	rule := c.Query("rule")
 	if rule == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Version rule required (e.g., latest-stable, latest-lts)",
@@ -447,10 +464,9 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 		return
 	}
 
-	// Verify component exists
-	component, err := a.componentRepo.GetByID(id)
+	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -458,7 +474,7 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "Component not found",
@@ -470,18 +486,17 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 
 	switch db.VersionRule(rule) {
 	case db.VersionRuleLatestStable:
-		version, err = a.sourceVersionRepo.GetLatestStableByComponent(id)
+		version, err = h.sourceVersionRepo.GetLatestStableByComponent(id)
 	case db.VersionRuleLatestLTS:
-		version, err = a.sourceVersionRepo.GetLatestLongtermByComponent(id)
+		version, err = h.sourceVersionRepo.GetLatestLongtermByComponent(id)
 	case db.VersionRulePinned:
-		// For pinned, return the component's default version
 		c.JSON(http.StatusOK, ResolvedVersionResponse{
 			Rule:            rule,
 			ResolvedVersion: component.DefaultVersion,
 		})
 		return
 	default:
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
@@ -490,7 +505,7 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
 			Message: err.Error(),
@@ -499,7 +514,7 @@ func (a *API) handleResolveComponentVersion(c *gin.Context) {
 	}
 
 	if version == nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
 			Error:   "Not found",
 			Code:    http.StatusNotFound,
 			Message: "No version found matching the rule",

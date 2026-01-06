@@ -8,11 +8,11 @@ import (
 )
 
 // GetRoleByID retrieves a role by ID
-func (r *Repository) GetRoleByID(id string) (*RoleRecord, error) {
+func (m *UserManager) GetRoleByID(id string) (*RoleRecord, error) {
 	var role RoleRecord
 	var description, parentRoleID sql.NullString
 
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT id, name, description, can_read, can_write, can_delete, can_admin, is_system, parent_role_id, created_at, updated_at
 		FROM roles WHERE id = ?
 	`, id).Scan(
@@ -39,11 +39,11 @@ func (r *Repository) GetRoleByID(id string) (*RoleRecord, error) {
 }
 
 // GetRoleByName retrieves a role by name
-func (r *Repository) GetRoleByName(name string) (*RoleRecord, error) {
+func (m *UserManager) GetRoleByName(name string) (*RoleRecord, error) {
 	var role RoleRecord
 	var description, parentRoleID sql.NullString
 
-	err := r.db.QueryRow(`
+	err := m.db.QueryRow(`
 		SELECT id, name, description, can_read, can_write, can_delete, can_admin, is_system, parent_role_id, created_at, updated_at
 		FROM roles WHERE name = ?
 	`, name).Scan(
@@ -70,8 +70,8 @@ func (r *Repository) GetRoleByName(name string) (*RoleRecord, error) {
 }
 
 // ListRoles retrieves all roles
-func (r *Repository) ListRoles() ([]RoleRecord, error) {
-	rows, err := r.db.Query(`
+func (m *UserManager) ListRoles() ([]RoleRecord, error) {
+	rows, err := m.db.Query(`
 		SELECT id, name, description, can_read, can_write, can_delete, can_admin, is_system, parent_role_id, created_at, updated_at
 		FROM roles ORDER BY is_system DESC, name ASC
 	`)
@@ -112,9 +112,9 @@ func (r *Repository) ListRoles() ([]RoleRecord, error) {
 }
 
 // CreateRole creates a new custom role
-func (r *Repository) CreateRole(role *RoleRecord) error {
+func (m *UserManager) CreateRole(role *RoleRecord) error {
 	// Check if name already exists
-	_, err := r.GetRoleByName(role.Name)
+	_, err := m.GetRoleByName(role.Name)
 	if err == nil {
 		return errors.ErrRoleAlreadyExists
 	}
@@ -128,7 +128,7 @@ func (r *Repository) CreateRole(role *RoleRecord) error {
 		parentRoleID = role.ParentRoleID
 	}
 
-	_, err = r.db.Exec(`
+	_, err = m.db.Exec(`
 		INSERT INTO roles (id, name, description, can_read, can_write, can_delete, can_admin, is_system, parent_role_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, role.ID, role.Name, role.Description,
@@ -143,9 +143,9 @@ func (r *Repository) CreateRole(role *RoleRecord) error {
 }
 
 // UpdateRole updates a custom role (system roles cannot be modified)
-func (r *Repository) UpdateRole(role *RoleRecord) error {
+func (m *UserManager) UpdateRole(role *RoleRecord) error {
 	// Check if role exists and is not a system role
-	existing, err := r.GetRoleByID(role.ID)
+	existing, err := m.GetRoleByID(role.ID)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (r *Repository) UpdateRole(role *RoleRecord) error {
 
 	role.UpdatedAt = time.Now().UTC()
 
-	result, err := r.db.Exec(`
+	result, err := m.db.Exec(`
 		UPDATE roles SET name = ?, description = ?, can_read = ?, can_write = ?, can_delete = ?, can_admin = ?, parent_role_id = ?, updated_at = ?
 		WHERE id = ? AND is_system = 0
 	`, role.Name, role.Description,
@@ -181,9 +181,9 @@ func (r *Repository) UpdateRole(role *RoleRecord) error {
 }
 
 // DeleteRole deletes a custom role (system roles cannot be deleted)
-func (r *Repository) DeleteRole(id string) error {
+func (m *UserManager) DeleteRole(id string) error {
 	// Check if role exists and is not a system role
-	existing, err := r.GetRoleByID(id)
+	existing, err := m.GetRoleByID(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (r *Repository) DeleteRole(id string) error {
 		return errors.ErrSystemRoleDeletion
 	}
 
-	result, err := r.db.Exec("DELETE FROM roles WHERE id = ? AND is_system = 0", id)
+	result, err := m.db.Exec("DELETE FROM roles WHERE id = ? AND is_system = 0", id)
 	if err != nil {
 		return errors.ErrDatabaseQuery.WithCause(err)
 	}

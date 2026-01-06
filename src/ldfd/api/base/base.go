@@ -1,4 +1,4 @@
-package api
+package base
 
 import (
 	"net/http"
@@ -7,6 +7,21 @@ import (
 	"github.com/bitswalk/ldf/src/common/version"
 	"github.com/gin-gonic/gin"
 )
+
+var VersionInfo *version.Info
+
+// SetVersionInfo sets the version info for the base package
+func SetVersionInfo(v *version.Info) {
+	VersionInfo = v
+}
+
+// Handler handles base HTTP requests (root, health, version)
+type Handler struct{}
+
+// NewHandler creates a new base handler
+func NewHandler() *Handler {
+	return &Handler{}
+}
 
 // APIInfo represents the root API discovery response
 type APIInfo struct {
@@ -50,8 +65,8 @@ type VersionResponse struct {
 	GoVersion      string `json:"go_version" example:"go1.24"`
 }
 
-// handleRoot returns API discovery information including available endpoints and versions
-func (a *API) handleRoot(c *gin.Context) {
+// HandleRoot returns API discovery information
+func (h *Handler) HandleRoot(c *gin.Context) {
 	info := APIInfo{
 		Name:        "ldfd",
 		Description: "LDF Platform API Server",
@@ -74,8 +89,8 @@ func (a *API) handleRoot(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
-// handleHealth returns the current health status of the server
-func (a *API) handleHealth(c *gin.Context) {
+// HandleHealth returns the current health status of the server
+func (h *Handler) HandleHealth(c *gin.Context) {
 	response := HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -84,8 +99,8 @@ func (a *API) handleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// handleVersion returns version and build information for the server
-func (a *API) handleVersion(c *gin.Context) {
+// HandleVersion returns version and build information for the server
+func (h *Handler) HandleVersion(c *gin.Context) {
 	response := VersionResponse{
 		Version:        VersionInfo.Version,
 		ReleaseName:    VersionInfo.ReleaseName,

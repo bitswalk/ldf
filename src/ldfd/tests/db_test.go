@@ -284,7 +284,7 @@ func TestDistributionRepository_ListAccessible(t *testing.T) {
 	defer database.Shutdown()
 
 	// Create a real user to be the owner
-	authRepo := auth.NewRepository(database.DB())
+	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("testowner", "testowner@example.com", "hashedpassword", auth.RoleIDDeveloper)
 	if err := authRepo.CreateUser(user); err != nil {
 		t.Fatalf("failed to create test user: %v", err)
@@ -368,7 +368,7 @@ func TestDistributionRepository_CanUserAccess(t *testing.T) {
 	defer database.Shutdown()
 
 	// Create a real user to be the owner
-	authRepo := auth.NewRepository(database.DB())
+	authRepo := auth.NewUserManager(database.DB())
 	owner := auth.NewUser("owner", "owner@example.com", "hashedpassword", auth.RoleIDDeveloper)
 	if err := authRepo.CreateUser(owner); err != nil {
 		t.Fatalf("failed to create owner user: %v", err)

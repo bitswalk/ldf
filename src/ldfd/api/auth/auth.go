@@ -6,33 +6,61 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/errors"
 	"github.com/bitswalk/ldf/src/common/logs"
+	coreauth "github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Package-level logger, must be initialized via SetLogger
 var log *logs.Logger
 
-// SetLogger sets the package-level logger
+// SetLogger sets the logger for the auth api package
 func SetLogger(l *logs.Logger) {
 	log = l
 }
 
 // Handler handles authentication HTTP requests
 type Handler struct {
-	repo       *Repository
-	jwtService *JWTService
+	userManager *coreauth.UserManager
+	jwtService  *coreauth.JWTService
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	UserManager *coreauth.UserManager
+	JWTService  *coreauth.JWTService
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(repo *Repository, jwtService *JWTService) *Handler {
+func NewHandler(cfg Config) *Handler {
 	return &Handler{
-		repo:       repo,
-		jwtService: jwtService,
+		userManager: cfg.UserManager,
+		jwtService:  cfg.JWTService,
 	}
 }
 
-// HandleCreate handles user registration and creates a new user account with the provided credentials
+// AuthRequest represents the authentication request structure
+type AuthRequest struct {
+	Auth struct {
+		Identity struct {
+			Methods  []string `json:"methods"`
+			Password struct {
+				User struct {
+					Name     string `json:"name"`
+					Password string `json:"password"`
+					Email    string `json:"email"`
+					Role     string `json:"role"`
+				} `json:"user"`
+			} `json:"password"`
+		} `json:"identity"`
+	} `json:"auth"`
+}
+
+// RefreshRequest represents the refresh token request body
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// HandleCreate handles user registration and creates a new user account
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -40,7 +68,6 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Validate request structure
 	if len(req.Auth.Identity.Methods) == 0 || req.Auth.Identity.Methods[0] != "password" {
 		c.JSON(http.StatusBadRequest, errors.ErrValidationFailed.WithMessage("Only password authentication method is supported").ToResponse())
 		return
@@ -52,11 +79,9 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Determine role ID (default to developer)
-	roleID := RoleIDDeveloper
+	roleID := coreauth.RoleIDDeveloper
 	if creds.Role != "" {
-		// Look up the role by name
-		role, err := h.repo.GetRoleByName(creds.Role)
+		role, err := h.userManager.GetRoleByName(creds.Role)
 		if err != nil {
 			if errors.Is(err, errors.ErrRoleNotFound) {
 				c.JSON(http.StatusBadRequest, errors.ErrRoleNotFound.WithMessage("Invalid role specified").ToResponse())
@@ -68,9 +93,8 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		roleID = role.ID
 	}
 
-	// If requesting root role, check if root already exists
-	if roleID == RoleIDRoot {
-		hasRoot, err := h.repo.HasRootUser()
+	if roleID == coreauth.RoleIDRoot {
+		hasRoot, err := h.userManager.HasRootUser()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 			return
@@ -81,36 +105,31 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		}
 	}
 
-	// Hash the password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Create the user
-	user := NewUser(creds.Name, creds.Email, string(passwordHash), roleID)
-	if err := h.repo.CreateUser(user); err != nil {
+	user := coreauth.NewUser(creds.Name, creds.Email, string(passwordHash), roleID)
+	if err := h.userManager.CreateUser(user); err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return
 	}
 
-	// Fetch the user with role information for the response and token generation
-	user, err = h.repo.GetUserByID(user.ID)
+	user, err = h.userManager.GetUserByID(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Generate JWT token pair (access + refresh)
 	tokenPair, err := h.jwtService.GenerateTokenPair(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Set access token in header
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
@@ -136,7 +155,6 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Validate request structure
 	if len(req.Auth.Identity.Methods) == 0 || req.Auth.Identity.Methods[0] != "password" {
 		c.JSON(http.StatusBadRequest, errors.ErrValidationFailed.WithMessage("Only password authentication method is supported").ToResponse())
 		return
@@ -148,8 +166,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Find user by name
-	user, err := h.repo.GetUserByName(creds.Name)
+	user, err := h.userManager.GetUserByName(creds.Name)
 	if err != nil {
 		if errors.Is(err, errors.ErrUserNotFound) {
 			c.JSON(http.StatusUnauthorized, errors.ErrInvalidCredentials.ToResponse())
@@ -159,20 +176,17 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(creds.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, errors.ErrInvalidCredentials.ToResponse())
 		return
 	}
 
-	// Generate JWT token pair (access + refresh)
 	tokenPair, err := h.jwtService.GenerateTokenPair(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
 
-	// Set access token in header
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
@@ -191,10 +205,8 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 
 // HandleLogout handles user logout and revokes the current JWT token
 func (h *Handler) HandleLogout(c *gin.Context) {
-	// Get token from header
 	token := c.GetHeader("X-Subject-Token")
 	if token == "" {
-		// Also check Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if t, found := strings.CutPrefix(authHeader, "Bearer "); found {
 			token = t
@@ -206,7 +218,6 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		return
 	}
 
-	// Validate the token first
 	claims, err := h.jwtService.ValidateToken(token)
 	if err != nil {
 		if errors.Is(err, errors.ErrTokenRevoked) {
@@ -217,7 +228,6 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		return
 	}
 
-	// Revoke the token
 	if err := h.jwtService.RevokeToken(token); err != nil {
 		if log != nil {
 			log.Error("Failed to revoke token", "user", claims.UserName, "user_id", claims.UserID, "error", err)
@@ -230,32 +240,10 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		log.Info("User logged out", "user", claims.UserName, "user_id", claims.UserID)
 	}
 
-	// Return 498 as specified
 	c.JSON(498, gin.H{
 		"message": "Token revoked successfully",
 		"user_id": claims.UserID,
 	})
-}
-
-// ExtractTokenFromRequest extracts JWT token from request headers
-func ExtractTokenFromRequest(c *gin.Context) string {
-	// Check X-Subject-Token header first
-	token := c.GetHeader("X-Subject-Token")
-	if token != "" {
-		return token
-	}
-
-	// Check Authorization header
-	if token, found := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); found {
-		return token
-	}
-
-	return ""
-}
-
-// RefreshRequest represents the refresh token request body
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
 }
 
 // HandleRefresh handles token refresh requests
@@ -271,7 +259,6 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 		return
 	}
 
-	// Refresh the access token
 	tokenPair, user, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
 		status := errors.GetHTTPStatus(err)
@@ -283,7 +270,6 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 		log.Debug("Token refreshed", "user", user.Name, "user_id", user.ID)
 	}
 
-	// Set new access token in header
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  tokenPair.AccessToken,
@@ -302,10 +288,8 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 
 // HandleValidate validates the current access token and returns user info
 func (h *Handler) HandleValidate(c *gin.Context) {
-	// Get token from header
 	token := c.GetHeader("X-Subject-Token")
 	if token == "" {
-		// Also check Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if t, found := strings.CutPrefix(authHeader, "Bearer "); found {
 			token = t
@@ -317,7 +301,6 @@ func (h *Handler) HandleValidate(c *gin.Context) {
 		return
 	}
 
-	// Validate the token
 	claims, err := h.jwtService.ValidateToken(token)
 	if err != nil {
 		status := errors.GetHTTPStatus(err)
