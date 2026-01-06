@@ -1,0 +1,566 @@
+package downloads
+
+import (
+	"net/http"
+
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/download"
+	"github.com/gin-gonic/gin"
+)
+
+// Handler handles download-related HTTP requests
+type Handler struct {
+	distRepo        *db.DistributionRepository
+	componentRepo   *db.ComponentRepository
+	downloadManager *download.Manager
+}
+
+// Config contains configuration options for the Handler
+type Config struct {
+	DistRepo        *db.DistributionRepository
+	ComponentRepo   *db.ComponentRepository
+	DownloadManager *download.Manager
+}
+
+// NewHandler creates a new downloads handler
+func NewHandler(cfg Config) *Handler {
+	return &Handler{
+		distRepo:        cfg.DistRepo,
+		componentRepo:   cfg.ComponentRepo,
+		downloadManager: cfg.DownloadManager,
+	}
+}
+
+// DownloadJobResponse represents a download job with additional info
+type DownloadJobResponse struct {
+	db.DownloadJob
+	ComponentName string  `json:"component_name,omitempty"`
+	Progress      float64 `json:"progress"`
+}
+
+// DownloadJobsListResponse represents a list of download jobs
+type DownloadJobsListResponse struct {
+	Count int                   `json:"count"`
+	Jobs  []DownloadJobResponse `json:"jobs"`
+}
+
+// StartDownloadsRequest represents the request to start downloads
+type StartDownloadsRequest struct {
+	Components []string `json:"components"`
+}
+
+// StartDownloadsResponse represents the response after starting downloads
+type StartDownloadsResponse struct {
+	Count int                   `json:"count"`
+	Jobs  []DownloadJobResponse `json:"jobs"`
+}
+
+// calculateProgress calculates download progress as a percentage
+func calculateProgress(progressBytes, totalBytes int64) float64 {
+	if totalBytes <= 0 {
+		return 0
+	}
+	return float64(progressBytes) / float64(totalBytes) * 100
+}
+
+// HandleStartDistributionDownloads starts downloads for a distribution
+func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
+	distID := c.Param("id")
+	if distID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Write access required",
+		})
+		return
+	}
+
+	var req StartDownloadsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req = StartDownloadsRequest{}
+	}
+
+	jobs, err := h.downloadManager.CreateJobsForDistribution(dist, claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if len(req.Components) > 0 {
+		componentSet := make(map[string]bool)
+		for _, id := range req.Components {
+			componentSet[id] = true
+		}
+
+		var filteredJobs []db.DownloadJob
+		for _, job := range jobs {
+			if componentSet[job.ComponentID] {
+				filteredJobs = append(filteredJobs, job)
+			}
+		}
+		jobs = filteredJobs
+	}
+
+	response := make([]DownloadJobResponse, 0, len(jobs))
+	for _, job := range jobs {
+		resp := DownloadJobResponse{
+			DownloadJob: job,
+			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
+		}
+
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+			resp.ComponentName = component.DisplayName
+		}
+
+		response = append(response, resp)
+	}
+
+	c.JSON(http.StatusAccepted, StartDownloadsResponse{
+		Count: len(response),
+		Jobs:  response,
+	})
+}
+
+// HandleListDistributionDownloads lists download jobs for a distribution
+func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
+	distID := c.Param("id")
+	if distID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if dist.Visibility == db.VisibilityPrivate {
+		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
+			c.JSON(http.StatusForbidden, common.ErrorResponse{
+				Error:   "Forbidden",
+				Code:    http.StatusForbidden,
+				Message: "Access denied to private distribution",
+			})
+			return
+		}
+	}
+
+	jobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	response := make([]DownloadJobResponse, 0, len(jobs))
+	for _, job := range jobs {
+		resp := DownloadJobResponse{
+			DownloadJob: job,
+			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
+		}
+
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+			resp.ComponentName = component.DisplayName
+		}
+
+		response = append(response, resp)
+	}
+
+	c.JSON(http.StatusOK, DownloadJobsListResponse{
+		Count: len(response),
+		Jobs:  response,
+	})
+}
+
+// HandleGetDownloadJob returns a single download job
+func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
+	jobID := c.Param("jobId")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Job ID required",
+		})
+		return
+	}
+
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if job == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Download job not found",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(job.DistributionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if dist != nil && dist.Visibility == db.VisibilityPrivate {
+		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
+			c.JSON(http.StatusForbidden, common.ErrorResponse{
+				Error:   "Forbidden",
+				Code:    http.StatusForbidden,
+				Message: "Access denied",
+			})
+			return
+		}
+	}
+
+	resp := DownloadJobResponse{
+		DownloadJob: *job,
+		Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
+	}
+
+	if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+		resp.ComponentName = component.DisplayName
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// HandleCancelDownload cancels a download job
+func (h *Handler) HandleCancelDownload(c *gin.Context) {
+	jobID := c.Param("jobId")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Job ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if job == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Download job not found",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(job.DistributionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Write access required",
+		})
+		return
+	}
+
+	if err := h.downloadManager.CancelJob(jobID); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// HandleRetryDownload retries a failed download job
+func (h *Handler) HandleRetryDownload(c *gin.Context) {
+	jobID := c.Param("jobId")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Job ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	job, err := h.downloadManager.JobRepo().GetByID(jobID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if job == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Download job not found",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(job.DistributionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Write access required",
+		})
+		return
+	}
+
+	if err := h.downloadManager.RetryJob(jobID); err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	job, _ = h.downloadManager.JobRepo().GetByID(jobID)
+	if job != nil {
+		resp := DownloadJobResponse{
+			DownloadJob: *job,
+			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
+		}
+
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+			resp.ComponentName = component.DisplayName
+		}
+
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	c.Status(http.StatusAccepted)
+}
+
+// HandleListActiveDownloads lists all active downloads (admin only)
+func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
+	jobs, err := h.downloadManager.JobRepo().ListActive()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	response := make([]DownloadJobResponse, 0, len(jobs))
+	for _, job := range jobs {
+		resp := DownloadJobResponse{
+			DownloadJob: job,
+			Progress:    calculateProgress(job.ProgressBytes, job.TotalBytes),
+		}
+
+		if component, err := h.componentRepo.GetByID(job.ComponentID); err == nil && component != nil {
+			resp.ComponentName = component.DisplayName
+		}
+
+		response = append(response, resp)
+	}
+
+	c.JSON(http.StatusOK, DownloadJobsListResponse{
+		Count: len(response),
+		Jobs:  response,
+	})
+}
+
+// HandleFlushDistributionDownloads deletes all download jobs for a distribution
+func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
+	distID := c.Param("id")
+	if distID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Write access required",
+		})
+		return
+	}
+
+	activeJobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	for _, job := range activeJobs {
+		if job.Status == "pending" || job.Status == "verifying" || job.Status == "downloading" {
+			_ = h.downloadManager.CancelJob(job.ID)
+		}
+	}
+
+	if err := h.downloadManager.JobRepo().DeleteByDistribution(distID); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

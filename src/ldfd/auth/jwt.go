@@ -17,7 +17,7 @@ type JWTService struct {
 	issuer               string
 	tokenDuration        time.Duration
 	refreshTokenDuration time.Duration
-	repo                 *Repository
+	userManager          *UserManager
 }
 
 // JWTConfig holds JWT service configuration
@@ -53,7 +53,7 @@ type SettingsStore interface {
 }
 
 // NewJWTService creates a new JWT service with persistent secret key
-func NewJWTService(cfg JWTConfig, repo *Repository, settings SettingsStore) *JWTService {
+func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsStore) *JWTService {
 	// Try to get existing secret key from settings
 	secretKey, err := settings.GetSetting("jwt_secret")
 	if err != nil || secretKey == "" {
@@ -67,7 +67,7 @@ func NewJWTService(cfg JWTConfig, repo *Repository, settings SettingsStore) *JWT
 		issuer:               cfg.Issuer,
 		tokenDuration:        cfg.TokenDuration,
 		refreshTokenDuration: cfg.RefreshTokenDuration,
-		repo:                 repo,
+		userManager:          userManager,
 	}
 }
 
@@ -93,7 +93,7 @@ type TokenPair struct {
 // GenerateToken generates a new JWT access token for a user
 func (s *JWTService) GenerateToken(user *User) (string, error) {
 	// Fetch the role to get permissions
-	role, err := s.repo.GetRoleByID(user.RoleID)
+	role, err := s.userManager.GetRoleByID(user.RoleID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get user role: %w", err)
 	}
@@ -137,7 +137,7 @@ func (s *JWTService) GenerateTokenPair(user *User) (*TokenPair, error) {
 	}
 
 	// Generate refresh token
-	refreshToken, _, err := s.repo.CreateRefreshToken(user.ID)
+	refreshToken, _, err := s.userManager.CreateRefreshToken(user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
@@ -156,16 +156,16 @@ func (s *JWTService) GenerateTokenPair(user *User) (*TokenPair, error) {
 // RefreshAccessToken validates a refresh token and generates a new access token
 func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User, error) {
 	// Validate the refresh token
-	rt, err := s.repo.ValidateRefreshToken(refreshToken)
+	rt, err := s.userManager.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Update last used timestamp
-	s.repo.UpdateRefreshTokenLastUsed(rt.ID)
+	s.userManager.UpdateRefreshTokenLastUsed(rt.ID)
 
 	// Get the user
-	user, err := s.repo.GetUserByID(rt.UserID)
+	user, err := s.userManager.GetUserByID(rt.UserID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -210,8 +210,8 @@ func (s *JWTService) ValidateToken(tokenString string) (*TokenClaims, error) {
 	}
 
 	// Check if token has been revoked
-	if s.repo != nil {
-		revoked, err := s.repo.IsTokenRevoked(claims.ID)
+	if s.userManager != nil {
+		revoked, err := s.userManager.IsTokenRevoked(claims.ID)
 		if err != nil {
 			return nil, errors.ErrDatabaseQuery.WithCause(err)
 		}
@@ -253,7 +253,7 @@ func (s *JWTService) RevokeToken(tokenString string) error {
 		expiresAt = claims.ExpiresAt.Time
 	}
 
-	return s.repo.RevokeToken(claims.ID, claims.UserID, expiresAt)
+	return s.userManager.RevokeToken(claims.ID, claims.UserID, expiresAt)
 }
 
 // GetTokenExpiry returns the token expiry time from a token string

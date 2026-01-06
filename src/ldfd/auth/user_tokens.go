@@ -7,8 +7,8 @@ import (
 )
 
 // RevokeToken adds a token to the revoked tokens list
-func (r *Repository) RevokeToken(tokenID, userID string, expiresAt time.Time) error {
-	_, err := r.db.Exec(`
+func (m *UserManager) RevokeToken(tokenID, userID string, expiresAt time.Time) error {
+	_, err := m.db.Exec(`
 		INSERT OR REPLACE INTO revoked_tokens (token_id, user_id, revoked_at, expires_at)
 		VALUES (?, ?, ?, ?)
 	`, tokenID, userID, time.Now().UTC(), expiresAt)
@@ -21,17 +21,17 @@ func (r *Repository) RevokeToken(tokenID, userID string, expiresAt time.Time) er
 }
 
 // IsTokenRevoked checks if a token has been revoked
-func (r *Repository) IsTokenRevoked(tokenID string) (bool, error) {
+func (m *UserManager) IsTokenRevoked(tokenID string) (bool, error) {
 	var count int
-	if err := r.db.QueryRow("SELECT COUNT(*) FROM revoked_tokens WHERE token_id = ?", tokenID).Scan(&count); err != nil {
+	if err := m.db.QueryRow("SELECT COUNT(*) FROM revoked_tokens WHERE token_id = ?", tokenID).Scan(&count); err != nil {
 		return false, errors.ErrDatabaseQuery.WithCause(err)
 	}
 	return count > 0, nil
 }
 
 // CleanupExpiredTokens removes revoked tokens that have passed their expiry time
-func (r *Repository) CleanupExpiredTokens() error {
-	_, err := r.db.Exec("DELETE FROM revoked_tokens WHERE expires_at < ?", time.Now().UTC())
+func (m *UserManager) CleanupExpiredTokens() error {
+	_, err := m.db.Exec("DELETE FROM revoked_tokens WHERE expires_at < ?", time.Now().UTC())
 	if err != nil {
 		return errors.ErrDatabaseQuery.WithCause(err)
 	}

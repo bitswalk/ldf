@@ -522,7 +522,7 @@ func containsIgnoreCase(s, substr string) bool {
 
 // getSourceType determines if a source is "default" or "user"
 // Deprecated: Use db.GetSourceType() directly instead
-func (m *Manager) getSourceType(source *db.Source) string {
+func (m *Manager) getSourceType(source *db.UpstreamSource) string {
 	return db.GetSourceType(source)
 }
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/bitswalk/ldf/src/common/errors"
+	coreauth "github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,7 +35,7 @@ type RoleUpdateRequest struct {
 
 // HandleListRoles returns all available roles
 func (h *Handler) HandleListRoles(c *gin.Context) {
-	roles, err := h.repo.ListRoles()
+	roles, err := h.userManager.ListRoles()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
@@ -49,7 +50,7 @@ func (h *Handler) HandleListRoles(c *gin.Context) {
 func (h *Handler) HandleGetRole(c *gin.Context) {
 	id := c.Param("id")
 
-	role, err := h.repo.GetRoleByID(id)
+	role, err := h.userManager.GetRoleByID(id)
 	if err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
@@ -69,9 +70,8 @@ func (h *Handler) HandleCreateRole(c *gin.Context) {
 		return
 	}
 
-	// Validate parent role if specified
 	if req.ParentRoleID != "" {
-		_, err := h.repo.GetRoleByID(req.ParentRoleID)
+		_, err := h.userManager.GetRoleByID(req.ParentRoleID)
 		if err != nil {
 			if errors.Is(err, errors.ErrRoleNotFound) {
 				c.JSON(http.StatusBadRequest, errors.ErrRoleNotFound.WithMessage("Parent role not found").ToResponse())
@@ -82,14 +82,14 @@ func (h *Handler) HandleCreateRole(c *gin.Context) {
 		}
 	}
 
-	role := NewRole(req.Name, req.Description, RolePermissions{
+	role := coreauth.NewRole(req.Name, req.Description, coreauth.RolePermissions{
 		CanRead:   req.Permissions.CanRead,
 		CanWrite:  req.Permissions.CanWrite,
 		CanDelete: req.Permissions.CanDelete,
 		CanAdmin:  req.Permissions.CanAdmin,
 	}, req.ParentRoleID)
 
-	if err := h.repo.CreateRole(role); err != nil {
+	if err := h.userManager.CreateRole(role); err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return
@@ -110,15 +110,13 @@ func (h *Handler) HandleUpdateRole(c *gin.Context) {
 		return
 	}
 
-	// Fetch existing role
-	role, err := h.repo.GetRoleByID(id)
+	role, err := h.userManager.GetRoleByID(id)
 	if err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return
 	}
 
-	// Apply updates
 	if req.Name != "" {
 		role.Name = req.Name
 	}
@@ -126,7 +124,7 @@ func (h *Handler) HandleUpdateRole(c *gin.Context) {
 		role.Description = req.Description
 	}
 	if req.Permissions != nil {
-		role.Permissions = RolePermissions{
+		role.Permissions = coreauth.RolePermissions{
 			CanRead:   req.Permissions.CanRead,
 			CanWrite:  req.Permissions.CanWrite,
 			CanDelete: req.Permissions.CanDelete,
@@ -134,7 +132,7 @@ func (h *Handler) HandleUpdateRole(c *gin.Context) {
 		}
 	}
 
-	if err := h.repo.UpdateRole(role); err != nil {
+	if err := h.userManager.UpdateRole(role); err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return
@@ -149,7 +147,7 @@ func (h *Handler) HandleUpdateRole(c *gin.Context) {
 func (h *Handler) HandleDeleteRole(c *gin.Context) {
 	id := c.Param("id")
 
-	if err := h.repo.DeleteRole(id); err != nil {
+	if err := h.userManager.DeleteRole(id); err != nil {
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return

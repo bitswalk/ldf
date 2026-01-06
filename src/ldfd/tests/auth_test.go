@@ -83,7 +83,7 @@ func TestUserRepository_CreateUser_RootUniqueness(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Create first root user - should succeed
 	rootUser1 := auth.NewUser("admin", "admin@example.com", "hashedpass", auth.RoleIDRoot)
@@ -112,7 +112,7 @@ func TestUserRepository_CreateUser_DeveloperRole(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Create multiple developer users - should all succeed
 	dev1 := auth.NewUser("dev1", "dev1@example.com", "hashedpass", auth.RoleIDDeveloper)
@@ -138,7 +138,7 @@ func TestUserRepository_CreateUser_EmailUniqueness(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	user1 := auth.NewUser("user1", "same@example.com", "hashedpass", auth.RoleIDDeveloper)
 	if err := repo.CreateUser(user1); err != nil {
@@ -156,7 +156,7 @@ func TestUserRepository_CreateUser_UsernameUniqueness(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	user1 := auth.NewUser("samename", "user1@example.com", "hashedpass", auth.RoleIDDeveloper)
 	if err := repo.CreateUser(user1); err != nil {
@@ -174,7 +174,7 @@ func TestUserRepository_CreateUser_ConcurrentRootCreation(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	const numGoroutines = 10
 	var wg sync.WaitGroup
@@ -219,7 +219,7 @@ func TestUserRepository_GetUserByName(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	user := auth.NewUser("testuser", "test@example.com", "hashedpass", auth.RoleIDDeveloper)
 	if err := repo.CreateUser(user); err != nil {
@@ -246,7 +246,7 @@ func TestUserRepository_GetUserByEmail(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	user := auth.NewUser("testuser", "test@example.com", "hashedpass", auth.RoleIDDeveloper)
 	if err := repo.CreateUser(user); err != nil {
@@ -275,7 +275,7 @@ func TestRoleRepository_GetRoleByID(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Get existing system role
 	role, err := repo.GetRoleByID(auth.RoleIDRoot)
@@ -300,7 +300,7 @@ func TestRoleRepository_GetRoleByName(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	role, err := repo.GetRoleByName("developer")
 	if err != nil {
@@ -320,7 +320,7 @@ func TestRoleRepository_ListRoles(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	roles, err := repo.ListRoles()
 	if err != nil {
@@ -347,7 +347,7 @@ func TestRoleRepository_CreateRole(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Create custom role
 	customRole := auth.NewRole("custom", "Custom role", auth.RolePermissions{
@@ -380,7 +380,7 @@ func TestRoleRepository_UpdateRole_SystemRole(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Try to update system role - should fail
 	role, err := repo.GetRoleByID(auth.RoleIDRoot)
@@ -399,7 +399,7 @@ func TestRoleRepository_DeleteRole_SystemRole(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Try to delete system role - should fail
 	err := repo.DeleteRole(auth.RoleIDRoot)
@@ -412,7 +412,7 @@ func TestRoleRepository_DeleteRole_CustomRole(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Create and then delete custom role
 	customRole := auth.NewRole("todelete", "To be deleted", auth.RolePermissions{}, "")
@@ -439,7 +439,7 @@ func TestTokenRepository_RevokeAndCheckToken(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
-	repo := auth.NewRepository(db)
+	repo := auth.NewUserManager(db)
 
 	// Create a user first
 	user := auth.NewUser("testuser", "test@example.com", "hashedpass", auth.RoleIDDeveloper)
