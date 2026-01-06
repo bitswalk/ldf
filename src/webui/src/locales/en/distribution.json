@@ -163,6 +163,10 @@
       "previous": "Previous",
       "next": "Next",
       "create": "Create Distribution"
+    },
+    "version": {
+      "notSynced": "Not synced",
+      "loading": "Loading..."
     }
   },
   "editForm": {

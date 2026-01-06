@@ -18,12 +18,12 @@ import {
 import {
   listComponents,
   groupByCategory,
+  resolveVersionRule,
   type Component as LDFComponent,
+  type VersionRule,
 } from "../../services/components";
-import {
-  SearchableSelect,
-  type SearchableSelectOption,
-} from "../SearchableSelect";
+import { ComponentVersionModal } from "../ComponentVersionModal";
+import { Icon } from "../Icon";
 
 // Component option structure for form display
 interface ComponentOption {
@@ -54,17 +54,24 @@ interface DistributionFormData {
   name: string;
   kernelVersion: string;
   bootloader: string;
+  bootloaderVersion?: string;
   partitioningType: string;
   initSystem: string;
+  initSystemVersion?: string;
   filesystem: string;
+  filesystemVersion?: string;
   partitioning: string;
   filesystemHierarchy: string;
   packageManager: string;
   securitySystem: string;
+  securitySystemVersion?: string;
   containerRuntime: string;
+  containerRuntimeVersion?: string;
   virtualizationRuntime: string;
+  virtualizationRuntimeVersion?: string;
   distributionType: string;
   desktopEnvironment?: string;
+  desktopEnvironmentVersion?: string;
 }
 
 // Final JSON structure to send to LDF server
@@ -75,6 +82,7 @@ interface LDFDistributionConfig {
       version: string;
     };
     bootloader: string;
+    bootloader_version?: string;
     partitioning: {
       type: string;
       mode: string;
@@ -82,23 +90,29 @@ interface LDFDistributionConfig {
   };
   system: {
     init: string;
+    init_version?: string;
     filesystem: {
       type: string;
       hierarchy: string;
     };
+    filesystem_version?: string;
     packageManager: string;
   };
   security: {
     system: string;
+    system_version?: string;
   };
   runtime: {
     container: string;
+    container_version?: string;
     virtualization: string;
+    virtualization_version?: string;
   };
   target: {
     type: string;
     desktop?: {
       environment: string;
+      environment_version?: string;
       displayServer: "wayland";
     };
   };
@@ -276,8 +290,14 @@ const staticOptions = {
   ],
 };
 
+// Result type for fetching components with full data
+interface FetchComponentsResult {
+  options: ComponentsByCategory;
+  componentMap: Record<string, LDFComponent>;
+}
+
 // Function to fetch and group components by category
-async function fetchComponentOptions(): Promise<ComponentsByCategory> {
+async function fetchComponentOptions(): Promise<FetchComponentsResult> {
   const defaultOptions: ComponentsByCategory = {
     bootloader: [],
     init: [],
@@ -289,14 +309,25 @@ async function fetchComponentOptions(): Promise<ComponentsByCategory> {
     ...staticOptions,
   };
 
+  const defaultResult: FetchComponentsResult = {
+    options: defaultOptions,
+    componentMap: {},
+  };
+
   try {
     const result = await listComponents();
     if (!result.success) {
       debugLog("Failed to fetch components:", result.message);
-      return defaultOptions;
+      return defaultResult;
     }
 
     const grouped = groupByCategory(result.components);
+
+    // Build a map of component name to full component object
+    const componentMap: Record<string, LDFComponent> = {};
+    result.components.forEach((c) => {
+      componentMap[c.name] = c;
+    });
 
     // Map components to option format
     const mapToOptions = (
@@ -316,41 +347,240 @@ async function fetchComponentOptions(): Promise<ComponentsByCategory> {
     };
 
     return {
-      bootloader: mapToOptions(grouped["bootloader"]),
-      init: mapToOptions(grouped["init"]),
-      filesystem: mapToOptions(grouped["filesystem"]),
-      security: withNoneOption(mapToOptions(grouped["security"])),
-      container: withNoneOption(mapToOptions(grouped["container"])),
-      virtualization: withNoneOption(mapToOptions(grouped["virtualization"])),
-      desktop: mapToOptions(grouped["desktop"]),
-      ...staticOptions,
+      options: {
+        bootloader: mapToOptions(grouped["bootloader"]),
+        init: mapToOptions(grouped["init"]),
+        filesystem: mapToOptions(grouped["filesystem"]),
+        security: withNoneOption(mapToOptions(grouped["security"])),
+        container: withNoneOption(mapToOptions(grouped["container"])),
+        virtualization: withNoneOption(mapToOptions(grouped["virtualization"])),
+        desktop: mapToOptions(grouped["desktop"]),
+        ...staticOptions,
+      },
+      componentMap,
     };
   } catch (err) {
     debugLog("Error fetching components:", err);
-    return defaultOptions;
+    return defaultResult;
   }
 }
+
+// Version field mapping type
+type VersionFieldKey =
+  | "kernelVersion"
+  | "bootloaderVersion"
+  | "initSystemVersion"
+  | "filesystemVersion"
+  | "securitySystemVersion"
+  | "containerRuntimeVersion"
+  | "virtualizationRuntimeVersion"
+  | "desktopEnvironmentVersion";
+
+// Mapping from component field to version field
+const VERSION_FIELD_MAP: Record<string, VersionFieldKey> = {
+  kernel: "kernelVersion",
+  bootloader: "bootloaderVersion",
+  initSystem: "initSystemVersion",
+  filesystem: "filesystemVersion",
+  securitySystem: "securitySystemVersion",
+  containerRuntime: "containerRuntimeVersion",
+  virtualizationRuntime: "virtualizationRuntimeVersion",
+  desktopEnvironment: "desktopEnvironmentVersion",
+};
 
 export const DistributionForm: Component<DistributionFormProps> = (props) => {
   const [currentStep, setCurrentStep] = createSignal(1);
   const [kernelVersions] = createResource(fetchKernelVersions);
-  const [componentOptions] = createResource(fetchComponentOptions);
+  const [componentsData] = createResource(fetchComponentOptions);
   const [formData, setFormData] = createSignal<DistributionFormData>({
     name: "",
     kernelVersion: "",
     bootloader: "",
+    bootloaderVersion: undefined,
     partitioningType: "",
     initSystem: "",
+    initSystemVersion: undefined,
     filesystem: "",
+    filesystemVersion: undefined,
     partitioning: "",
     filesystemHierarchy: "",
     packageManager: "",
     securitySystem: "",
+    securitySystemVersion: undefined,
     containerRuntime: "",
+    containerRuntimeVersion: undefined,
     virtualizationRuntime: "",
+    virtualizationRuntimeVersion: undefined,
     distributionType: "",
     desktopEnvironment: "",
+    desktopEnvironmentVersion: undefined,
   });
+
+  // Version modal state
+  const [versionModalField, setVersionModalField] = createSignal<string | null>(
+    null,
+  );
+  const [resolvedVersions, setResolvedVersions] = createSignal<
+    Record<string, string>
+  >({});
+
+  // Helper to get component options
+  const componentOptions = () => componentsData()?.options;
+
+  // Helper to get component map
+  const componentMap = () => componentsData()?.componentMap || {};
+
+  // Get selected component for version modal
+  const selectedComponentForModal = createMemo(() => {
+    const field = versionModalField();
+    if (!field) return null;
+
+    const data = formData();
+    let componentName: string | undefined;
+
+    // Map field to component name
+    switch (field) {
+      case "kernel":
+        componentName = "kernel";
+        break;
+      case "bootloader":
+        componentName = data.bootloader;
+        break;
+      case "initSystem":
+        componentName = data.initSystem;
+        break;
+      case "filesystem":
+        componentName = data.filesystem;
+        break;
+      case "securitySystem":
+        componentName = data.securitySystem;
+        break;
+      case "containerRuntime":
+        componentName = data.containerRuntime;
+        break;
+      case "virtualizationRuntime":
+        componentName = data.virtualizationRuntime;
+        break;
+      case "desktopEnvironment":
+        componentName = data.desktopEnvironment;
+        break;
+    }
+
+    if (!componentName || componentName === "none") return null;
+    return componentMap()[componentName] || null;
+  });
+
+  // Resolve default version for a component
+  const resolveDefaultVersionFor = async (componentName: string) => {
+    const component = componentMap()[componentName];
+    if (!component) return;
+
+    const rule = component.default_version_rule || "latest-stable";
+    if (rule === "pinned" && component.default_version) {
+      setResolvedVersions((prev) => ({
+        ...prev,
+        [componentName]: component.default_version!,
+      }));
+      return;
+    }
+
+    const result = await resolveVersionRule(component.id, rule);
+    if (result.success && result.data.resolved_version) {
+      setResolvedVersions((prev) => ({
+        ...prev,
+        [componentName]: result.data.resolved_version,
+      }));
+    }
+  };
+
+  // Handle version selection from modal
+  const handleVersionSelect = (version: string | undefined) => {
+    const field = versionModalField();
+    if (!field) return;
+
+    const versionField = VERSION_FIELD_MAP[field];
+    if (versionField) {
+      updateFormData(versionField, version || "");
+    }
+    setVersionModalField(null);
+  };
+
+  // Get current version for a field (either selected or resolved default)
+  const getDisplayVersion = (
+    field: string,
+    componentName: string | undefined,
+  ): string => {
+    if (!componentName || componentName === "none") return "";
+
+    const versionField = VERSION_FIELD_MAP[field];
+    const selectedVersion = versionField
+      ? (formData()[versionField] as string)
+      : undefined;
+    if (selectedVersion) return selectedVersion;
+
+    return resolvedVersions()[componentName] || "";
+  };
+
+  // Check if a component has synced versions available
+  const componentHasVersions = (componentName: string): boolean => {
+    // For kernel, check the kernelVersions resource
+    if (componentName === "kernel") {
+      return (kernelVersions()?.length ?? 0) > 0;
+    }
+    // For other components, we check if there's a resolved version
+    // (if resolving worked, versions exist)
+    return !!resolvedVersions()[componentName];
+  };
+
+  // Version badge component
+  const VersionBadge = (badgeProps: {
+    field: string;
+    componentName: string | undefined;
+  }) => {
+    const displayVersion = () => {
+      if (!badgeProps.componentName || badgeProps.componentName === "none")
+        return "";
+
+      const version = getDisplayVersion(
+        badgeProps.field,
+        badgeProps.componentName,
+      );
+      if (version) return version;
+
+      // Check if we're still loading
+      if (!componentHasVersions(badgeProps.componentName)) {
+        return t("distribution.form.version.notSynced");
+      }
+      return t("distribution.form.version.loading");
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (badgeProps.componentName && badgeProps.componentName !== "none") {
+        // Trigger version resolution if not already done
+        if (!resolvedVersions()[badgeProps.componentName]) {
+          resolveDefaultVersionFor(badgeProps.componentName);
+        }
+        setVersionModalField(badgeProps.field);
+      }
+    };
+
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        class="text-xs px-2 py-0.5 rounded-full bg-muted hover:bg-primary/20 font-mono transition-colors flex items-center gap-1"
+      >
+        <data
+          value={getDisplayVersion(badgeProps.field, badgeProps.componentName)}
+        >
+          {displayVersion()}
+        </data>
+        <Icon name="caret-down" size="xs" />
+      </button>
+    );
+  };
 
   const updateFormData = (field: keyof DistributionFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -370,15 +600,29 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
   const handleSubmit = () => {
     const data = formData();
+    const resolved = resolvedVersions();
+
+    // Helper to get version: use selected version or fall back to resolved default
+    const getVersion = (
+      selectedVersion: string | undefined,
+      componentName: string | undefined,
+    ): string | undefined => {
+      if (selectedVersion) return selectedVersion;
+      if (componentName && componentName !== "none") {
+        return resolved[componentName] || undefined;
+      }
+      return undefined;
+    };
 
     // Transform form data into LDF server JSON format
     const ldfConfig: LDFDistributionConfig = {
       name: data.name.trim() || `custom-distribution-${Date.now()}`,
       core: {
         kernel: {
-          version: data.kernelVersion,
+          version: data.kernelVersion || resolved["kernel"] || "",
         },
         bootloader: data.bootloader,
+        bootloader_version: getVersion(data.bootloaderVersion, data.bootloader),
         partitioning: {
           type: data.partitioningType,
           mode: data.partitioning,
@@ -386,18 +630,35 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
       },
       system: {
         init: data.initSystem,
+        init_version: getVersion(data.initSystemVersion, data.initSystem),
         filesystem: {
           type: data.filesystem,
           hierarchy: data.filesystemHierarchy,
         },
+        filesystem_version: getVersion(data.filesystemVersion, data.filesystem),
         packageManager: data.packageManager,
       },
       security: {
         system: data.securitySystem,
+        system_version:
+          data.securitySystem !== "none"
+            ? getVersion(data.securitySystemVersion, data.securitySystem)
+            : undefined,
       },
       runtime: {
         container: data.containerRuntime,
+        container_version:
+          data.containerRuntime !== "none"
+            ? getVersion(data.containerRuntimeVersion, data.containerRuntime)
+            : undefined,
         virtualization: data.virtualizationRuntime,
+        virtualization_version:
+          data.virtualizationRuntime !== "none"
+            ? getVersion(
+                data.virtualizationRuntimeVersion,
+                data.virtualizationRuntime,
+              )
+            : undefined,
       },
       target: {
         type: data.distributionType,
@@ -405,6 +666,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
           ? {
               desktop: {
                 environment: data.desktopEnvironment,
+                environment_version: getVersion(
+                  data.desktopEnvironmentVersion,
+                  data.desktopEnvironment,
+                ),
                 displayServer: "wayland" as const,
               },
             }
@@ -520,66 +785,29 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
             </div>
 
             {/* Kernel Version */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.kernelVersion.label")}
-              </label>
+              </legend>
+              <figure class="flex items-center justify-between p-3 border border-border rounded-md bg-background">
+                <figcaption class="font-medium">Linux Kernel</figcaption>
+                <VersionBadge field="kernel" componentName="kernel" />
+              </figure>
               <Show
                 when={!kernelVersions.loading && kernelVersions()?.length === 0}
-                fallback={
-                  <SearchableSelect
-                    value={formData().kernelVersion}
-                    options={
-                      (kernelVersions() || []).map((kernel) => ({
-                        value: kernel.version,
-                        label: kernel.version,
-                        sublabel: kernel.type,
-                      })) as SearchableSelectOption[]
-                    }
-                    onChange={(value) => updateFormData("kernelVersion", value)}
-                    placeholder={
-                      kernelVersions.loading
-                        ? t("distribution.form.fields.kernelVersion.loading")
-                        : t(
-                            "distribution.form.fields.kernelVersion.placeholder",
-                          )
-                    }
-                    searchPlaceholder={t(
-                      "distribution.form.fields.kernelVersion.searchPlaceholder",
-                    )}
-                    loading={kernelVersions.loading}
-                    maxDisplayed={50}
-                    fullWidth
-                  />
-                }
               >
-                <select
-                  class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary appearance-none"
-                  style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25rem; padding-right: 2.5rem;"
-                  value={formData().kernelVersion}
-                  onChange={(e) =>
-                    updateFormData("kernelVersion", e.target.value)
-                  }
-                >
-                  <option value="">
-                    {t("distribution.form.fields.kernelVersion.placeholder")}
-                  </option>
-                  <option value="none">
-                    {t("distribution.form.fields.kernelVersion.none")}
-                  </option>
-                </select>
                 <p class="text-xs text-muted-foreground">
                   {t("distribution.form.fields.kernelVersion.noVersionsHint")}
                 </p>
               </Show>
-            </div>
+            </fieldset>
 
             {/* Bootloader */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.bootloader")}
-              </label>
-              <div class="grid grid-cols-1 gap-2">
+              </legend>
+              <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.bootloader || []}>
                   {(bootloader) => (
                     <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -588,22 +816,32 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="bootloader"
                         value={bootloader.id}
                         checked={formData().bootloader === bootloader.id}
-                        onChange={(e) =>
-                          updateFormData("bootloader", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateFormData("bootloader", e.target.value);
+                          // Trigger version resolution when selecting
+                          resolveDefaultVersionFor(e.target.value);
+                        }}
                         class="mr-3 mt-0.5"
                       />
-                      <div>
-                        <div class="font-medium">{bootloader.name}</div>
-                        <div class="text-sm text-muted-foreground">
+                      <article class="flex-1">
+                        <header class="flex items-center justify-between">
+                          <strong class="font-medium">{bootloader.name}</strong>
+                          <Show when={formData().bootloader === bootloader.id}>
+                            <VersionBadge
+                              field="bootloader"
+                              componentName={bootloader.id}
+                            />
+                          </Show>
+                        </header>
+                        <p class="text-sm text-muted-foreground">
                           {bootloader.description}
-                        </div>
-                      </div>
+                        </p>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
 
             {/* Partitioning Type */}
             <div class="space-y-2">
@@ -651,11 +889,11 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
             </header>
 
             {/* Init System */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.initSystem")}
-              </label>
-              <div class="grid grid-cols-2 gap-2">
+              </legend>
+              <section class="grid grid-cols-2 gap-2">
                 <For each={componentOptions()?.init || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -664,24 +902,33 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="initSystem"
                         value={option.id}
                         checked={formData().initSystem === option.id}
-                        onChange={(e) =>
-                          updateFormData("initSystem", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateFormData("initSystem", e.target.value);
+                          resolveDefaultVersionFor(e.target.value);
+                        }}
                         class="mr-3"
                       />
-                      <span>{option.name}</span>
+                      <article class="flex-1 flex items-center justify-between">
+                        <strong class="font-medium">{option.name}</strong>
+                        <Show when={formData().initSystem === option.id}>
+                          <VersionBadge
+                            field="initSystem"
+                            componentName={option.id}
+                          />
+                        </Show>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
 
             {/* Filesystem */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.filesystem")}
-              </label>
-              <div class="grid grid-cols-3 gap-2">
+              </legend>
+              <section class="grid grid-cols-3 gap-2">
                 <For each={componentOptions()?.filesystem || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -690,17 +937,26 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="filesystem"
                         value={option.id}
                         checked={formData().filesystem === option.id}
-                        onChange={(e) =>
-                          updateFormData("filesystem", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateFormData("filesystem", e.target.value);
+                          resolveDefaultVersionFor(e.target.value);
+                        }}
                         class="mr-3"
                       />
-                      <span>{option.name}</span>
+                      <article class="flex-1 flex items-center justify-between">
+                        <strong class="font-medium">{option.name}</strong>
+                        <Show when={formData().filesystem === option.id}>
+                          <VersionBadge
+                            field="filesystem"
+                            componentName={option.id}
+                          />
+                        </Show>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
 
             {/* Partitioning */}
             <div class="space-y-2">
@@ -800,11 +1056,11 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
             </header>
 
             {/* Security System */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.securitySystem")}
-              </label>
-              <div class="grid grid-cols-1 gap-2">
+              </legend>
+              <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.security || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -813,24 +1069,40 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="securitySystem"
                         value={option.id}
                         checked={formData().securitySystem === option.id}
-                        onChange={(e) =>
-                          updateFormData("securitySystem", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateFormData("securitySystem", e.target.value);
+                          if (e.target.value !== "none") {
+                            resolveDefaultVersionFor(e.target.value);
+                          }
+                        }}
                         class="mr-3"
                       />
-                      <span>{option.name}</span>
+                      <article class="flex-1 flex items-center justify-between">
+                        <strong class="font-medium">{option.name}</strong>
+                        <Show
+                          when={
+                            formData().securitySystem === option.id &&
+                            option.id !== "none"
+                          }
+                        >
+                          <VersionBadge
+                            field="securitySystem"
+                            componentName={option.id}
+                          />
+                        </Show>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
 
             {/* Container Runtime */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.containerRuntime")}
-              </label>
-              <div class="grid grid-cols-1 gap-2">
+              </legend>
+              <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.container || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -839,24 +1111,40 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="containerRuntime"
                         value={option.id}
                         checked={formData().containerRuntime === option.id}
-                        onChange={(e) =>
-                          updateFormData("containerRuntime", e.target.value)
-                        }
+                        onChange={(e) => {
+                          updateFormData("containerRuntime", e.target.value);
+                          if (e.target.value !== "none") {
+                            resolveDefaultVersionFor(e.target.value);
+                          }
+                        }}
                         class="mr-3"
                       />
-                      <span>{option.name}</span>
+                      <article class="flex-1 flex items-center justify-between">
+                        <strong class="font-medium">{option.name}</strong>
+                        <Show
+                          when={
+                            formData().containerRuntime === option.id &&
+                            option.id !== "none"
+                          }
+                        >
+                          <VersionBadge
+                            field="containerRuntime"
+                            componentName={option.id}
+                          />
+                        </Show>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
 
             {/* Virtualization Runtime */}
-            <div class="space-y-2">
-              <label class="text-sm font-medium">
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
                 {t("distribution.form.fields.virtualizationRuntime")}
-              </label>
-              <div class="grid grid-cols-1 gap-2">
+              </legend>
+              <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.virtualization || []}>
                   {(option) => (
                     <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -865,20 +1153,36 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                         name="virtualizationRuntime"
                         value={option.id}
                         checked={formData().virtualizationRuntime === option.id}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           updateFormData(
                             "virtualizationRuntime",
                             e.target.value,
-                          )
-                        }
+                          );
+                          if (e.target.value !== "none") {
+                            resolveDefaultVersionFor(e.target.value);
+                          }
+                        }}
                         class="mr-3"
                       />
-                      <span>{option.name}</span>
+                      <article class="flex-1 flex items-center justify-between">
+                        <strong class="font-medium">{option.name}</strong>
+                        <Show
+                          when={
+                            formData().virtualizationRuntime === option.id &&
+                            option.id !== "none"
+                          }
+                        >
+                          <VersionBadge
+                            field="virtualizationRuntime"
+                            componentName={option.id}
+                          />
+                        </Show>
+                      </article>
                     </label>
                   )}
                 </For>
-              </div>
-            </div>
+              </section>
+            </fieldset>
           </article>
         </Show>
 
@@ -927,14 +1231,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
             {/* Desktop Environment (conditional) */}
             <Show when={formData().distributionType === "desktop"}>
-              <div class="space-y-2">
-                <label class="text-sm font-medium">
+              <fieldset class="space-y-2">
+                <legend class="text-sm font-medium">
                   {t("distribution.form.fields.desktopEnvironment.label")}
-                </label>
+                </legend>
                 <p class="text-xs text-muted-foreground mb-2">
                   {t("distribution.form.fields.desktopEnvironment.waylandOnly")}
                 </p>
-                <div class="grid grid-cols-1 gap-2">
+                <section class="grid grid-cols-1 gap-2">
                   <For each={componentOptions()?.desktop || []}>
                     {(option) => (
                       <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
@@ -943,17 +1247,31 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                           name="desktopEnvironment"
                           value={option.id}
                           checked={formData().desktopEnvironment === option.id}
-                          onChange={(e) =>
-                            updateFormData("desktopEnvironment", e.target.value)
-                          }
+                          onChange={(e) => {
+                            updateFormData(
+                              "desktopEnvironment",
+                              e.target.value,
+                            );
+                            resolveDefaultVersionFor(e.target.value);
+                          }}
                           class="mr-3"
                         />
-                        <span>{option.name}</span>
+                        <article class="flex-1 flex items-center justify-between">
+                          <strong class="font-medium">{option.name}</strong>
+                          <Show
+                            when={formData().desktopEnvironment === option.id}
+                          >
+                            <VersionBadge
+                              field="desktopEnvironment"
+                              componentName={option.id}
+                            />
+                          </Show>
+                        </article>
                       </label>
                     )}
                   </For>
-                </div>
-              </div>
+                </section>
+              </fieldset>
             </Show>
           </article>
         </Show>
@@ -1004,6 +1322,23 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
           </Show>
         </div>
       </section>
+
+      {/* Version Selection Modal */}
+      <Show when={versionModalField() && selectedComponentForModal()}>
+        <ComponentVersionModal
+          isOpen={!!versionModalField()}
+          onClose={() => setVersionModalField(null)}
+          component={selectedComponentForModal()!}
+          currentVersion={
+            versionModalField()
+              ? (formData()[
+                  VERSION_FIELD_MAP[versionModalField()!]
+                ] as string) || undefined
+              : undefined
+          }
+          onSelectVersion={handleVersionSelect}
+        />
+      </Show>
     </form>
   );
 };
