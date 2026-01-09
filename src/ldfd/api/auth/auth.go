@@ -18,46 +18,12 @@ func SetLogger(l *logs.Logger) {
 	log = l
 }
 
-// Handler handles authentication HTTP requests
-type Handler struct {
-	userManager *coreauth.UserManager
-	jwtService  *coreauth.JWTService
-}
-
-// Config contains configuration options for the Handler
-type Config struct {
-	UserManager *coreauth.UserManager
-	JWTService  *coreauth.JWTService
-}
-
 // NewHandler creates a new auth handler
 func NewHandler(cfg Config) *Handler {
 	return &Handler{
 		userManager: cfg.UserManager,
 		jwtService:  cfg.JWTService,
 	}
-}
-
-// AuthRequest represents the authentication request structure
-type AuthRequest struct {
-	Auth struct {
-		Identity struct {
-			Methods  []string `json:"methods"`
-			Password struct {
-				User struct {
-					Name     string `json:"name"`
-					Password string `json:"password"`
-					Email    string `json:"email"`
-					Role     string `json:"role"`
-				} `json:"user"`
-			} `json:"password"`
-		} `json:"identity"`
-	} `json:"auth"`
-}
-
-// RefreshRequest represents the refresh token request body
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
 }
 
 // HandleCreate handles user registration and creates a new user account

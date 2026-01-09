@@ -5,7 +5,33 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/common/errors"
+	"github.com/google/uuid"
 )
+
+// NewRole creates a new custom role
+func NewRole(name, description string, permissions RolePermissions, parentRoleID string) *RoleRecord {
+	now := time.Now().UTC()
+	return &RoleRecord{
+		ID:           uuid.New().String(),
+		Name:         name,
+		Description:  description,
+		Permissions:  permissions,
+		IsSystem:     false,
+		ParentRoleID: parentRoleID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+}
+
+// GetDefaultRoleID returns the ID of the default role for new users
+func GetDefaultRoleID() string {
+	return RoleIDDeveloper
+}
+
+// IsSystemRoleName checks if a role name is a system role
+func IsSystemRoleName(name string) bool {
+	return name == "root" || name == "developer" || name == "anonymous"
+}
 
 // GetRoleByID retrieves a role by ID
 func (m *UserManager) GetRoleByID(id string) (*RoleRecord, error) {
@@ -111,7 +137,7 @@ func (m *UserManager) ListRoles() ([]RoleRecord, error) {
 	return roles, nil
 }
 
-// CreateRole creates a new custom role
+// CreateRole creates a new custom role in the database
 func (m *UserManager) CreateRole(role *RoleRecord) error {
 	// Check if name already exists
 	_, err := m.GetRoleByName(role.Name)
