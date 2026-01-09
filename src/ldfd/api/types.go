@@ -1,6 +1,56 @@
 package api
 
-import "github.com/bitswalk/ldf/src/ldfd/api/common"
+import (
+	"github.com/bitswalk/ldf/src/ldfd/api/artifacts"
+	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
+	"github.com/bitswalk/ldf/src/ldfd/api/base"
+	"github.com/bitswalk/ldf/src/ldfd/api/branding"
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/api/components"
+	"github.com/bitswalk/ldf/src/ldfd/api/distributions"
+	"github.com/bitswalk/ldf/src/ldfd/api/downloads"
+	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
+	"github.com/bitswalk/ldf/src/ldfd/api/settings"
+	"github.com/bitswalk/ldf/src/ldfd/api/sources"
+	"github.com/bitswalk/ldf/src/ldfd/auth"
+	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/download"
+	"github.com/bitswalk/ldf/src/ldfd/storage"
+)
 
 // ErrorResponse is an alias to common.ErrorResponse for backwards compatibility
 type ErrorResponse = common.ErrorResponse
+
+// API holds all handler instances and dependencies
+type API struct {
+	// Subpackage handlers
+	Base          *base.Handler
+	Auth          *apiauth.Handler
+	Distributions *distributions.Handler
+	Components    *components.Handler
+	Sources       *sources.Handler
+	Downloads     *downloads.Handler
+	Artifacts     *artifacts.Handler
+	Branding      *branding.Handler
+	LangPacks     *langpacks.Handler
+	Settings      *settings.Handler
+
+	// Direct dependencies for middleware
+	jwtService *auth.JWTService
+	storage    storage.Backend
+}
+
+// Config contains API configuration options
+type Config struct {
+	DistRepo          *db.DistributionRepository
+	SourceRepo        *db.SourceRepository
+	ComponentRepo     *db.ComponentRepository
+	SourceVersionRepo *db.SourceVersionRepository
+	LangPackRepo      *db.LanguagePackRepository
+	Database          *db.Database
+	Storage           storage.Backend
+	UserManager       *auth.UserManager
+	JWTService        *auth.JWTService
+	DownloadManager   *download.Manager
+	VersionDiscovery  *download.VersionDiscovery
+}

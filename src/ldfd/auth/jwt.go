@@ -11,22 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// JWTService handles JWT token generation and validation
-type JWTService struct {
-	secretKey            []byte
-	issuer               string
-	tokenDuration        time.Duration
-	refreshTokenDuration time.Duration
-	userManager          *UserManager
-}
-
-// JWTConfig holds JWT service configuration
-type JWTConfig struct {
-	Issuer               string
-	TokenDuration        time.Duration
-	RefreshTokenDuration time.Duration
-}
-
 // DefaultJWTConfig returns default JWT configuration
 func DefaultJWTConfig() JWTConfig {
 	return JWTConfig{
@@ -46,12 +30,6 @@ func generateSecretKey() string {
 	return hex.EncodeToString(bytes)
 }
 
-// SettingsStore interface for getting/setting persistent settings
-type SettingsStore interface {
-	GetSetting(key string) (string, error)
-	SetSetting(key, value string) error
-}
-
 // NewJWTService creates a new JWT service with persistent secret key
 func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsStore) *JWTService {
 	// Try to get existing secret key from settings
@@ -69,25 +47,6 @@ func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsSto
 		refreshTokenDuration: cfg.RefreshTokenDuration,
 		userManager:          userManager,
 	}
-}
-
-// jwtClaims represents the full JWT claims structure
-type jwtClaims struct {
-	jwt.RegisteredClaims
-	UserID      string          `json:"user_id"`
-	UserName    string          `json:"user_name"`
-	Email       string          `json:"email"`
-	RoleID      string          `json:"role_id"`
-	RoleName    string          `json:"role"`
-	Permissions RolePermissions `json:"permissions"`
-}
-
-// TokenPair represents an access token and refresh token pair
-type TokenPair struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	ExpiresIn    int64     `json:"expires_in"` // seconds until access token expiry
 }
 
 // GenerateToken generates a new JWT access token for a user

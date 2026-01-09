@@ -3,13 +3,11 @@ package sources
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
-	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,20 +18,6 @@ func SetLogger(l *logs.Logger) {
 	log = l
 }
 
-// Handler handles source-related HTTP requests
-type Handler struct {
-	sourceRepo        *db.SourceRepository
-	sourceVersionRepo *db.SourceVersionRepository
-	versionDiscovery  *download.VersionDiscovery
-}
-
-// Config contains configuration options for the Handler
-type Config struct {
-	SourceRepo        *db.SourceRepository
-	SourceVersionRepo *db.SourceVersionRepository
-	VersionDiscovery  *download.VersionDiscovery
-}
-
 // NewHandler creates a new sources handler
 func NewHandler(cfg Config) *Handler {
 	return &Handler{
@@ -41,59 +25,6 @@ func NewHandler(cfg Config) *Handler {
 		sourceVersionRepo: cfg.SourceVersionRepo,
 		versionDiscovery:  cfg.VersionDiscovery,
 	}
-}
-
-// CreateSourceRequest represents the request to create a source
-type CreateSourceRequest struct {
-	Name            string   `json:"name" binding:"required" example:"Ubuntu Releases"`
-	URL             string   `json:"url" binding:"required,url" example:"https://releases.ubuntu.com"`
-	ComponentIDs    []string `json:"component_ids" example:"[\"uuid-of-kernel-component\"]"`
-	RetrievalMethod string   `json:"retrieval_method" example:"release"`
-	URLTemplate     string   `json:"url_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
-	Priority        int      `json:"priority" example:"10"`
-	Enabled         *bool    `json:"enabled" example:"true"`
-}
-
-// UpdateSourceRequest represents the request to update a source
-type UpdateSourceRequest struct {
-	Name            string   `json:"name" example:"Ubuntu Releases"`
-	URL             string   `json:"url" example:"https://releases.ubuntu.com"`
-	ComponentIDs    []string `json:"component_ids" example:"[\"uuid-of-kernel-component\"]"`
-	RetrievalMethod string   `json:"retrieval_method" example:"release"`
-	URLTemplate     string   `json:"url_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
-	Priority        *int     `json:"priority" example:"10"`
-	Enabled         *bool    `json:"enabled" example:"true"`
-}
-
-// SourceListResponse represents a list of sources
-type SourceListResponse struct {
-	Count   int                 `json:"count" example:"5"`
-	Sources []db.UpstreamSource `json:"sources"`
-}
-
-// DefaultSourceListResponse represents a list of default/system sources
-type DefaultSourceListResponse struct {
-	Count   int                 `json:"count" example:"3"`
-	Sources []db.UpstreamSource `json:"sources"`
-}
-
-// SourceVersionListResponse represents a list of source versions
-type SourceVersionListResponse struct {
-	Count    int                `json:"count"`
-	Total    int                `json:"total,omitempty"`
-	Versions []db.SourceVersion `json:"versions"`
-	SyncJob  *db.VersionSyncJob `json:"sync_job,omitempty"`
-}
-
-// SyncTriggerResponse represents the response when triggering a sync
-type SyncTriggerResponse struct {
-	JobID   string `json:"job_id"`
-	Message string `json:"message"`
-}
-
-// SyncStatusResponse represents the status of a sync job
-type SyncStatusResponse struct {
-	Job *db.VersionSyncJob `json:"job"`
 }
 
 // triggerAutoSync starts a background version sync for a newly created source
@@ -703,7 +634,7 @@ func (h *Handler) HandleListDefaultVersions(c *gin.Context) {
 		return
 	}
 
-	limit, offset := getPaginationParams(c)
+	limit, offset := common.GetPaginationParams(c, 500)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, "default", limit, offset, versionType)
@@ -779,7 +710,7 @@ func (h *Handler) HandleListUserVersions(c *gin.Context) {
 		return
 	}
 
-	limit, offset := getPaginationParams(c)
+	limit, offset := common.GetPaginationParams(c, 500)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, "user", limit, offset, versionType)
@@ -1074,24 +1005,4 @@ func (h *Handler) HandleGetUserSyncStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, SyncStatusResponse{
 		Job: job,
 	})
-}
-
-// getPaginationParams extracts limit and offset from query parameters
-func getPaginationParams(c *gin.Context) (int, int) {
-	limit := 50
-	offset := 0
-
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 500 {
-			limit = parsed
-		}
-	}
-
-	if o := c.Query("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
-		}
-	}
-
-	return limit, offset
 }

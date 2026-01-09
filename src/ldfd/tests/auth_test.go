@@ -1122,7 +1122,7 @@ func TestUserManager_GetUserRefreshTokenCount(t *testing.T) {
 	}
 }
 
-func TestUserManager_CleanupExpiredRefreshTokens(t *testing.T) {
+func TestUserManager_CleanupExpiredTokens(t *testing.T) {
 	db := setupAuthTestDB(t)
 	defer db.Close()
 
@@ -1138,7 +1138,7 @@ func TestUserManager_CleanupExpiredRefreshTokens(t *testing.T) {
 	userManager.RevokeRefreshToken(record.ID)
 
 	// Cleanup should not error
-	if err := userManager.CleanupExpiredRefreshTokens(); err != nil {
+	if err := userManager.CleanupExpiredTokens(); err != nil {
 		t.Fatalf("failed to cleanup: %v", err)
 	}
 }

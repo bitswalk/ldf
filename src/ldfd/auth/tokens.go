@@ -10,20 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// RefreshToken represents a refresh token stored in the database
-type RefreshToken struct {
-	ID         string    `json:"id"`
-	UserID     string    `json:"user_id"`
-	TokenHash  string    `json:"-"` // Never expose the hash
-	ExpiresAt  time.Time `json:"expires_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	LastUsedAt time.Time `json:"last_used_at,omitempty"`
-	Revoked    bool      `json:"revoked"`
-}
-
-// RefreshTokenDuration is the lifetime of a refresh token (7 days)
-const RefreshTokenDuration = 7 * 24 * time.Hour
-
 // generateRefreshToken generates a cryptographically secure random token
 func generateRefreshToken() (string, error) {
 	bytes := make([]byte, 32)
@@ -178,20 +164,6 @@ func (m *UserManager) RevokeAllUserRefreshTokens(userID string) error {
 	return nil
 }
 
-// CleanupExpiredRefreshTokens removes expired refresh tokens
-func (m *UserManager) CleanupExpiredRefreshTokens() error {
-	_, err := m.db.Exec(`
-		DELETE FROM refresh_tokens
-		WHERE expires_at < ? OR revoked = TRUE
-	`, time.Now().UTC())
-
-	if err != nil {
-		return errors.ErrDatabaseQuery.WithCause(err)
-	}
-
-	return nil
-}
-
 // GetUserRefreshTokenCount returns the count of active refresh tokens for a user
 func (m *UserManager) GetUserRefreshTokenCount(userID string) (int, error) {
 	var count int
@@ -206,4 +178,49 @@ func (m *UserManager) GetUserRefreshTokenCount(userID string) (int, error) {
 	}
 
 	return count, nil
+}
+
+// RevokeToken adds a token to the revoked tokens list
+func (m *UserManager) RevokeToken(tokenID, userID string, expiresAt time.Time) error {
+	_, err := m.db.Exec(`
+		INSERT OR REPLACE INTO revoked_tokens (token_id, user_id, revoked_at, expires_at)
+		VALUES (?, ?, ?, ?)
+	`, tokenID, userID, time.Now().UTC(), expiresAt)
+
+	if err != nil {
+		return errors.ErrDatabaseQuery.WithCause(err)
+	}
+
+	return nil
+}
+
+// IsTokenRevoked checks if a token has been revoked
+func (m *UserManager) IsTokenRevoked(tokenID string) (bool, error) {
+	var count int
+	if err := m.db.QueryRow("SELECT COUNT(*) FROM revoked_tokens WHERE token_id = ?", tokenID).Scan(&count); err != nil {
+		return false, errors.ErrDatabaseQuery.WithCause(err)
+	}
+	return count > 0, nil
+}
+
+// CleanupExpiredTokens removes expired and revoked tokens from both tables
+func (m *UserManager) CleanupExpiredTokens() error {
+	now := time.Now().UTC()
+
+	// Clean up expired/revoked refresh tokens
+	_, err := m.db.Exec(`
+		DELETE FROM refresh_tokens
+		WHERE expires_at < ? OR revoked = TRUE
+	`, now)
+	if err != nil {
+		return errors.ErrDatabaseQuery.WithCause(err)
+	}
+
+	// Clean up expired revoked tokens
+	_, err = m.db.Exec("DELETE FROM revoked_tokens WHERE expires_at < ?", now)
+	if err != nil {
+		return errors.ErrDatabaseQuery.WithCause(err)
+	}
+
+	return nil
 }

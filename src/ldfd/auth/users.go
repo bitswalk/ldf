@@ -2,9 +2,30 @@ package auth
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/bitswalk/ldf/src/common/errors"
+	"github.com/google/uuid"
 )
+
+// NewUserManager creates a new user manager
+func NewUserManager(db *sql.DB) *UserManager {
+	return &UserManager{db: db}
+}
+
+// NewUser creates a new user with a generated UUID
+func NewUser(name, email, passwordHash, roleID string) *User {
+	now := time.Now().UTC()
+	return &User{
+		ID:           uuid.New().String(),
+		Name:         name,
+		Email:        email,
+		PasswordHash: passwordHash,
+		RoleID:       roleID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+}
 
 // CreateUser creates a new user in the database using a transaction to ensure atomicity
 func (m *UserManager) CreateUser(user *User) error {

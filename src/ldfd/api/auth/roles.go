@@ -8,31 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RoleCreateRequest represents the request body for creating a new role
-type RoleCreateRequest struct {
-	Name         string `json:"name" binding:"required"`
-	Description  string `json:"description"`
-	ParentRoleID string `json:"parent_role_id"`
-	Permissions  struct {
-		CanRead   bool `json:"can_read"`
-		CanWrite  bool `json:"can_write"`
-		CanDelete bool `json:"can_delete"`
-		CanAdmin  bool `json:"can_admin"`
-	} `json:"permissions"`
-}
-
-// RoleUpdateRequest represents the request body for updating a role
-type RoleUpdateRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Permissions *struct {
-		CanRead   bool `json:"can_read"`
-		CanWrite  bool `json:"can_write"`
-		CanDelete bool `json:"can_delete"`
-		CanAdmin  bool `json:"can_admin"`
-	} `json:"permissions"`
-}
-
 // HandleListRoles returns all available roles
 func (h *Handler) HandleListRoles(c *gin.Context) {
 	roles, err := h.userManager.ListRoles()

@@ -13,10 +13,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
-	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
-	"github.com/bitswalk/ldf/src/ldfd/download"
-	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
 // SetLogger sets the logger for the api package and subpackages
@@ -30,40 +27,6 @@ func SetLogger(l *logs.Logger) {
 // SetVersionInfo sets the version info for the api package and subpackages
 func SetVersionInfo(v *version.Info) {
 	base.SetVersionInfo(v)
-}
-
-// API holds all handler instances and dependencies
-type API struct {
-	// Subpackage handlers
-	Base          *base.Handler
-	Auth          *apiauth.Handler
-	Distributions *distributions.Handler
-	Components    *components.Handler
-	Sources       *sources.Handler
-	Downloads     *downloads.Handler
-	Artifacts     *artifacts.Handler
-	Branding      *branding.Handler
-	LangPacks     *langpacks.Handler
-	Settings      *settings.Handler
-
-	// Direct dependencies for middleware
-	jwtService *auth.JWTService
-	storage    storage.Backend
-}
-
-// Config contains API configuration options
-type Config struct {
-	DistRepo          *db.DistributionRepository
-	SourceRepo        *db.SourceRepository
-	ComponentRepo     *db.ComponentRepository
-	SourceVersionRepo *db.SourceVersionRepository
-	LangPackRepo      *db.LanguagePackRepository
-	Database          *db.Database
-	Storage           storage.Backend
-	UserManager       *auth.UserManager
-	JWTService        *auth.JWTService
-	DownloadManager   *download.Manager
-	VersionDiscovery  *download.VersionDiscovery
 }
 
 // New creates a new API instance with all subpackage handlers

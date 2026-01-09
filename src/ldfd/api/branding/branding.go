@@ -10,34 +10,14 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
-	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
 )
-
-// Handler handles branding-related HTTP requests
-type Handler struct {
-	storage storage.Backend
-}
-
-// Config contains configuration options for the Handler
-type Config struct {
-	Storage storage.Backend
-}
 
 // NewHandler creates a new branding handler
 func NewHandler(cfg Config) *Handler {
 	return &Handler{
 		storage: cfg.Storage,
 	}
-}
-
-// BrandingAssetInfo represents metadata about a branding asset
-type BrandingAssetInfo struct {
-	Asset       string `json:"asset"`
-	URL         string `json:"url"`
-	ContentType string `json:"content_type"`
-	Size        int64  `json:"size"`
-	Exists      bool   `json:"exists"`
 }
 
 // validBrandingAssets defines the allowed asset types
@@ -68,40 +48,6 @@ func getBrandingStorageKey(asset string, ext string) string {
 	return fmt.Sprintf("system/%s%s", asset, ext)
 }
 
-// Error response helpers to reduce boilerplate
-
-func badRequest(c *gin.Context, message string) {
-	c.JSON(http.StatusBadRequest, common.ErrorResponse{
-		Error:   "Bad request",
-		Code:    http.StatusBadRequest,
-		Message: message,
-	})
-}
-
-func notFound(c *gin.Context, message string) {
-	c.JSON(http.StatusNotFound, common.ErrorResponse{
-		Error:   "Not found",
-		Code:    http.StatusNotFound,
-		Message: message,
-	})
-}
-
-func internalError(c *gin.Context, message string) {
-	c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-		Error:   "Internal server error",
-		Code:    http.StatusInternalServerError,
-		Message: message,
-	})
-}
-
-func serviceUnavailable(c *gin.Context, message string) {
-	c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-		Error:   "Service unavailable",
-		Code:    http.StatusServiceUnavailable,
-		Message: message,
-	})
-}
-
 // findBrandingAsset searches for an existing branding asset with any supported extension
 func (h *Handler) findBrandingAsset(ctx context.Context, asset string) (string, error) {
 	extensions := []string{".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"}
@@ -125,12 +71,12 @@ func (h *Handler) HandleGetAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
 	if !validBrandingAssets[asset] {
-		badRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
+		common.BadRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
 		return
 	}
 
 	if h.storage == nil {
-		serviceUnavailable(c, "Storage backend not configured")
+		common.ServiceUnavailable(c, "Storage backend not configured")
 		return
 	}
 
@@ -139,18 +85,18 @@ func (h *Handler) HandleGetAsset(c *gin.Context) {
 
 	key, err := h.findBrandingAsset(ctx, asset)
 	if err != nil {
-		internalError(c, fmt.Sprintf("Failed to check asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to check asset: %v", err))
 		return
 	}
 
 	if key == "" {
-		notFound(c, fmt.Sprintf("Branding asset '%s' not found", asset))
+		common.NotFound(c, fmt.Sprintf("Branding asset '%s' not found", asset))
 		return
 	}
 
 	reader, info, err := h.storage.Download(ctx, key)
 	if err != nil {
-		internalError(c, fmt.Sprintf("Failed to download asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to download asset: %v", err))
 		return
 	}
 	defer reader.Close()
@@ -185,12 +131,12 @@ func (h *Handler) HandleGetAssetInfo(c *gin.Context) {
 	asset := c.Param("asset")
 
 	if !validBrandingAssets[asset] {
-		badRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
+		common.BadRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
 		return
 	}
 
 	if h.storage == nil {
-		serviceUnavailable(c, "Storage backend not configured")
+		common.ServiceUnavailable(c, "Storage backend not configured")
 		return
 	}
 
@@ -199,7 +145,7 @@ func (h *Handler) HandleGetAssetInfo(c *gin.Context) {
 
 	key, err := h.findBrandingAsset(ctx, asset)
 	if err != nil {
-		internalError(c, fmt.Sprintf("Failed to check asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to check asset: %v", err))
 		return
 	}
 
@@ -213,7 +159,7 @@ func (h *Handler) HandleGetAssetInfo(c *gin.Context) {
 
 	info, err := h.storage.GetInfo(ctx, key)
 	if err != nil {
-		internalError(c, fmt.Sprintf("Failed to get asset info: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to get asset info: %v", err))
 		return
 	}
 
@@ -233,18 +179,18 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
 	if !validBrandingAssets[asset] {
-		badRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
+		common.BadRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
 		return
 	}
 
 	if h.storage == nil {
-		serviceUnavailable(c, "Storage backend not configured")
+		common.ServiceUnavailable(c, "Storage backend not configured")
 		return
 	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		badRequest(c, "No file provided. Please upload an image file.")
+		common.BadRequest(c, "No file provided. Please upload an image file.")
 		return
 	}
 	defer file.Close()
@@ -252,7 +198,7 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 	buffer := make([]byte, 512)
 	n, err := file.Read(buffer)
 	if err != nil && err != io.EOF {
-		badRequest(c, "Failed to read file")
+		common.BadRequest(c, "Failed to read file")
 		return
 	}
 	contentType := http.DetectContentType(buffer[:n])
@@ -293,7 +239,7 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 
 	if !isAllowed {
 		allowedStr := strings.Join(allowed, ", ")
-		badRequest(c, fmt.Sprintf("Invalid file type '%s'. Allowed types: %s", contentType, allowedStr))
+		common.BadRequest(c, fmt.Sprintf("Invalid file type '%s'. Allowed types: %s", contentType, allowedStr))
 		return
 	}
 
@@ -320,7 +266,7 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 
 	key := getBrandingStorageKey(asset, ext)
 	if err := h.storage.Upload(ctx, key, file, header.Size, contentType); err != nil {
-		internalError(c, fmt.Sprintf("Failed to upload asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to upload asset: %v", err))
 		return
 	}
 
@@ -340,12 +286,12 @@ func (h *Handler) HandleDeleteAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
 	if !validBrandingAssets[asset] {
-		badRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
+		common.BadRequest(c, "Invalid asset type. Must be 'logo' or 'favicon'")
 		return
 	}
 
 	if h.storage == nil {
-		serviceUnavailable(c, "Storage backend not configured")
+		common.ServiceUnavailable(c, "Storage backend not configured")
 		return
 	}
 
@@ -354,17 +300,17 @@ func (h *Handler) HandleDeleteAsset(c *gin.Context) {
 
 	key, err := h.findBrandingAsset(ctx, asset)
 	if err != nil {
-		internalError(c, fmt.Sprintf("Failed to check asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to check asset: %v", err))
 		return
 	}
 
 	if key == "" {
-		notFound(c, fmt.Sprintf("Branding asset '%s' not found", asset))
+		common.NotFound(c, fmt.Sprintf("Branding asset '%s' not found", asset))
 		return
 	}
 
 	if err := h.storage.Delete(ctx, key); err != nil {
-		internalError(c, fmt.Sprintf("Failed to delete asset: %v", err))
+		common.InternalError(c, fmt.Sprintf("Failed to delete asset: %v", err))
 		return
 	}
 

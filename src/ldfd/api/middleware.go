@@ -2,8 +2,8 @@ package api
 
 import (
 	"net/http"
-	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/gin-gonic/gin"
 )
@@ -11,26 +11,7 @@ import (
 // getTokenClaims extracts and validates JWT claims from the request
 // Returns nil if no valid token is present (for optional auth)
 func (a *API) getTokenClaims(c *gin.Context) *auth.TokenClaims {
-	// Check X-Subject-Token header first
-	token := c.GetHeader("X-Subject-Token")
-	if token == "" {
-		// Check Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			token = strings.TrimPrefix(authHeader, "Bearer ")
-		}
-	}
-
-	if token == "" {
-		return nil
-	}
-
-	claims, err := a.jwtService.ValidateToken(token)
-	if err != nil {
-		return nil
-	}
-
-	return claims
+	return common.GetTokenClaimsFromRequest(c, a.jwtService)
 }
 
 // authRequired is a middleware that requires a valid JWT token
@@ -137,14 +118,4 @@ func (a *API) rootAccessRequired() gin.HandlerFunc {
 		c.Set("claims", claims)
 		c.Next()
 	}
-}
-
-// getClaimsFromContext retrieves the token claims stored by auth middleware
-func getClaimsFromContext(c *gin.Context) *auth.TokenClaims {
-	if claims, exists := c.Get("claims"); exists {
-		if tokenClaims, ok := claims.(*auth.TokenClaims); ok {
-			return tokenClaims
-		}
-	}
-	return nil
 }
