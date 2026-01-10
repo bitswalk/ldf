@@ -366,55 +366,43 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
                   {/* Build Type Info */}
                   <div class="border-t border-border pt-4 mt-4 space-y-3">
                     <span class="text-sm font-medium">
-                      {t("components.detail.buildType", "Build Type")}
+                      {t("components.detail.buildType")}
                     </span>
                     <div class="flex items-center justify-between">
                       <span class="text-sm text-muted-foreground">
-                        {t("components.detail.kernelModule", "Kernel Module")}
+                        {t("components.detail.kernelModule")}
                       </span>
-                      <span
-                        class={`flex items-center gap-2 ${
+                      <Icon
+                        name={
                           component()!.is_kernel_module
-                            ? "text-amber-500"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        <Icon
-                          name={
-                            component()!.is_kernel_module
-                              ? "check-circle"
-                              : "x-circle"
-                          }
-                          size="sm"
-                        />
-                        {component()!.is_kernel_module
-                          ? t("common.yes", "Yes")
-                          : t("common.no", "No")}
-                      </span>
+                            ? "check-circle"
+                            : "x-circle"
+                        }
+                        size="sm"
+                        class={
+                          component()!.is_kernel_module
+                            ? "text-primary"
+                            : "text-muted-foreground/50"
+                        }
+                      />
                     </div>
                     <div class="flex items-center justify-between">
                       <span class="text-sm text-muted-foreground">
-                        {t("components.detail.userspace", "Userspace Tool")}
+                        {t("components.detail.userspace")}
                       </span>
-                      <span
-                        class={`flex items-center gap-2 ${
+                      <Icon
+                        name={
                           component()!.is_userspace
-                            ? "text-blue-500"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        <Icon
-                          name={
-                            component()!.is_userspace
-                              ? "check-circle"
-                              : "x-circle"
-                          }
-                          size="sm"
-                        />
-                        {component()!.is_userspace
-                          ? t("common.yes", "Yes")
-                          : t("common.no", "No")}
-                      </span>
+                            ? "check-circle"
+                            : "x-circle"
+                        }
+                        size="sm"
+                        class={
+                          component()!.is_userspace
+                            ? "text-primary"
+                            : "text-muted-foreground/50"
+                        }
+                      />
                     </div>
                   </div>
 

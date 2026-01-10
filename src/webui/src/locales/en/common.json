@@ -99,5 +99,7 @@
     "hoursAgo": "{{ count }} hour(s) ago",
     "daysAgo": "{{ count }} day(s) ago"
   },
-  "optional": "optional"
+  "optional": "optional",
+  "yes": "Yes",
+  "no": "No"
 }

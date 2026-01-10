@@ -96,6 +96,17 @@
       "cancel": "Cancel",
       "add": "Create Component",
       "update": "Update Component"
+    },
+    "buildTypeSection": {
+      "title": "Build Type"
+    },
+    "isKernelModule": {
+      "label": "Kernel Module",
+      "help": "Enable if this component requires kernel configuration at build time (e.g., filesystem drivers, security modules)"
+    },
+    "isUserspace": {
+      "label": "Userspace Tool",
+      "help": "Enable if this component needs to be built as a userspace binary (e.g., CLI tools, daemons)"
     }
   },
   "categories": {
@@ -129,6 +140,9 @@
     "updateSuccess": "Component updated successfully",
     "deleteSuccess": "Component deleted successfully",
     "deleteWarning": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
-    "deleteSourcesWarning": "This component has {{ count }} related source(s) that will lose their component association."
+    "deleteSourcesWarning": "This component has {{ count }} related source(s) that will lose their component association.",
+    "buildType": "Build Type",
+    "kernelModule": "Kernel Module",
+    "userspace": "Userspace Tool"
   }
 }
