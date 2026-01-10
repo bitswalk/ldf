@@ -107,6 +107,8 @@ func createTables(tx *sql.Tx) error {
 			github_normalized_template TEXT,
 			is_optional BOOLEAN NOT NULL DEFAULT 0,
 			is_system BOOLEAN NOT NULL DEFAULT 1,
+			is_kernel_module BOOLEAN NOT NULL DEFAULT 0,
+			is_userspace BOOLEAN NOT NULL DEFAULT 1,
 			owner_id TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -286,6 +288,8 @@ func createIndexes(tx *sql.Tx) error {
 		`CREATE INDEX idx_components_category ON components(category)`,
 		`CREATE INDEX idx_components_is_system ON components(is_system)`,
 		`CREATE INDEX idx_components_owner ON components(owner_id)`,
+		`CREATE INDEX idx_components_is_kernel_module ON components(is_kernel_module)`,
+		`CREATE INDEX idx_components_is_userspace ON components(is_userspace)`,
 
 		// Distributions indexes
 		`CREATE INDEX idx_distributions_name ON distributions(name)`,

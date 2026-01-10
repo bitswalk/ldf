@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"database/sql"
+	"strings"
 )
 
 func migration008ComponentBuildTypes() Migration {
@@ -9,18 +10,30 @@ func migration008ComponentBuildTypes() Migration {
 		Version:     8,
 		Description: "Add is_kernel_module and is_userspace columns to components",
 		Up: func(tx *sql.Tx) error {
-			// Add is_kernel_module column - indicates if component requires kernel configuration
-			// Default to false since most components are userspace-only
-			_, err := tx.Exec(`ALTER TABLE components ADD COLUMN is_kernel_module BOOLEAN NOT NULL DEFAULT 0`)
+			// Check if columns already exist (for fresh installs where migration 001 includes them)
+			hasKernelModule, err := columnExists(tx, "components", "is_kernel_module")
+			if err != nil {
+				return err
+			}
+			hasUserspace, err := columnExists(tx, "components", "is_userspace")
 			if err != nil {
 				return err
 			}
 
-			// Add is_userspace column - indicates if component needs to be built as userspace binary
-			// Default to true since most components are userspace tools
-			_, err = tx.Exec(`ALTER TABLE components ADD COLUMN is_userspace BOOLEAN NOT NULL DEFAULT 1`)
-			if err != nil {
-				return err
+			// Add is_kernel_module column if it doesn't exist
+			if !hasKernelModule {
+				_, err = tx.Exec(`ALTER TABLE components ADD COLUMN is_kernel_module BOOLEAN NOT NULL DEFAULT 0`)
+				if err != nil {
+					return err
+				}
+			}
+
+			// Add is_userspace column if it doesn't exist
+			if !hasUserspace {
+				_, err = tx.Exec(`ALTER TABLE components ADD COLUMN is_userspace BOOLEAN NOT NULL DEFAULT 1`)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Update kernel - it's kernel-only, not userspace
@@ -47,13 +60,13 @@ func migration008ComponentBuildTypes() Migration {
 				return err
 			}
 
-			// Create indexes for efficient querying by build type
-			_, err = tx.Exec(`CREATE INDEX idx_components_kernel_module ON components(is_kernel_module)`)
+			// Create indexes if they don't exist (use IF NOT EXISTS for safety)
+			_, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_components_kernel_module ON components(is_kernel_module)`)
 			if err != nil {
 				return err
 			}
 
-			_, err = tx.Exec(`CREATE INDEX idx_components_userspace ON components(is_userspace)`)
+			_, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_components_userspace ON components(is_userspace)`)
 			if err != nil {
 				return err
 			}
@@ -61,4 +74,27 @@ func migration008ComponentBuildTypes() Migration {
 			return nil
 		},
 	}
+}
+
+// columnExists checks if a column exists in a table
+func columnExists(tx *sql.Tx, table, column string) (bool, error) {
+	rows, err := tx.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dfltValue sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
+			return false, err
+		}
+		if strings.EqualFold(name, column) {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
