@@ -350,40 +350,70 @@ func (d *Database) LoadFromDisk() error {
 		`).Scan(&hasIsOptionalCol)
 
 		if hasIsOptionalCol > 0 {
+			// Check if disk has the new build type columns
+			var hasKernelModuleCol int
+			d.db.QueryRow(`
+				SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_kernel_module'
+			`).Scan(&hasKernelModuleCol)
+
 			// Compatible schema - delete seeded components and load from disk
 			// ON DELETE CASCADE handles cleanup of related tables (download_jobs),
 			// and ON DELETE SET NULL handles upstream_sources
 			if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
 				loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
 			}
-			// Insert from disk (handle schema migration for is_system and owner_id)
-			// Schema: id, name, category, display_name, description, artifact_pattern,
-			//         default_url_template, github_normalized_template, is_optional,
-			//         created_at, updated_at, is_system, owner_id
-			result, err := d.db.Exec(`
-				INSERT INTO components
-				(id, name, category, display_name, description, artifact_pattern,
-				 default_url_template, github_normalized_template, is_optional,
-				 created_at, updated_at, is_system, owner_id)
-				SELECT id, name, category, display_name, description, artifact_pattern,
-				       default_url_template, github_normalized_template, is_optional,
-				       created_at, updated_at,
-				       COALESCE(is_system, 0) as is_system,
-				       NULLIF(owner_id, '') as owner_id
-				FROM disk_db.components
-			`)
-			if err != nil {
-				// Fallback: try with old schema (no is_system, owner_id columns on disk)
+
+			var result sql.Result
+			if hasKernelModuleCol > 0 {
+				// Disk has new columns - copy them directly
 				result, err = d.db.Exec(`
 					INSERT INTO components
 					(id, name, category, display_name, description, artifact_pattern,
 					 default_url_template, github_normalized_template, is_optional,
-					 created_at, updated_at, is_system, owner_id)
+					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace,
+					 default_version, default_version_rule)
+					SELECT id, name, category, display_name, description, artifact_pattern,
+					       default_url_template, github_normalized_template, is_optional,
+					       created_at, updated_at,
+					       COALESCE(is_system, 0) as is_system,
+					       NULLIF(owner_id, '') as owner_id,
+					       COALESCE(is_kernel_module, 0) as is_kernel_module,
+					       COALESCE(is_userspace, 1) as is_userspace,
+					       default_version,
+					       COALESCE(default_version_rule, 'latest-stable') as default_version_rule
+					FROM disk_db.components
+				`)
+			} else {
+				// Disk has old schema - use defaults for new columns
+				result, err = d.db.Exec(`
+					INSERT INTO components
+					(id, name, category, display_name, description, artifact_pattern,
+					 default_url_template, github_normalized_template, is_optional,
+					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
+					SELECT id, name, category, display_name, description, artifact_pattern,
+					       default_url_template, github_normalized_template, is_optional,
+					       created_at, updated_at,
+					       COALESCE(is_system, 0) as is_system,
+					       NULLIF(owner_id, '') as owner_id,
+					       0 as is_kernel_module,
+					       1 as is_userspace
+					FROM disk_db.components
+				`)
+			}
+			if err != nil {
+				// Fallback: try with minimal schema (no is_system, owner_id columns on disk)
+				result, err = d.db.Exec(`
+					INSERT INTO components
+					(id, name, category, display_name, description, artifact_pattern,
+					 default_url_template, github_normalized_template, is_optional,
+					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
 					SELECT id, name, category, display_name, description, artifact_pattern,
 					       default_url_template, github_normalized_template, is_optional,
 					       created_at, updated_at,
 					       0 as is_system,
-					       NULL as owner_id
+					       NULL as owner_id,
+					       0 as is_kernel_module,
+					       1 as is_userspace
 					FROM disk_db.components
 				`)
 			}
@@ -392,6 +422,10 @@ func (d *Database) LoadFromDisk() error {
 			} else if rows, _ := result.RowsAffected(); rows > 0 {
 				loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
 			}
+
+			// Apply build type corrections for known kernel module components
+			// This ensures correct values even if loading from older disk databases
+			d.applyComponentBuildTypeDefaults()
 		} else {
 			// Incompatible schema - keep seeded components from migrations
 			fmt.Fprintf(os.Stderr, "INFO: Components table schema changed, using default components\n")
@@ -657,4 +691,20 @@ func (d *Database) ResetToDefaults() error {
 	}
 
 	return nil
+}
+
+// applyComponentBuildTypeDefaults ensures known kernel module components have correct build type flags.
+// This is called after loading from disk to handle older databases that may have incorrect defaults.
+func (d *Database) applyComponentBuildTypeDefaults() {
+	// Kernel is kernel-only, not userspace
+	d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`)
+
+	// Filesystem components have both kernel drivers and userspace tools
+	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`)
+
+	// Security components have kernel LSM modules and userspace tools
+	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`)
+
+	// Virtualization components that require KVM kernel module
+	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`)
 }
