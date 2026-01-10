@@ -6,7 +6,17 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/bitswalk/ldf/src/common/logs"
 )
+
+// package-level logger, can be set via SetLogger
+var log *logs.Logger
+
+// SetLogger sets the logger for the migrations package
+func SetLogger(l *logs.Logger) {
+	log = l
+}
 
 // Migration represents a single database migration
 type Migration struct {
@@ -99,6 +109,9 @@ func (r *Runner) Run() error {
 		}
 
 		if err := r.runMigration(m); err != nil {
+			if log != nil {
+				log.Error("Migration failed", "version", m.Version, "description", m.Description, "error", err)
+			}
 			return fmt.Errorf("migration %d (%s) failed: %w", m.Version, m.Description, err)
 		}
 	}
@@ -108,6 +121,10 @@ func (r *Runner) Run() error {
 
 // runMigration executes a single migration within a transaction
 func (r *Runner) runMigration(m Migration) error {
+	if log != nil {
+		log.Debug("Applying migration", "version", m.Version, "description", m.Description)
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -129,7 +146,15 @@ func (r *Runner) runMigration(m Migration) error {
 		return fmt.Errorf("failed to record migration: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if log != nil {
+		log.Debug("Migration applied successfully", "version", m.Version)
+	}
+
+	return nil
 }
 
 // CurrentVersion returns the highest applied migration version

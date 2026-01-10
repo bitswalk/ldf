@@ -12,6 +12,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
@@ -251,6 +252,9 @@ func runServer() error {
 	// Initialize database
 	dbPath := viper.GetString("database.path")
 	log.Info("Initializing database", "persist_path", dbPath)
+
+	// Set logger for migrations before initializing database
+	migrations.SetLogger(log)
 
 	database, err := db.New(db.Config{
 		PersistPath: dbPath,
