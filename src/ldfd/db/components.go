@@ -23,7 +23,8 @@ func NewComponentRepository(db *Database) *ComponentRepository {
 func (r *ComponentRepository) List() ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		ORDER BY category ASC, name ASC
@@ -41,7 +42,8 @@ func (r *ComponentRepository) List() ([]Component, error) {
 func (r *ComponentRepository) ListByOwner(ownerID string) ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE owner_id = ?
@@ -60,7 +62,8 @@ func (r *ComponentRepository) ListByOwner(ownerID string) ([]Component, error) {
 func (r *ComponentRepository) ListSystem() ([]Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE is_system = 1
@@ -79,7 +82,8 @@ func (r *ComponentRepository) ListSystem() ([]Component, error) {
 func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE id = ?
@@ -92,7 +96,8 @@ func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE name = ?
@@ -108,7 +113,8 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 	// Uses LIKE patterns: "category" OR "category,%" OR "%,category" OR "%,category,%"
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE category = ?
@@ -133,7 +139,8 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 func (r *ComponentRepository) GetByCategoryAndNameContains(category, nameContains string) (*Component, error) {
 	query := `
 		SELECT id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at
 		FROM components
 		WHERE (category = ? OR category LIKE ? OR category LIKE ? OR category LIKE ?)
@@ -170,13 +177,15 @@ func (r *ComponentRepository) Create(c *Component) error {
 
 	query := `
 		INSERT INTO components (id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, owner_id,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
 			default_version, default_version_rule, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
 		c.ID, c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
-		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.IsSystem, ownerID,
+		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.IsSystem,
+		c.IsKernelModule, c.IsUserspace, ownerID,
 		c.DefaultVersion, c.DefaultVersionRule, c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
@@ -194,12 +203,14 @@ func (r *ComponentRepository) Update(c *Component) error {
 		UPDATE components
 		SET name = ?, category = ?, display_name = ?, description = ?, artifact_pattern = ?,
 			default_url_template = ?, github_normalized_template = ?, is_optional = ?,
+			is_kernel_module = ?, is_userspace = ?,
 			default_version = ?, default_version_rule = ?, updated_at = ?
 		WHERE id = ?
 	`
 	result, err := r.db.DB().Exec(query,
 		c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
 		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional,
+		c.IsKernelModule, c.IsUserspace,
 		c.DefaultVersion, c.DefaultVersionRule, c.UpdatedAt, c.ID,
 	)
 	if err != nil {
@@ -305,7 +316,7 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	err := row.Scan(
 		&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 		&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-		&c.IsOptional, &c.IsSystem, &ownerID,
+		&c.IsOptional, &c.IsSystem, &c.IsKernelModule, &c.IsUserspace, &ownerID,
 		&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -348,7 +359,7 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		if err := rows.Scan(
 			&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 			&description, &artifactPattern, &defaultTemplate, &githubTemplate,
-			&c.IsOptional, &c.IsSystem, &ownerID,
+			&c.IsOptional, &c.IsSystem, &c.IsKernelModule, &c.IsUserspace, &ownerID,
 			&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan component: %w", err)
@@ -379,4 +390,64 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 	}
 
 	return components, nil
+}
+
+// ListKernelModules retrieves all components that are kernel modules
+func (r *ComponentRepository) ListKernelModules() ([]Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
+			default_version, default_version_rule, created_at, updated_at
+		FROM components
+		WHERE is_kernel_module = 1
+		ORDER BY category ASC, name ASC
+	`
+	rows, err := r.db.DB().Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list kernel modules: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanComponents(rows)
+}
+
+// ListUserspace retrieves all components that are userspace tools
+func (r *ComponentRepository) ListUserspace() ([]Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
+			default_version, default_version_rule, created_at, updated_at
+		FROM components
+		WHERE is_userspace = 1
+		ORDER BY category ASC, name ASC
+	`
+	rows, err := r.db.DB().Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list userspace components: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanComponents(rows)
+}
+
+// ListHybrid retrieves components that are both kernel modules AND userspace tools
+func (r *ComponentRepository) ListHybrid() ([]Component, error) {
+	query := `
+		SELECT id, name, category, display_name, description, artifact_pattern,
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, owner_id,
+			default_version, default_version_rule, created_at, updated_at
+		FROM components
+		WHERE is_kernel_module = 1 AND is_userspace = 1
+		ORDER BY category ASC, name ASC
+	`
+	rows, err := r.db.DB().Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list hybrid components: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanComponents(rows)
 }

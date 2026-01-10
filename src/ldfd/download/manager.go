@@ -559,3 +559,54 @@ func (m *Manager) SourceRepo() *db.SourceRepository {
 func (m *Manager) URLBuilder() *URLBuilder {
 	return m.urlBuilder
 }
+
+// GetKernelModulesForDistribution returns kernel modules needed for a distribution
+func (m *Manager) GetKernelModulesForDistribution(dist *db.Distribution) ([]db.Component, error) {
+	componentNames := m.getRequiredComponents(dist.Config)
+
+	var kernelModules []db.Component
+	for _, name := range componentNames {
+		component, err := m.componentRepo.GetByName(name)
+		if err != nil || component == nil {
+			continue
+		}
+		if component.IsKernelModule {
+			kernelModules = append(kernelModules, *component)
+		}
+	}
+	return kernelModules, nil
+}
+
+// GetUserspaceComponentsForDistribution returns userspace components for a distribution
+func (m *Manager) GetUserspaceComponentsForDistribution(dist *db.Distribution) ([]db.Component, error) {
+	componentNames := m.getRequiredComponents(dist.Config)
+
+	var userspaceComponents []db.Component
+	for _, name := range componentNames {
+		component, err := m.componentRepo.GetByName(name)
+		if err != nil || component == nil {
+			continue
+		}
+		if component.IsUserspace {
+			userspaceComponents = append(userspaceComponents, *component)
+		}
+	}
+	return userspaceComponents, nil
+}
+
+// GetHybridComponentsForDistribution returns components that are both kernel modules and userspace
+func (m *Manager) GetHybridComponentsForDistribution(dist *db.Distribution) ([]db.Component, error) {
+	componentNames := m.getRequiredComponents(dist.Config)
+
+	var hybridComponents []db.Component
+	for _, name := range componentNames {
+		component, err := m.componentRepo.GetByName(name)
+		if err != nil || component == nil {
+			continue
+		}
+		if component.IsKernelModule && component.IsUserspace {
+			hybridComponents = append(hybridComponents, *component)
+		}
+	}
+	return hybridComponents, nil
+}

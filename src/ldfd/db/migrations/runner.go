@@ -41,6 +41,7 @@ func (r *Runner) registerAll() {
 		migration005RemoveDistributionOverrides(),
 		migration006RefreshTokens(),
 		migration007ComponentVersions(),
+		migration008ComponentBuildTypes(),
 	}
 
 	// Sort by version to ensure correct order

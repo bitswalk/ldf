@@ -416,6 +416,8 @@ type DefaultComponent struct {
 	DefaultURLTemplate       string
 	GithubNormalizedTemplate string
 	IsOptional               bool
+	IsKernelModule           bool // Requires kernel configuration at build time
+	IsUserspace              bool // Needs to be built as userspace binary
 }
 
 // DefaultComponents returns the list of default system components
@@ -431,6 +433,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/linux-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              false,
 		},
 		// Bootloader components
 		{
@@ -442,6 +446,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "u-boot",
@@ -452,6 +458,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/u-boot-{version}.tar.bz2",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "grub2",
@@ -462,6 +470,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/grub-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/grub-{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		// Init system components
 		{
@@ -473,6 +483,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-networkd",
@@ -483,6 +495,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-resolved",
@@ -493,6 +507,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-sysext",
@@ -503,6 +519,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-confext",
@@ -513,6 +531,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-vmspawn",
@@ -523,6 +543,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-nspawn",
@@ -533,6 +555,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-repart",
@@ -543,6 +567,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-udevd",
@@ -553,6 +579,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-homed",
@@ -563,6 +591,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-machined",
@@ -573,6 +603,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-importd",
@@ -583,6 +615,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-run",
@@ -593,6 +627,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "systemd-analyze",
@@ -603,6 +639,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/systemd-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "openrc",
@@ -613,6 +651,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/openrc-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		// Virtualization components
 		{
@@ -624,6 +664,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/cloud-hypervisor-v{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "qemu-kvm-libvirt",
@@ -634,6 +676,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/qemu-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		// Container components
 		{
@@ -645,6 +689,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/docker-{version}.tgz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "podman",
@@ -655,6 +701,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/podman-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "runc",
@@ -665,6 +713,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/runc-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "cri-o",
@@ -675,6 +725,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/cri-o-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		// Security components
 		{
@@ -686,6 +738,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/selinux-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "apparmor",
@@ -696,6 +750,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/apparmor-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		// Desktop environment components
 		{
@@ -707,6 +763,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/plasma-desktop-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "gnome",
@@ -717,6 +775,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/gnome-shell-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "swaywm",
@@ -727,6 +787,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/sway-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/{version}.tar.gz",
 			IsOptional:               true,
+			IsKernelModule:           false,
+			IsUserspace:              true,
 		},
 
 		// Filesystem components
@@ -739,6 +801,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/e2fsprogs-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "btrfs",
@@ -749,6 +813,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/btrfs-progs-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "xfs",
@@ -759,6 +825,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/xfsprogs-{version}.tar.xz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "f2fs",
@@ -769,6 +837,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/f2fs-tools-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/v{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 		{
 			Name:                     "zfs",
@@ -779,6 +849,8 @@ func DefaultComponents() []DefaultComponent {
 			DefaultURLTemplate:       "{base_url}/zfs-{version}.tar.gz",
 			GithubNormalizedTemplate: "{base_url}/archive/refs/tags/zfs-{version}.tar.gz",
 			IsOptional:               false,
+			IsKernelModule:           true,
+			IsUserspace:              true,
 		},
 	}
 }
@@ -788,8 +860,9 @@ func seedDefaultComponents(tx *sql.Tx) error {
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO components (id, name, category, display_name, description, artifact_pattern,
-			default_url_template, github_normalized_template, is_optional, is_system, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+			default_url_template, github_normalized_template, is_optional, is_system,
+			is_kernel_module, is_userspace, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare component insert: %w", err)
@@ -810,6 +883,8 @@ func seedDefaultComponents(tx *sql.Tx) error {
 			c.DefaultURLTemplate,
 			c.GithubNormalizedTemplate,
 			c.IsOptional,
+			c.IsKernelModule,
+			c.IsUserspace,
 			now,
 			now,
 		); err != nil {

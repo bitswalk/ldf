@@ -160,6 +160,8 @@ type Component struct {
 	GitHubNormalizedTemplate string      `json:"github_normalized_template,omitempty"`
 	IsOptional               bool        `json:"is_optional"`
 	IsSystem                 bool        `json:"is_system"`
+	IsKernelModule           bool        `json:"is_kernel_module"` // Requires kernel configuration at build time
+	IsUserspace              bool        `json:"is_userspace"`     // Needs to be built as userspace binary
 	OwnerID                  string      `json:"owner_id,omitempty"`
 	DefaultVersion           string      `json:"default_version,omitempty"`      // Pinned version or resolved value
 	DefaultVersionRule       VersionRule `json:"default_version_rule,omitempty"` // "pinned", "latest-stable", "latest-lts"

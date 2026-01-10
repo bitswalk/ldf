@@ -32,6 +32,8 @@ type CreateComponentRequest struct {
 	DefaultURLTemplate       string `json:"default_url_template" example:"{base_url}/linux-{version}.tar.xz"`
 	GitHubNormalizedTemplate string `json:"github_normalized_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
 	IsOptional               *bool  `json:"is_optional" example:"false"`
+	IsKernelModule           *bool  `json:"is_kernel_module" example:"true"`
+	IsUserspace              *bool  `json:"is_userspace" example:"false"`
 	DefaultVersion           string `json:"default_version" example:"6.12.1"`
 	DefaultVersionRule       string `json:"default_version_rule" example:"latest-stable"`
 }
@@ -46,6 +48,8 @@ type UpdateComponentRequest struct {
 	DefaultURLTemplate       string `json:"default_url_template" example:"{base_url}/linux-{version}.tar.xz"`
 	GitHubNormalizedTemplate string `json:"github_normalized_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
 	IsOptional               *bool  `json:"is_optional" example:"false"`
+	IsKernelModule           *bool  `json:"is_kernel_module" example:"true"`
+	IsUserspace              *bool  `json:"is_userspace" example:"false"`
 	DefaultVersion           string `json:"default_version" example:"6.12.1"`
 	DefaultVersionRule       string `json:"default_version_rule" example:"latest-stable"`
 }

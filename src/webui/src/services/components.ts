@@ -16,6 +16,8 @@ export interface Component {
   github_normalized_template?: string;
   is_optional: boolean;
   is_system: boolean;
+  is_kernel_module: boolean; // Requires kernel configuration at build time
+  is_userspace: boolean; // Needs to be built as userspace binary
   owner_id?: string;
   default_version?: string;
   default_version_rule?: VersionRule;
@@ -88,6 +90,8 @@ export interface CreateComponentRequest {
   default_url_template?: string;
   github_normalized_template?: string;
   is_optional?: boolean;
+  is_kernel_module?: boolean;
+  is_userspace?: boolean;
   default_version?: string;
   default_version_rule?: VersionRule;
 }
@@ -101,6 +105,8 @@ export interface UpdateComponentRequest {
   default_url_template?: string;
   github_normalized_template?: string;
   is_optional?: boolean;
+  is_kernel_module?: boolean;
+  is_userspace?: boolean;
   default_version?: string;
   default_version_rule?: VersionRule;
 }
@@ -315,6 +321,123 @@ export async function listComponentsByCategory(
       success: false,
       error: "internal_error",
       message: "Failed to fetch components",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// List all kernel module components
+export async function listKernelModules(): Promise<ListResult> {
+  const url = getApiUrl("/components/kernel-modules");
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const components: Component[] = data.components || [];
+      return { success: true, components };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to fetch kernel modules",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// List all userspace components
+export async function listUserspaceComponents(): Promise<ListResult> {
+  const url = getApiUrl("/components/userspace");
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const components: Component[] = data.components || [];
+      return { success: true, components };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to fetch userspace components",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+// List all hybrid components (both kernel module and userspace)
+export async function listHybridComponents(): Promise<ListResult> {
+  const url = getApiUrl("/components/hybrid");
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const components: Component[] = data.components || [];
+      return { success: true, components };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to fetch hybrid components",
     };
   } catch (err) {
     return {

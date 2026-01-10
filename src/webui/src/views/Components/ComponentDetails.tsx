@@ -107,6 +107,8 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
       default_url_template: formData.default_url_template,
       github_normalized_template: formData.github_normalized_template,
       is_optional: formData.is_optional,
+      is_kernel_module: formData.is_kernel_module,
+      is_userspace: formData.is_userspace,
       default_version: formData.default_version,
       default_version_rule: formData.default_version_rule,
     };
@@ -359,6 +361,61 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
                         ? t("components.table.optional")
                         : t("components.table.required")}
                     </span>
+                  </div>
+
+                  {/* Build Type Info */}
+                  <div class="border-t border-border pt-4 mt-4 space-y-3">
+                    <span class="text-sm font-medium">
+                      {t("components.detail.buildType", "Build Type")}
+                    </span>
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-muted-foreground">
+                        {t("components.detail.kernelModule", "Kernel Module")}
+                      </span>
+                      <span
+                        class={`flex items-center gap-2 ${
+                          component()!.is_kernel_module
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <Icon
+                          name={
+                            component()!.is_kernel_module
+                              ? "check-circle"
+                              : "x-circle"
+                          }
+                          size="sm"
+                        />
+                        {component()!.is_kernel_module
+                          ? t("common.yes", "Yes")
+                          : t("common.no", "No")}
+                      </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-muted-foreground">
+                        {t("components.detail.userspace", "Userspace Tool")}
+                      </span>
+                      <span
+                        class={`flex items-center gap-2 ${
+                          component()!.is_userspace
+                            ? "text-blue-500"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <Icon
+                          name={
+                            component()!.is_userspace
+                              ? "check-circle"
+                              : "x-circle"
+                          }
+                          size="sm"
+                        />
+                        {component()!.is_userspace
+                          ? t("common.yes", "Yes")
+                          : t("common.no", "No")}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Version Info */}

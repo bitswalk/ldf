@@ -167,6 +167,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 		{
 			componentsGroup.GET("", a.Components.HandleList)
 			componentsGroup.GET("/categories", a.Components.HandleGetCategories)
+			componentsGroup.GET("/kernel-modules", a.Components.HandleListKernelModules)
+			componentsGroup.GET("/userspace", a.Components.HandleListUserspace)
+			componentsGroup.GET("/hybrid", a.Components.HandleListHybrid)
 			componentsGroup.GET("/:id", a.Components.HandleGet)
 			componentsGroup.GET("/:id/versions", a.Components.HandleGetVersions)
 			componentsGroup.GET("/:id/resolve-version", a.Components.HandleResolveVersion)

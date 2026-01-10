@@ -42,6 +42,12 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
   const [isOptional, setIsOptional] = createSignal(
     props.initialData?.is_optional ?? false,
   );
+  const [isKernelModule, setIsKernelModule] = createSignal(
+    props.initialData?.is_kernel_module ?? false,
+  );
+  const [isUserspace, setIsUserspace] = createSignal(
+    props.initialData?.is_userspace ?? true,
+  );
   const [defaultVersionRule, setDefaultVersionRule] = createSignal<VersionRule>(
     props.initialData?.default_version_rule || "latest-stable",
   );
@@ -98,6 +104,8 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
       category: category(),
       display_name: displayName().trim(),
       is_optional: isOptional(),
+      is_kernel_module: isKernelModule(),
+      is_userspace: isUserspace(),
     };
 
     if (description().trim()) {
@@ -129,7 +137,7 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
       <div class="space-y-2">
         <label class="text-sm font-medium" for="component-name">
           {t("components.form.name.label")}{" "}
-          <span class="text-destructive">*</span>
+          <em class="text-destructive not-italic">*</em>
         </label>
         <input
           id="component-name"
@@ -159,7 +167,7 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
       <div class="space-y-2">
         <label class="text-sm font-medium" for="component-display-name">
           {t("components.form.displayName.label")}{" "}
-          <span class="text-destructive">*</span>
+          <em class="text-destructive not-italic">*</em>
         </label>
         <input
           id="component-display-name"
@@ -186,7 +194,7 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
       <div class="space-y-2">
         <label class="text-sm font-medium" for="component-category">
           {t("components.form.category.label")}{" "}
-          <span class="text-destructive">*</span>
+          <em class="text-destructive not-italic">*</em>
         </label>
         <select
           id="component-category"
@@ -275,7 +283,7 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
         </p>
       </div>
 
-      <div class="flex items-center gap-3">
+      <figure class="flex items-center gap-3 m-0">
         <label class="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -283,24 +291,79 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
             onChange={(e) => setIsOptional(e.target.checked)}
             class="sr-only peer"
           />
-          <div class="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/20 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+          <output class="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/20 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></output>
         </label>
-        <span class="text-sm font-medium">
+        <strong class="text-sm font-medium">
           {t("components.form.isOptional.label")}
-        </span>
-      </div>
-      <p class="text-xs text-muted-foreground -mt-4">
+        </strong>
+      </figure>
+      <small class="text-xs text-muted-foreground block -mt-4">
         {t("components.form.isOptional.help")}
-      </p>
+      </small>
+
+      {/* Build Type Section */}
+      <fieldset class="border-t border-border pt-6 mt-2">
+        <legend class="text-sm font-semibold mb-4">
+          {t("components.form.buildTypeSection.title", "Build Type")}
+        </legend>
+
+        <ul class="space-y-4 list-none p-0 m-0">
+          <li class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isKernelModule()}
+                onChange={(e) => setIsKernelModule(e.target.checked)}
+                class="sr-only peer"
+              />
+              <output class="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/20 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></output>
+            </label>
+            <strong class="text-sm font-medium">
+              {t("components.form.isKernelModule.label", "Kernel Module")}
+            </strong>
+          </li>
+          <li>
+            <small class="text-xs text-muted-foreground">
+              {t(
+                "components.form.isKernelModule.help",
+                "Enable if this component requires kernel configuration at build time (e.g., filesystem drivers, security modules)",
+              )}
+            </small>
+          </li>
+
+          <li class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isUserspace()}
+                onChange={(e) => setIsUserspace(e.target.checked)}
+                class="sr-only peer"
+              />
+              <output class="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/20 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></output>
+            </label>
+            <strong class="text-sm font-medium">
+              {t("components.form.isUserspace.label", "Userspace Tool")}
+            </strong>
+          </li>
+          <li>
+            <small class="text-xs text-muted-foreground">
+              {t(
+                "components.form.isUserspace.help",
+                "Enable if this component needs to be built as a userspace binary (e.g., CLI tools, daemons)",
+              )}
+            </small>
+          </li>
+        </ul>
+      </fieldset>
 
       {/* Default Version Section */}
-      <div class="border-t border-border pt-6 mt-2">
-        <h3 class="text-sm font-semibold mb-4">
+      <fieldset class="border-t border-border pt-6 mt-2">
+        <legend class="text-sm font-semibold mb-4">
           {t("components.form.versionSection.title")}
-        </h3>
+        </legend>
 
-        <div class="space-y-4">
-          <div class="space-y-2">
+        <ul class="space-y-4 list-none p-0 m-0">
+          <li class="space-y-2">
             <label class="text-sm font-medium" for="component-version-rule">
               {t("components.form.versionRule.label")}
             </label>
@@ -319,19 +382,19 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
                 {(rule) => <option value={rule.value}>{rule.label}</option>}
               </For>
             </select>
-            <p class="text-xs text-muted-foreground">
+            <small class="text-xs text-muted-foreground block">
               {t("components.form.versionRule.help")}
-            </p>
-          </div>
+            </small>
+          </li>
 
           <Show when={defaultVersionRule() === "pinned"}>
-            <div class="space-y-2">
+            <li class="space-y-2">
               <label
                 class="text-sm font-medium"
                 for="component-default-version"
               >
                 {t("components.form.defaultVersion.label")}{" "}
-                <span class="text-destructive">*</span>
+                <em class="text-destructive not-italic">*</em>
               </label>
               <input
                 id="component-default-version"
@@ -353,18 +416,18 @@ export const ComponentForm: SolidComponent<ComponentFormProps> = (props) => {
                   }
                 }}
               />
-              <p class="text-xs text-muted-foreground">
+              <small class="text-xs text-muted-foreground block">
                 {t("components.form.defaultVersion.help")}
-              </p>
+              </small>
               <Show when={errors().defaultVersion}>
-                <p class="text-xs text-destructive">
+                <em class="text-xs text-destructive not-italic block">
                   {errors().defaultVersion}
-                </p>
+                </em>
               </Show>
-            </div>
+            </li>
           </Show>
-        </div>
-      </div>
+        </ul>
+      </fieldset>
 
       <nav class="flex justify-end gap-3 pt-4 border-t border-border">
         <button

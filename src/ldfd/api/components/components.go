@@ -143,6 +143,17 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		isOptional = *req.IsOptional
 	}
 
+	isKernelModule := false
+	if req.IsKernelModule != nil {
+		isKernelModule = *req.IsKernelModule
+	}
+
+	// Default to userspace = true for most components
+	isUserspace := true
+	if req.IsUserspace != nil {
+		isUserspace = *req.IsUserspace
+	}
+
 	versionRule := db.VersionRule(req.DefaultVersionRule)
 	if req.DefaultVersionRule != "" {
 		if !isValidVersionRule(versionRule) {
@@ -164,6 +175,8 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		DefaultURLTemplate:       req.DefaultURLTemplate,
 		GitHubNormalizedTemplate: req.GitHubNormalizedTemplate,
 		IsOptional:               isOptional,
+		IsKernelModule:           isKernelModule,
+		IsUserspace:              isUserspace,
 		DefaultVersion:           req.DefaultVersion,
 		DefaultVersionRule:       versionRule,
 	}
@@ -260,6 +273,12 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	}
 	if req.IsOptional != nil {
 		component.IsOptional = *req.IsOptional
+	}
+	if req.IsKernelModule != nil {
+		component.IsKernelModule = *req.IsKernelModule
+	}
+	if req.IsUserspace != nil {
+		component.IsUserspace = *req.IsUserspace
 	}
 	if req.DefaultVersion != "" {
 		component.DefaultVersion = req.DefaultVersion
@@ -463,4 +482,70 @@ func isValidVersionRule(rule db.VersionRule) bool {
 	default:
 		return false
 	}
+}
+
+// HandleListKernelModules returns all components that are kernel modules
+func (h *Handler) HandleListKernelModules(c *gin.Context) {
+	components, err := h.componentRepo.ListKernelModules()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if components == nil {
+		components = []db.Component{}
+	}
+
+	c.JSON(http.StatusOK, ComponentListResponse{
+		Count:      len(components),
+		Components: components,
+	})
+}
+
+// HandleListUserspace returns all components that are userspace tools
+func (h *Handler) HandleListUserspace(c *gin.Context) {
+	components, err := h.componentRepo.ListUserspace()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if components == nil {
+		components = []db.Component{}
+	}
+
+	c.JSON(http.StatusOK, ComponentListResponse{
+		Count:      len(components),
+		Components: components,
+	})
+}
+
+// HandleListHybrid returns all components that are both kernel modules and userspace tools
+func (h *Handler) HandleListHybrid(c *gin.Context) {
+	components, err := h.componentRepo.ListHybrid()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if components == nil {
+		components = []db.Component{}
+	}
+
+	c.JSON(http.StatusOK, ComponentListResponse{
+		Count:      len(components),
+		Components: components,
+	})
 }
