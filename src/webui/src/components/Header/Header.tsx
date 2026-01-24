@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { Show, createSignal, createEffect, onMount } from "solid-js";
+import { Show, createSignal, onMount, onCleanup } from "solid-js";
 import { Icon } from "../Icon";
 import { t } from "../../services/i18n";
 import { Badge } from "../Badge";
@@ -14,6 +14,8 @@ import {
 import {
   getBrandingAssetInfo,
   getBrandingAssetURL,
+  getAppName,
+  DEFAULT_APP_NAME,
 } from "../../services/branding";
 
 interface UserInfo {
@@ -33,6 +35,11 @@ interface HeaderProps {
 export const Header: Component<HeaderProps> = (props) => {
   const [hasLogo, setHasLogo] = createSignal(false);
   const [logoUrl, setLogoUrl] = createSignal<string | null>(null);
+  const [appName, setAppName] = createSignal(DEFAULT_APP_NAME);
+
+  const handleAppNameChanged = (event: CustomEvent<string>) => {
+    setAppName(event.detail || DEFAULT_APP_NAME);
+  };
 
   onMount(async () => {
     // Check if a logo has been uploaded
@@ -44,6 +51,25 @@ export const Header: Component<HeaderProps> = (props) => {
         setLogoUrl(url);
       }
     }
+
+    // Load the custom app name
+    const appNameResult = await getAppName();
+    if (appNameResult.success) {
+      setAppName(appNameResult.appName);
+    }
+
+    // Listen for app name changes from settings
+    window.addEventListener(
+      "appNameChanged",
+      handleAppNameChanged as EventListener,
+    );
+  });
+
+  onCleanup(() => {
+    window.removeEventListener(
+      "appNameChanged",
+      handleAppNameChanged as EventListener,
+    );
   });
 
   return (
@@ -64,7 +90,7 @@ export const Header: Component<HeaderProps> = (props) => {
             />
           </Show>
         </section>
-        <h1 class="text-2xl font-bold px-6">{t("common.app.name")}</h1>
+        <h1 class="text-2xl font-bold px-6">{appName()}</h1>
       </section>
       <section class="px-6">
         <Show

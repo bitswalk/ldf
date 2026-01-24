@@ -14,6 +14,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	"github.com/bitswalk/ldf/src/ldfd/download"
+	"github.com/bitswalk/ldf/src/ldfd/forge"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -63,6 +64,10 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
 	versionDiscovery := download.NewVersionDiscovery(sourceVersionRepo)
 
+	// Initialize forge registry for source detection and defaults
+	forge.SetLogger(log)
+	forgeRegistry := forge.NewRegistry()
+
 	// Create API instance with all dependencies
 	api.SetLogger(log)
 	api.SetVersionInfo(VersionInfo)
@@ -78,6 +83,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		JWTService:        jwtService,
 		DownloadManager:   downloadManager,
 		VersionDiscovery:  versionDiscovery,
+		ForgeRegistry:     forgeRegistry,
 	})
 
 	// Register all routes
@@ -96,6 +102,16 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		if err := downloadManager.Start(context.Background()); err != nil {
 			log.Error("Failed to start download manager", "error", err)
 		}
+	}()
+
+	// Start version sync for all sources at startup
+	// This refreshes the upstream versions cache
+	sourceRepo := db.NewSourceRepository(database)
+	go func() {
+		// Small delay to allow server to fully initialize
+		time.Sleep(2 * time.Second)
+		log.Info("Initiating startup version discovery for all sources")
+		versionDiscovery.SyncAllSources(context.Background(), sourceRepo)
 	}()
 
 	return s

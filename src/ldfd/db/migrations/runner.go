@@ -52,6 +52,8 @@ func (r *Runner) registerAll() {
 		migration006RefreshTokens(),
 		migration007ComponentVersions(),
 		migration008ComponentBuildTypes(),
+		migration009ForgeTypeVersionFilter(),
+		migration010DownloadJobSourceDedup(),
 	}
 
 	// Sort by version to ensure correct order

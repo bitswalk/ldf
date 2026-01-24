@@ -137,6 +137,8 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       component_ids: formData.component_ids,
       retrieval_method: formData.retrieval_method,
       url_template: formData.url_template,
+      forge_type: formData.forge_type,
+      version_filter: formData.version_filter,
       priority: formData.priority,
       enabled: formData.enabled,
     };
@@ -207,9 +209,13 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       component_ids: src.component_ids,
       retrieval_method: src.retrieval_method,
       url_template: src.url_template,
+      forge_type: src.forge_type,
+      version_filter: src.version_filter,
       priority: src.priority,
       enabled: src.enabled,
       is_system: isDefaultSource(),
+      created_at: src.created_at,
+      updated_at: src.updated_at,
     };
   };
 
@@ -452,6 +458,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                   sourceType={props.sourceType}
                   baseUrl={source()!.url}
                   urlTemplate={source()!.url_template}
+                  versionFilter={source()!.version_filter}
                   onSuccess={handleVersionSuccess}
                   onError={handleVersionError}
                 />
@@ -468,7 +475,6 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
         title={t("sources.create.editModalTitle")}
       >
         <SourceForm
-          key={source()?.id || "edit"}
           onSubmit={handleEditSubmit}
           onCancel={handleEditCancel}
           initialData={getFormInitialData()}

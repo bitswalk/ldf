@@ -37,11 +37,11 @@ const SUPPORTED_LOCALES: Array<{
 ];
 
 class I18nService {
-  private locale: ReturnType<typeof createSignal<SupportedLocale>>;
-  private preference: ReturnType<typeof createSignal<LocalePreference>>;
-  private dictionary: ReturnType<typeof createSignal<FlatDictionary>>;
-  private isLoading: ReturnType<typeof createSignal<boolean>>;
-  private customLanguages: ReturnType<
+  private locale!: ReturnType<typeof createSignal<SupportedLocale>>;
+  private preference!: ReturnType<typeof createSignal<LocalePreference>>;
+  private dictionary!: ReturnType<typeof createSignal<FlatDictionary>>;
+  private isLoading!: ReturnType<typeof createSignal<boolean>>;
+  private customLanguages!: ReturnType<
     typeof createSignal<Map<string, LanguagePack>>
   >;
   private disposeRoot?: () => void;

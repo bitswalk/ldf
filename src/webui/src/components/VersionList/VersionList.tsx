@@ -1,5 +1,11 @@
 import type { Component, JSX } from "solid-js";
-import { createSignal, createEffect, onCleanup, Show } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  createMemo,
+  onCleanup,
+  Show,
+} from "solid-js";
 import { Icon } from "../Icon";
 import { Datagrid } from "../Datagrid";
 import {
@@ -19,15 +25,22 @@ import {
   listSourceVersions,
   triggerVersionSync,
   getSyncStatus,
+  clearSourceVersions,
   formatRelativeTime,
   isSyncInProgress,
 } from "../../services/sourceVersions";
+import {
+  parseVersionFilter,
+  matchesFilter,
+  type FilterPattern,
+} from "../../utils/globFilter";
 
 interface VersionListProps {
   sourceId: string;
   sourceType: SourceType;
   baseUrl?: string;
   urlTemplate?: string;
+  versionFilter?: string;
   onError?: (message: string) => void;
   onSuccess?: (message: string) => void;
   pollInterval?: number;
@@ -51,12 +64,52 @@ export const VersionList: Component<VersionListProps> = (props) => {
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [syncing, setSyncing] = createSignal(false);
+  const [clearing, setClearing] = createSignal(false);
   const [versionTypeFilter, setVersionTypeFilter] = createSignal<
     VersionType | "all"
   >("all");
   const [dropdownOpen, setDropdownOpen] = createSignal(false);
+  const [showFilteredOut, setShowFilteredOut] = createSignal(false);
 
   const pollInterval = () => props.pollInterval ?? 2000;
+
+  // Parse filter patterns
+  const filterPatterns = createMemo<FilterPattern[]>(() => {
+    if (!props.versionFilter) return [];
+    return parseVersionFilter(props.versionFilter);
+  });
+
+  const hasVersionFilter = () => filterPatterns().length > 0;
+
+  // Apply version filter to versions
+  const filteredVersions = createMemo(() => {
+    const allVersions = versions();
+    const patterns = filterPatterns();
+
+    if (patterns.length === 0 || showFilteredOut()) {
+      return allVersions;
+    }
+
+    return allVersions.filter((v) => matchesFilter(v.version, patterns));
+  });
+
+  // Count filtered out versions
+  const filteredOutCount = createMemo(() => {
+    const allVersions = versions();
+    const patterns = filterPatterns();
+
+    if (patterns.length === 0) return 0;
+
+    return allVersions.filter((v) => !matchesFilter(v.version, patterns))
+      .length;
+  });
+
+  // Check if a version is filtered out
+  const isFilteredOut = (version: string): boolean => {
+    const patterns = filterPatterns();
+    if (patterns.length === 0) return false;
+    return !matchesFilter(version, patterns);
+  };
 
   const totalPages = () => Math.ceil(total() / PAGE_SIZE);
 
@@ -154,6 +207,21 @@ export const VersionList: Component<VersionListProps> = (props) => {
     setSyncing(false);
   };
 
+  const handleClear = async () => {
+    setClearing(true);
+    const result = await clearSourceVersions(props.sourceId, props.sourceType);
+    if (result.success) {
+      props.onSuccess?.("Version cache cleared");
+      setVersions([]);
+      setTotal(0);
+      setSyncJob(null);
+      setCurrentPage(1);
+    } else {
+      props.onError?.(result.message);
+    }
+    setClearing(false);
+  };
+
   const handleCopyUrl = (version: SourceVersion) => {
     const url = version.download_url || buildVersionUrl(version.version);
     navigator.clipboard.writeText(url);
@@ -207,7 +275,9 @@ export const VersionList: Component<VersionListProps> = (props) => {
     return date.toLocaleDateString();
   };
 
-  const getVersionTypeColor = (type: VersionType | undefined): string => {
+  const getVersionTypeColor = (
+    type: VersionType | undefined | string,
+  ): string => {
     switch (type) {
       case "mainline":
         return "bg-blue-500/20 text-blue-500";
@@ -215,19 +285,24 @@ export const VersionList: Component<VersionListProps> = (props) => {
         return "bg-purple-500/20 text-purple-500";
       case "linux-next":
         return "bg-orange-500/20 text-orange-500";
+      case "stable":
+        return "bg-green-500/20 text-green-500";
       default:
+        // Handle empty string, undefined, or any unknown type as stable
         return "bg-green-500/20 text-green-500";
     }
   };
 
-  const getVersionTypeLabel = (type: VersionType | undefined): string => {
+  const getVersionTypeLabel = (
+    type: VersionType | undefined | string,
+  ): string => {
+    if (!type || type === "") return "Stable";
     if (type === "linux-next") return "Linux-next";
-    if (type) return type.charAt(0).toUpperCase() + type.slice(1);
-    return "Stable";
+    return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
   const renderVersionType = (
-    versionType: VersionType | undefined,
+    versionType: VersionType | undefined | string,
   ): JSX.Element => {
     return (
       <span
@@ -311,6 +386,39 @@ export const VersionList: Component<VersionListProps> = (props) => {
           </Show>
         </div>
         <div class="flex items-center gap-2">
+          {/* Version filter indicator */}
+          <Show when={hasVersionFilter()}>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-muted-foreground">
+                Filter:{" "}
+                <code class="px-1 py-0.5 bg-muted rounded font-mono">
+                  {props.versionFilter}
+                </code>
+              </span>
+              <Show when={filteredOutCount() > 0}>
+                <button
+                  onClick={() => setShowFilteredOut(!showFilteredOut())}
+                  class={`flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors ${
+                    showFilteredOut()
+                      ? "bg-orange-500/20 text-orange-500"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                  title={
+                    showFilteredOut()
+                      ? "Hide filtered versions"
+                      : "Show filtered versions"
+                  }
+                >
+                  <Icon
+                    name={showFilteredOut() ? "eye" : "eye-slash"}
+                    size="xs"
+                  />
+                  <span>{filteredOutCount()} hidden</span>
+                </button>
+              </Show>
+            </div>
+          </Show>
+
           {/* Version type filter dropdown */}
           <div class="relative" data-version-filter-dropdown>
             <button
@@ -347,6 +455,26 @@ export const VersionList: Component<VersionListProps> = (props) => {
               </div>
             </Show>
           </div>
+
+          {/* Clear button */}
+          <Show when={total() > 0}>
+            <button
+              onClick={handleClear}
+              disabled={clearing() || isSyncInProgress(syncJob())}
+              class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Clear version cache"
+            >
+              <Show
+                when={!clearing()}
+                fallback={
+                  <Icon name="spinner-gap" size="sm" class="animate-spin" />
+                }
+              >
+                <Icon name="trash" size="sm" />
+              </Show>
+              <span>{clearing() ? "Clearing..." : "Clear"}</span>
+            </button>
+          </Show>
 
           {/* Sync button */}
           <button
@@ -455,7 +583,7 @@ export const VersionList: Component<VersionListProps> = (props) => {
       </Show>
 
       {/* Versions table using Datagrid */}
-      <Show when={!loading() && versions().length > 0}>
+      <Show when={!loading() && filteredVersions().length > 0}>
         <div class="border border-border rounded-lg overflow-hidden">
           <Datagrid
             columns={[
@@ -464,20 +592,38 @@ export const VersionList: Component<VersionListProps> = (props) => {
                 label: "Version",
                 sortable: true,
                 class: "font-mono font-medium",
+                render: (value) => {
+                  const version = value as string;
+                  const filtered = isFilteredOut(version);
+                  return (
+                    <span
+                      class={
+                        filtered ? "line-through text-muted-foreground" : ""
+                      }
+                    >
+                      {version}
+                      {filtered && (
+                        <span class="ml-2 text-xs text-orange-500">
+                          (filtered)
+                        </span>
+                      )}
+                    </span>
+                  );
+                },
               },
               {
                 key: "release_date",
                 label: "Release Date",
                 sortable: true,
                 class: "text-sm text-muted-foreground",
-                render: (value: string | undefined) => formatDate(value),
+                render: (value) => formatDate(value as string | undefined),
               },
               {
                 key: "version_type",
                 label: "Type",
                 sortable: true,
-                render: (value: VersionType | undefined) =>
-                  renderVersionType(value),
+                render: (value) =>
+                  renderVersionType(value as VersionType | undefined | string),
               },
               {
                 key: "id",
@@ -486,7 +632,7 @@ export const VersionList: Component<VersionListProps> = (props) => {
                 component: ActionsCell,
               },
             ]}
-            data={versions()}
+            data={filteredVersions()}
             rowKey="id"
           />
         </div>

@@ -139,12 +139,19 @@ func (h *Handler) HandleCreateDefault(c *gin.Context) {
 		componentIDs = []string{}
 	}
 
+	forgeType := req.ForgeType
+	if forgeType == "" {
+		forgeType = "generic"
+	}
+
 	source := &db.UpstreamSource{
 		Name:            req.Name,
 		URL:             req.URL,
 		ComponentIDs:    componentIDs,
 		RetrievalMethod: retrievalMethod,
 		URLTemplate:     req.URLTemplate,
+		ForgeType:       forgeType,
+		VersionFilter:   req.VersionFilter,
 		Priority:        req.Priority,
 		Enabled:         enabled,
 	}
@@ -217,6 +224,12 @@ func (h *Handler) HandleUpdateDefault(c *gin.Context) {
 	}
 	if req.URLTemplate != "" {
 		source.URLTemplate = req.URLTemplate
+	}
+	if req.ForgeType != nil {
+		source.ForgeType = *req.ForgeType
+	}
+	if req.VersionFilter != nil {
+		source.VersionFilter = *req.VersionFilter
 	}
 	if req.Priority != nil {
 		source.Priority = *req.Priority
@@ -298,6 +311,11 @@ func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 		componentIDs = []string{}
 	}
 
+	forgeType := req.ForgeType
+	if forgeType == "" {
+		forgeType = "generic"
+	}
+
 	source := &db.UpstreamSource{
 		OwnerID:         claims.UserID,
 		Name:            req.Name,
@@ -305,6 +323,8 @@ func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 		ComponentIDs:    componentIDs,
 		RetrievalMethod: retrievalMethod,
 		URLTemplate:     req.URLTemplate,
+		ForgeType:       forgeType,
+		VersionFilter:   req.VersionFilter,
 		Priority:        req.Priority,
 		Enabled:         enabled,
 	}
@@ -396,6 +416,12 @@ func (h *Handler) HandleUpdateUserSource(c *gin.Context) {
 	}
 	if req.URLTemplate != "" {
 		source.URLTemplate = req.URLTemplate
+	}
+	if req.ForgeType != nil {
+		source.ForgeType = *req.ForgeType
+	}
+	if req.VersionFilter != nil {
+		source.VersionFilter = *req.VersionFilter
 	}
 	if req.Priority != nil {
 		source.Priority = *req.Priority
@@ -1004,5 +1030,158 @@ func (h *Handler) HandleGetUserSyncStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, SyncStatusResponse{
 		Job: job,
+	})
+}
+
+// HandleClearDefaultVersions clears all cached versions for a default source (root only)
+func (h *Handler) HandleClearDefaultVersions(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetDefaultByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Default source not found",
+		})
+		return
+	}
+
+	// Check for running sync job
+	runningJob, err := h.sourceVersionRepo.GetRunningSyncJob(id, "default")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if runningJob != nil {
+		c.JSON(http.StatusConflict, common.ErrorResponse{
+			Error:   "Conflict",
+			Code:    http.StatusConflict,
+			Message: "Cannot clear versions while sync is in progress",
+		})
+		return
+	}
+
+	// Delete all versions for this source
+	if err := h.sourceVersionRepo.DeleteBySource(id, "default"); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	log.Info("Cleared version cache for default source", "source_id", id, "source_name", source.Name)
+
+	c.JSON(http.StatusOK, ClearVersionsResponse{
+		Message: "Version cache cleared successfully",
+	})
+}
+
+// HandleClearUserVersions clears all cached versions for a user source
+func (h *Handler) HandleClearUserVersions(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetUserSourceByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "User source not found",
+		})
+		return
+	}
+
+	if source.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "You can only clear your own source versions",
+		})
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+
+	// Check for running sync job
+	runningJob, err := h.sourceVersionRepo.GetRunningSyncJob(id, sourceType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if runningJob != nil {
+		c.JSON(http.StatusConflict, common.ErrorResponse{
+			Error:   "Conflict",
+			Code:    http.StatusConflict,
+			Message: "Cannot clear versions while sync is in progress",
+		})
+		return
+	}
+
+	// Delete all versions for this source
+	if err := h.sourceVersionRepo.DeleteBySource(id, sourceType); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	log.Info("Cleared version cache for user source", "source_id", id, "source_name", source.Name, "user_id", claims.UserID)
+
+	c.JSON(http.StatusOK, ClearVersionsResponse{
+		Message: "Version cache cleared successfully",
 	})
 }

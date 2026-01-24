@@ -35,7 +35,7 @@ import {
   clearAllAuth,
 } from "./services/storage";
 import { syncDevModeFromServer } from "./services/settings";
-import { initializeFavicon } from "./services/branding";
+import { initializeFavicon, initializeAppName } from "./services/branding";
 
 type ViewType =
   | "server-connection"
@@ -125,8 +125,9 @@ const App: Component = () => {
         setCurrentView("distribution");
         // Sync devmode setting from server for root users
         syncDevModeFromServer();
-        // Initialize favicon from server branding
+        // Initialize branding (favicon and app name)
         initializeFavicon();
+        initializeAppName();
       } else {
         // Token is invalid and couldn't be refreshed - redirect to login
         clearAllAuth();
@@ -193,8 +194,9 @@ const App: Component = () => {
     setCurrentView("distribution");
     // Sync devmode setting from server for root users
     syncDevModeFromServer();
-    // Initialize favicon from server branding
+    // Initialize branding (favicon and app name)
     initializeFavicon();
+    initializeAppName();
   };
 
   const handleShowRegister = (username: string) => {

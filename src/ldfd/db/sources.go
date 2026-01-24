@@ -23,7 +23,7 @@ func NewSourceRepository(db *Database) *SourceRepository {
 // List retrieves all sources ordered by priority
 func (r *SourceRepository) List() ([]UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		ORDER BY priority ASC, name ASC
 	`
@@ -39,7 +39,7 @@ func (r *SourceRepository) List() ([]UpstreamSource, error) {
 // ListDefaults retrieves all system/default sources ordered by priority
 func (r *SourceRepository) ListDefaults() ([]UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE is_system = 1
 		ORDER BY priority ASC, name ASC
@@ -56,7 +56,7 @@ func (r *SourceRepository) ListDefaults() ([]UpstreamSource, error) {
 // ListDefaultsByComponent retrieves all system sources for a specific component
 func (r *SourceRepository) ListDefaultsByComponent(componentID string) ([]UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE is_system = 1 AND EXISTS (SELECT 1 FROM json_each(component_ids) WHERE value = ?)
 		ORDER BY priority ASC, name ASC
@@ -73,7 +73,7 @@ func (r *SourceRepository) ListDefaultsByComponent(componentID string) ([]Upstre
 // GetDefaultByID retrieves a system source by ID
 func (r *SourceRepository) GetDefaultByID(id string) (*UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE id = ? AND is_system = 1
 	`
@@ -93,7 +93,7 @@ func (r *SourceRepository) GetDefaultByID(id string) (*UpstreamSource, error) {
 // GetByID retrieves any source by ID (system or user)
 func (r *SourceRepository) GetByID(id string) (*UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE id = ?
 	`
@@ -128,6 +128,9 @@ func (r *SourceRepository) Create(s *UpstreamSource) error {
 	if s.ComponentIDs == nil {
 		s.ComponentIDs = []string{}
 	}
+	if s.ForgeType == "" {
+		s.ForgeType = "generic"
+	}
 
 	now := time.Now()
 	s.CreatedAt = now
@@ -136,11 +139,11 @@ func (r *SourceRepository) Create(s *UpstreamSource) error {
 	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
 
 	query := `
-		INSERT INTO upstream_sources (id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO upstream_sources (id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query, s.ID, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
-		nullString(s.URLTemplate), s.Priority, s.Enabled, s.IsSystem, nullString(s.OwnerID), s.CreatedAt, s.UpdatedAt)
+		nullString(s.URLTemplate), s.ForgeType, s.VersionFilter, s.Priority, s.Enabled, s.IsSystem, nullString(s.OwnerID), s.CreatedAt, s.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create source: %w", err)
 	}
@@ -160,16 +163,19 @@ func (r *SourceRepository) Update(s *UpstreamSource) error {
 	if s.ComponentIDs == nil {
 		s.ComponentIDs = []string{}
 	}
+	if s.ForgeType == "" {
+		s.ForgeType = "generic"
+	}
 
 	componentIDsJSON := serializeComponentIDs(s.ComponentIDs)
 
 	query := `
 		UPDATE upstream_sources
-		SET name = ?, url = ?, component_ids = ?, retrieval_method = ?, url_template = ?, priority = ?, enabled = ?, updated_at = ?
+		SET name = ?, url = ?, component_ids = ?, retrieval_method = ?, url_template = ?, forge_type = ?, version_filter = ?, priority = ?, enabled = ?, updated_at = ?
 		WHERE id = ?
 	`
 	result, err := r.db.DB().Exec(query, s.Name, s.URL, componentIDsJSON, s.RetrievalMethod,
-		nullString(s.URLTemplate), s.Priority, s.Enabled, s.UpdatedAt, s.ID)
+		nullString(s.URLTemplate), s.ForgeType, s.VersionFilter, s.Priority, s.Enabled, s.UpdatedAt, s.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update source: %w", err)
 	}
@@ -224,7 +230,7 @@ func (r *SourceRepository) Delete(id string) error {
 // ListUserSources retrieves all user sources for a specific user ordered by priority
 func (r *SourceRepository) ListUserSources(ownerID string) ([]UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE is_system = 0 AND owner_id = ?
 		ORDER BY priority ASC, name ASC
@@ -241,7 +247,7 @@ func (r *SourceRepository) ListUserSources(ownerID string) ([]UpstreamSource, er
 // ListUserSourcesByComponent retrieves all user sources for a specific component
 func (r *SourceRepository) ListUserSourcesByComponent(ownerID, componentID string) ([]UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE is_system = 0 AND owner_id = ? AND EXISTS (SELECT 1 FROM json_each(component_ids) WHERE value = ?)
 		ORDER BY priority ASC, name ASC
@@ -258,7 +264,7 @@ func (r *SourceRepository) ListUserSourcesByComponent(ownerID, componentID strin
 // GetUserSourceByID retrieves a user source by ID
 func (r *SourceRepository) GetUserSourceByID(id string) (*UpstreamSource, error) {
 	query := `
-		SELECT id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+		SELECT id, name, url, component_ids, retrieval_method, url_template, forge_type, version_filter, priority, enabled, is_system, owner_id, created_at, updated_at
 		FROM upstream_sources
 		WHERE id = ? AND is_system = 0
 	`
@@ -393,13 +399,18 @@ func (r *SourceRepository) scanSources(rows *sql.Rows) ([]UpstreamSource, error)
 	var sources []UpstreamSource
 	for rows.Next() {
 		var s UpstreamSource
-		var componentIDsJSON, urlTemplate, ownerID sql.NullString
+		var componentIDsJSON, urlTemplate, forgeType, versionFilter, ownerID sql.NullString
 		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
-			&s.Priority, &s.Enabled, &s.IsSystem, &ownerID, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			&forgeType, &versionFilter, &s.Priority, &s.Enabled, &s.IsSystem, &ownerID, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan source: %w", err)
 		}
 		s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 		s.URLTemplate = urlTemplate.String
+		s.ForgeType = forgeType.String
+		if s.ForgeType == "" {
+			s.ForgeType = "generic"
+		}
+		s.VersionFilter = versionFilter.String
 		s.OwnerID = ownerID.String
 		sources = append(sources, s)
 	}
@@ -414,14 +425,19 @@ func (r *SourceRepository) scanSources(rows *sql.Rows) ([]UpstreamSource, error)
 // scanSource scans a single source row
 func (r *SourceRepository) scanSource(row *sql.Row) (*UpstreamSource, error) {
 	var s UpstreamSource
-	var componentIDsJSON, urlTemplate, ownerID sql.NullString
+	var componentIDsJSON, urlTemplate, forgeType, versionFilter, ownerID sql.NullString
 	err := row.Scan(&s.ID, &s.Name, &s.URL, &componentIDsJSON, &s.RetrievalMethod, &urlTemplate,
-		&s.Priority, &s.Enabled, &s.IsSystem, &ownerID, &s.CreatedAt, &s.UpdatedAt)
+		&forgeType, &versionFilter, &s.Priority, &s.Enabled, &s.IsSystem, &ownerID, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	s.ComponentIDs = parseComponentIDs(componentIDsJSON.String)
 	s.URLTemplate = urlTemplate.String
+	s.ForgeType = forgeType.String
+	if s.ForgeType == "" {
+		s.ForgeType = "generic"
+	}
+	s.VersionFilter = versionFilter.String
 	s.OwnerID = ownerID.String
 	return &s, nil
 }

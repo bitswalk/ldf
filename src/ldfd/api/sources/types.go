@@ -26,6 +26,8 @@ type CreateSourceRequest struct {
 	ComponentIDs    []string `json:"component_ids" example:"[\"uuid-of-kernel-component\"]"`
 	RetrievalMethod string   `json:"retrieval_method" example:"release"`
 	URLTemplate     string   `json:"url_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
+	ForgeType       string   `json:"forge_type" example:"github"`
+	VersionFilter   string   `json:"version_filter" example:"!*-rc*,!*alpha*,!*beta*"`
 	Priority        int      `json:"priority" example:"10"`
 	Enabled         *bool    `json:"enabled" example:"true"`
 }
@@ -37,6 +39,8 @@ type UpdateSourceRequest struct {
 	ComponentIDs    []string `json:"component_ids" example:"[\"uuid-of-kernel-component\"]"`
 	RetrievalMethod string   `json:"retrieval_method" example:"release"`
 	URLTemplate     string   `json:"url_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
+	ForgeType       *string  `json:"forge_type" example:"github"`
+	VersionFilter   *string  `json:"version_filter" example:"!*-rc*,!*alpha*,!*beta*"`
 	Priority        *int     `json:"priority" example:"10"`
 	Enabled         *bool    `json:"enabled" example:"true"`
 }
@@ -70,4 +74,9 @@ type SyncTriggerResponse struct {
 // SyncStatusResponse represents the status of a sync job
 type SyncStatusResponse struct {
 	Job *db.VersionSyncJob `json:"job"`
+}
+
+// ClearVersionsResponse represents the response when clearing version cache
+type ClearVersionsResponse struct {
+	Message string `json:"message"`
 }

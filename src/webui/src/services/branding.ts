@@ -2,8 +2,13 @@
 
 import { debugError } from "../lib/utils";
 import { getServerUrl, getAuthToken } from "./storage";
+import { getServerSetting, updateServerSetting } from "./settings";
 
 export type BrandingAsset = "logo" | "favicon";
+
+// Default app name fallback
+export const DEFAULT_APP_NAME = "Linux Distribution Factory";
+export const APP_NAME_MAX_LENGTH = 32;
 
 export interface BrandingAssetInfo {
   asset: string;
@@ -451,4 +456,124 @@ export async function deleteBrandingAsset(
         err instanceof Error ? err.message : "Failed to connect to server",
     };
   }
+}
+
+export type GetAppNameResult =
+  | { success: true; appName: string }
+  | {
+      success: false;
+      error:
+        | "unauthorized"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+export type SetAppNameResult =
+  | { success: true; appName: string }
+  | {
+      success: false;
+      error:
+        | "unauthorized"
+        | "forbidden"
+        | "invalid_request"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+/**
+ * Get the custom application name from server settings
+ * Returns the default app name if not configured or on error
+ */
+export async function getAppName(): Promise<GetAppNameResult> {
+  const result = await getServerSetting("webui.app_name");
+
+  if (result.success) {
+    const appName = result.setting.value as string;
+    return {
+      success: true,
+      appName: appName && appName.trim() ? appName.trim() : DEFAULT_APP_NAME,
+    };
+  }
+
+  // For 404 (not found) or forbidden errors, just return default
+  if (result.error === "not_found" || result.error === "forbidden") {
+    return { success: true, appName: DEFAULT_APP_NAME };
+  }
+
+  return {
+    success: false,
+    error:
+      result.error === "unauthorized"
+        ? "unauthorized"
+        : result.error === "network_error"
+          ? "network_error"
+          : result.error === "not_configured"
+            ? "not_configured"
+            : "internal_error",
+    message: result.message,
+  };
+}
+
+/**
+ * Set a custom application name (requires root access)
+ * Pass empty string to reset to default
+ */
+export async function setAppName(name: string): Promise<SetAppNameResult> {
+  const trimmedName = name.trim();
+
+  if (trimmedName.length > APP_NAME_MAX_LENGTH) {
+    return {
+      success: false,
+      error: "invalid_request",
+      message: `Application name must be ${APP_NAME_MAX_LENGTH} characters or less`,
+    };
+  }
+
+  const result = await updateServerSetting("webui.app_name", trimmedName);
+
+  if (result.success) {
+    return {
+      success: true,
+      appName: trimmedName || DEFAULT_APP_NAME,
+    };
+  }
+
+  return {
+    success: false,
+    error:
+      result.error === "unauthorized"
+        ? "unauthorized"
+        : result.error === "forbidden"
+          ? "forbidden"
+          : result.error === "invalid_request"
+            ? "invalid_request"
+            : result.error === "network_error"
+              ? "network_error"
+              : result.error === "not_configured"
+                ? "not_configured"
+                : "internal_error",
+    message: result.message,
+  };
+}
+
+/**
+ * Initialize the document title with the custom app name.
+ * Call this on app startup.
+ */
+export async function initializeAppName(): Promise<string> {
+  const result = await getAppName();
+  const appName = result.success ? result.appName : DEFAULT_APP_NAME;
+  document.title = appName;
+  return appName;
+}
+
+/**
+ * Update the document title with the given app name
+ */
+export function updateDocumentTitle(appName: string): void {
+  document.title = appName || DEFAULT_APP_NAME;
 }

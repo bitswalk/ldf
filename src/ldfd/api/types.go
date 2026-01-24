@@ -9,12 +9,14 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/components"
 	"github.com/bitswalk/ldf/src/ldfd/api/distributions"
 	"github.com/bitswalk/ldf/src/ldfd/api/downloads"
+	apiforge "github.com/bitswalk/ldf/src/ldfd/api/forge"
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/download"
+	"github.com/bitswalk/ldf/src/ldfd/forge"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
@@ -34,10 +36,12 @@ type API struct {
 	Branding      *branding.Handler
 	LangPacks     *langpacks.Handler
 	Settings      *settings.Handler
+	Forge         *apiforge.Handler
 
 	// Direct dependencies for middleware
-	jwtService *auth.JWTService
-	storage    storage.Backend
+	jwtService    *auth.JWTService
+	storage       storage.Backend
+	forgeRegistry *forge.Registry
 }
 
 // Config contains API configuration options
@@ -53,4 +57,5 @@ type Config struct {
 	JWTService        *auth.JWTService
 	DownloadManager   *download.Manager
 	VersionDiscovery  *download.VersionDiscovery
+	ForgeRegistry     *forge.Registry
 }

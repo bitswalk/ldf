@@ -6,6 +6,7 @@ import {
   createMemo,
   Show,
   For,
+  onCleanup,
 } from "solid-js";
 import { Spinner } from "../Spinner";
 import { Icon } from "../Icon";
@@ -16,6 +17,14 @@ import {
   getCategoryDisplayName,
   type Component,
 } from "../../services/components";
+import {
+  detectForge,
+  previewFilter,
+  FORGE_TYPES,
+  type ForgeType,
+  type ForgeDefaults,
+  type VersionPreview,
+} from "../../services/forge";
 import { t } from "../../services/i18n";
 
 // Template variable definitions for the help tooltip
@@ -58,6 +67,12 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
   const [urlTemplate, setUrlTemplate] = createSignal(
     props.initialData?.url_template || "",
   );
+  const [forgeType, setForgeType] = createSignal<ForgeType>(
+    (props.initialData?.forge_type as ForgeType) || "generic",
+  );
+  const [versionFilter, setVersionFilter] = createSignal(
+    props.initialData?.version_filter || "",
+  );
   const [priority, setPriority] = createSignal(
     props.initialData?.priority ?? 0,
   );
@@ -65,6 +80,27 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     props.initialData?.enabled ?? true,
   );
   const [errors, setErrors] = createSignal<{ name?: string; url?: string }>({});
+
+  // Forge detection state
+  const [detectedForge, setDetectedForge] = createSignal<ForgeType | null>(
+    null,
+  );
+  const [forgeDefaults, setForgeDefaults] = createSignal<ForgeDefaults | null>(
+    null,
+  );
+  const [isDetecting, setIsDetecting] = createSignal(false);
+  const [forgeOverridden, setForgeOverridden] = createSignal(
+    !!props.initialData?.forge_type,
+  );
+
+  // Version filter preview state
+  const [filterPreview, setFilterPreview] = createSignal<VersionPreview[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = createSignal(false);
+  const [previewStats, setPreviewStats] = createSignal<{
+    total: number;
+    included: number;
+    excluded: number;
+  } | null>(null);
 
   // Fetch components for the dropdown
   const [components] = createResource(async () => {
@@ -107,6 +143,141 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
 
   // Check if a component is selected
   const isComponentSelected = (id: string) => componentIds().includes(id);
+
+  // Check if all components in a category are selected
+  const isCategoryFullySelected = (categoryComps: Component[]) => {
+    const ids = componentIds();
+    return categoryComps.every((comp) => ids.includes(comp.id));
+  };
+
+  // Check if some (but not all) components in a category are selected
+  const isCategoryPartiallySelected = (categoryComps: Component[]) => {
+    const ids = componentIds();
+    const selectedCount = categoryComps.filter((comp) =>
+      ids.includes(comp.id),
+    ).length;
+    return selectedCount > 0 && selectedCount < categoryComps.length;
+  };
+
+  // Toggle all components in a category
+  const toggleCategory = (categoryComps: Component[]) => {
+    const allSelected = isCategoryFullySelected(categoryComps);
+    const categoryIds = categoryComps.map((comp) => comp.id);
+
+    setComponentIds((prev) => {
+      if (allSelected) {
+        // Deselect all in this category
+        return prev.filter((id) => !categoryIds.includes(id));
+      } else {
+        // Select all in this category
+        const newIds = new Set(prev);
+        categoryIds.forEach((id) => newIds.add(id));
+        return Array.from(newIds);
+      }
+    });
+  };
+
+  // Debounce timer ref
+  let detectTimer: ReturnType<typeof setTimeout> | null = null;
+  let previewTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onCleanup(() => {
+    if (detectTimer) clearTimeout(detectTimer);
+    if (previewTimer) clearTimeout(previewTimer);
+  });
+
+  // Auto-detect forge type when URL changes
+  createEffect(() => {
+    const currentUrl = url().trim();
+    if (!currentUrl || forgeOverridden()) return;
+
+    // Debounce detection
+    if (detectTimer) clearTimeout(detectTimer);
+    detectTimer = setTimeout(async () => {
+      try {
+        new URL(currentUrl);
+      } catch {
+        return; // Invalid URL, don't detect
+      }
+
+      setIsDetecting(true);
+      try {
+        const result = await detectForge(currentUrl);
+
+        if (result.success) {
+          setDetectedForge(result.data.forge_type);
+          setForgeType(result.data.forge_type);
+          if (result.data.defaults) {
+            setForgeDefaults(result.data.defaults);
+            // Set default filter if user hasn't customized it
+            if (!versionFilter()) {
+              setVersionFilter(result.data.defaults.version_filter);
+            }
+          }
+        } else {
+          console.warn("Forge detection failed:", result.message);
+        }
+      } catch (err) {
+        console.error("Error detecting forge:", err);
+      } finally {
+        setIsDetecting(false);
+      }
+    }, 500);
+  });
+
+  // Load filter preview when URL or filter changes
+  const loadFilterPreview = async () => {
+    const currentUrl = url().trim();
+    if (!currentUrl) return;
+
+    try {
+      new URL(currentUrl);
+    } catch {
+      return;
+    }
+
+    setIsLoadingPreview(true);
+    try {
+      const result = await previewFilter(
+        currentUrl,
+        forgeType(),
+        versionFilter(),
+      );
+
+      if (result.success) {
+        setFilterPreview(result.data.versions);
+        setPreviewStats({
+          total: result.data.total_versions,
+          included: result.data.included_versions,
+          excluded: result.data.excluded_versions,
+        });
+      }
+    } catch {
+      // Silently fail - preview is optional
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  // Trigger preview load when URL, filter, or forge type changes (debounced)
+  createEffect(() => {
+    // Track all dependencies that should trigger a preview refresh
+    const currentUrl = url().trim();
+    const _ = versionFilter();
+    const __ = forgeType();
+
+    if (!currentUrl) return;
+
+    // Validate URL
+    try {
+      new URL(currentUrl);
+    } catch {
+      return;
+    }
+
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(loadFilterPreview, 800);
+  });
 
   const previewUrl = () => {
     const baseUrl = url().trim();
@@ -184,6 +355,12 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     if (urlTemplate().trim()) {
       request.url_template = urlTemplate().trim();
     }
+    if (forgeType()) {
+      request.forge_type = forgeType();
+    }
+    if (versionFilter().trim()) {
+      request.version_filter = versionFilter().trim();
+    }
 
     props.onSubmit(request);
   };
@@ -224,35 +401,60 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
         </label>
         <div class="border-2 border-border rounded-md max-h-64 overflow-y-auto">
           <For each={Object.entries(groupedComponents())}>
-            {([category, comps]) => (
-              <div class="border-b border-border last:border-b-0">
-                <div class="px-3 py-2 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {getCategoryDisplayName(category)}
+            {([category, comps]) => {
+              const categoryComps = comps as Component[];
+              return (
+                <div class="border-b border-border last:border-b-0">
+                  <label class="flex items-center gap-3 px-3 py-2 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={isCategoryFullySelected(categoryComps)}
+                      ref={(el) => {
+                        // Set indeterminate state for partial selection
+                        createEffect(() => {
+                          el.indeterminate =
+                            isCategoryPartiallySelected(categoryComps);
+                        });
+                      }}
+                      onChange={() => toggleCategory(categoryComps)}
+                      class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                    <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">
+                      {getCategoryDisplayName(category)}
+                    </span>
+                    <span class="text-xs text-muted-foreground/70">
+                      {
+                        categoryComps.filter((c) => isComponentSelected(c.id))
+                          .length
+                      }
+                      /{categoryComps.length}
+                    </span>
+                  </label>
+                  <div class="divide-y divide-border/50">
+                    <For each={categoryComps}>
+                      {(comp) => (
+                        <label class="flex items-center gap-3 px-3 py-2 pl-10 cursor-pointer hover:bg-muted/30 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={isComponentSelected(comp.id)}
+                            onChange={() => toggleComponent(comp.id)}
+                            class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                          />
+                          <span class="text-sm flex-1">
+                            {comp.display_name}
+                            {comp.is_optional && (
+                              <span class="text-muted-foreground ml-1">
+                                (optional)
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      )}
+                    </For>
+                  </div>
                 </div>
-                <div class="divide-y divide-border/50">
-                  <For each={comps as Component[]}>
-                    {(comp) => (
-                      <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={isComponentSelected(comp.id)}
-                          onChange={() => toggleComponent(comp.id)}
-                          class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
-                        />
-                        <span class="text-sm flex-1">
-                          {comp.display_name}
-                          {comp.is_optional && (
-                            <span class="text-muted-foreground ml-1">
-                              (optional)
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    )}
-                  </For>
-                </div>
-              </div>
-            )}
+              );
+            }}
           </For>
           <Show when={Object.keys(groupedComponents()).length === 0}>
             <div class="px-3 py-4 text-center text-sm text-muted-foreground">
@@ -298,6 +500,13 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           placeholder={t("sources.form.url.placeholder")}
           value={url()}
           onInput={(e) => {
+            setUrl(e.target.value);
+            if (errors().url) {
+              setErrors((prev) => ({ ...prev, url: undefined }));
+            }
+          }}
+          onChange={(e) => {
+            // Also catch autocomplete selections
             setUrl(e.target.value);
             if (errors().url) {
               setErrors((prev) => ({ ...prev, url: undefined }));
@@ -418,6 +627,179 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
             URL Preview (example with version 6.12.5)
           </label>
           <p class="font-mono text-xs break-all">{previewUrl()}</p>
+        </div>
+      </Show>
+
+      <div class="space-y-2">
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium" for="forge-type">
+            Forge Type
+          </label>
+          <Show when={isDetecting()}>
+            <Spinner size="sm" />
+          </Show>
+          <Show when={detectedForge() && !forgeOverridden()}>
+            <span class="text-xs text-muted-foreground">(auto-detected)</span>
+          </Show>
+        </div>
+        <select
+          id="forge-type"
+          class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors"
+          value={forgeType()}
+          onChange={(e) => {
+            setForgeType(e.target.value as ForgeType);
+            setForgeOverridden(true);
+          }}
+        >
+          <For each={FORGE_TYPES}>
+            {(forge) => (
+              <option value={forge.type}>{forge.display_name}</option>
+            )}
+          </For>
+        </select>
+        <p class="text-xs text-muted-foreground">
+          Determines how versions are discovered and filtered. Auto-detected
+          from URL if not specified.
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium" for="version-filter">
+            Version Filter (optional)
+          </label>
+          <div class="relative group">
+            <button
+              type="button"
+              class="w-5 h-5 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Filter syntax help"
+            >
+              <Icon name="question" size="xs" />
+            </button>
+            <div class="absolute left-0 top-full mt-2 z-50 hidden group-hover:block">
+              <div class="bg-popover border border-border rounded-lg shadow-lg p-4 w-80">
+                <h4 class="font-semibold text-sm mb-3">Filter Syntax</h4>
+                <p class="text-xs text-muted-foreground mb-3">
+                  Comma-separated glob patterns to include or exclude versions.
+                </p>
+                <div class="space-y-2">
+                  <div class="flex items-start gap-2 text-xs">
+                    <code class="px-1.5 py-0.5 bg-muted rounded font-mono text-primary whitespace-nowrap">
+                      !*-rc*
+                    </code>
+                    <span class="text-muted-foreground flex-1">
+                      Exclude RC versions
+                    </span>
+                  </div>
+                  <div class="flex items-start gap-2 text-xs">
+                    <code class="px-1.5 py-0.5 bg-muted rounded font-mono text-primary whitespace-nowrap">
+                      !*alpha*
+                    </code>
+                    <span class="text-muted-foreground flex-1">
+                      Exclude alpha versions
+                    </span>
+                  </div>
+                  <div class="flex items-start gap-2 text-xs">
+                    <code class="px-1.5 py-0.5 bg-muted rounded font-mono text-primary whitespace-nowrap">
+                      6.*
+                    </code>
+                    <span class="text-muted-foreground flex-1">
+                      Include only 6.x versions
+                    </span>
+                  </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-border">
+                  <p class="text-xs font-medium mb-2">Common presets:</p>
+                  <div class="space-y-1.5 text-xs font-mono text-muted-foreground">
+                    <p>
+                      <span class="text-foreground">Stable only:</span>{" "}
+                      !*-rc*,!*alpha*,!*beta*
+                    </p>
+                    <p>
+                      <span class="text-foreground">Kernel stable:</span>{" "}
+                      !*-rc*,!next-*
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <input
+          id="version-filter"
+          type="text"
+          class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors font-mono text-sm"
+          placeholder="!*-rc*,!*alpha*,!*beta*"
+          value={versionFilter()}
+          onInput={(e) => setVersionFilter(e.target.value)}
+        />
+        <Show when={forgeDefaults()?.filter_source === "upstream"}>
+          <p class="text-xs text-green-600">
+            Filter calculated from upstream repository prerelease patterns.
+          </p>
+        </Show>
+        <Show
+          when={
+            !forgeDefaults() || forgeDefaults()?.filter_source === "default"
+          }
+        >
+          <p class="text-xs text-muted-foreground">
+            Comma-separated glob patterns. Use ! prefix to exclude. Leave empty
+            for no filtering.
+          </p>
+        </Show>
+      </div>
+
+      <Show when={filterPreview().length > 0 || isLoadingPreview()}>
+        <div class="space-y-2 p-3 bg-muted/50 rounded-md border border-border">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-medium text-muted-foreground">
+              Filter Preview
+            </label>
+            <Show when={isLoadingPreview()}>
+              <Spinner size="sm" />
+            </Show>
+            <Show when={previewStats() && !isLoadingPreview()}>
+              <span class="text-xs text-muted-foreground">
+                {previewStats()!.included} of {previewStats()!.total} versions
+              </span>
+            </Show>
+          </div>
+          <Show when={filterPreview().length > 0}>
+            <div class="max-h-40 overflow-y-auto space-y-1">
+              <For each={filterPreview().slice(0, 10)}>
+                {(v) => (
+                  <div
+                    class={`flex items-center gap-2 text-xs ${
+                      v.included
+                        ? "text-foreground"
+                        : "text-muted-foreground line-through"
+                    }`}
+                  >
+                    <span
+                      class={v.included ? "text-green-500" : "text-red-500"}
+                    >
+                      {v.included ? "+" : "-"}
+                    </span>
+                    <span class="font-mono">{v.version}</span>
+                    <Show when={v.is_prerelease}>
+                      <span class="px-1 py-0.5 bg-blue-500/20 text-blue-500 rounded text-[10px]">
+                        prerelease
+                      </span>
+                    </Show>
+                    <Show when={v.reason && !v.included}>
+                      <span class="text-muted-foreground">({v.reason})</span>
+                    </Show>
+                  </div>
+                )}
+              </For>
+              <Show when={filterPreview().length > 10}>
+                <p class="text-xs text-muted-foreground pt-1">
+                  ... and {filterPreview().length - 10} more versions
+                </p>
+              </Show>
+            </div>
+          </Show>
         </div>
       </Show>
 

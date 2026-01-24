@@ -9,6 +9,8 @@ export interface Source {
   component_ids: string[];
   retrieval_method: string;
   url_template?: string;
+  forge_type: string;
+  version_filter?: string;
   priority: number;
   enabled: boolean;
   is_system: boolean;
@@ -24,6 +26,8 @@ export interface SourceDefault {
   component_ids: string[];
   retrieval_method: string;
   url_template?: string;
+  forge_type: string;
+  version_filter?: string;
   priority: number;
   enabled: boolean;
   created_at: string;
@@ -38,6 +42,8 @@ export interface UserSource {
   component_ids: string[];
   retrieval_method: string;
   url_template?: string;
+  forge_type: string;
+  version_filter?: string;
   priority: number;
   enabled: boolean;
   created_at: string;
@@ -50,6 +56,8 @@ export interface CreateSourceRequest {
   component_ids?: string[];
   retrieval_method?: string;
   url_template?: string;
+  forge_type?: string;
+  version_filter?: string;
   priority?: number;
   enabled?: boolean;
 }
@@ -60,6 +68,8 @@ export interface UpdateSourceRequest {
   component_ids?: string[];
   retrieval_method?: string;
   url_template?: string;
+  forge_type?: string;
+  version_filter?: string;
   priority?: number;
   enabled?: boolean;
 }

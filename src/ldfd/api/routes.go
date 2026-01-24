@@ -138,6 +138,7 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			sourcesGroup.GET("/user/:id/versions", a.Sources.HandleListUserVersions)
 			sourcesGroup.POST("/user/:id/sync", a.Sources.HandleSyncUserVersions)
 			sourcesGroup.GET("/user/:id/sync/status", a.Sources.HandleGetUserSyncStatus)
+			sourcesGroup.DELETE("/user/:id/versions", a.Sources.HandleClearUserVersions)
 
 			// Default sources management - root only
 			defaults := sourcesGroup.Group("/defaults")
@@ -155,11 +156,12 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			sourcesGroup.GET("/defaults/:id/sync/status", a.Sources.HandleGetDefaultSyncStatus)
 		}
 
-		// Default source sync - root only (separate group for write operations)
+		// Default source sync and version management - root only (separate group for write operations)
 		sourcesDefaultSync := v1.Group("/sources/defaults")
 		sourcesDefaultSync.Use(a.rootAccessRequired())
 		{
 			sourcesDefaultSync.POST("/:id/sync", a.Sources.HandleSyncDefaultVersions)
+			sourcesDefaultSync.DELETE("/:id/versions", a.Sources.HandleClearDefaultVersions)
 		}
 
 		// Component routes - read operations (public)
@@ -174,6 +176,16 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			componentsGroup.GET("/:id/versions", a.Components.HandleGetVersions)
 			componentsGroup.GET("/:id/resolve-version", a.Components.HandleResolveVersion)
 			componentsGroup.GET("/category/:category", a.Components.HandleListByCategory)
+		}
+
+		// Forge routes - detection and defaults (authenticated)
+		forgeGroup := v1.Group("/forge")
+		forgeGroup.Use(a.authRequired())
+		{
+			forgeGroup.POST("/detect", a.Forge.HandleDetect)
+			forgeGroup.POST("/preview-filter", a.Forge.HandlePreviewFilter)
+			forgeGroup.GET("/types", a.Forge.HandleListForgeTypes)
+			forgeGroup.GET("/common-filters", a.Forge.HandleCommonFilters)
 		}
 
 		// Component routes - write operations (root only)

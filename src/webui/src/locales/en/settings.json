@@ -82,6 +82,13 @@
     "branding": {
       "title": "Branding",
       "description": "Customize the application branding with your own logo and favicon (root only).",
+      "appName": {
+        "title": "Application Name",
+        "description": "Custom name displayed in the header and browser tab.",
+        "placeholder": "Linux Distribution Factory",
+        "hint": "Maximum 32 characters. Leave empty to use the default name.",
+        "charCount": "{{ count }}/32"
+      },
       "logo": {
         "title": "Logo",
         "description": "Upload a logo to display in the application header.",

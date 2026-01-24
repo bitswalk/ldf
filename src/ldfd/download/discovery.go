@@ -39,6 +39,11 @@ func NewVersionDiscovery(versionRepo *db.SourceVersionRepository) *VersionDiscov
 	}
 }
 
+// GetVersionRepo returns the version repository for external use
+func (d *VersionDiscovery) GetVersionRepo() *db.SourceVersionRepository {
+	return d.versionRepo
+}
+
 // DiscoveryMethod represents the method used to discover versions
 type DiscoveryMethod string
 
@@ -178,17 +183,14 @@ func (d *VersionDiscovery) fetchGitHubReleases(ctx context.Context, apiURL strin
 
 			version := normalizeVersion(r.TagName)
 			publishedAt := r.PublishedAt
-			versionType := db.VersionTypeStable
-			if r.Prerelease {
-				versionType = db.VersionTypeMainline
-			}
+			versionType := determineGitHubVersionType(version, r.Prerelease)
 
 			allVersions = append(allVersions, DiscoveredVersion{
 				Version:     version,
 				VersionType: versionType,
 				ReleaseDate: &publishedAt,
 				DownloadURL: r.HTMLURL,
-				IsStable:    !r.Prerelease,
+				IsStable:    !r.Prerelease && !isPrerelease(version),
 			})
 		}
 
@@ -252,10 +254,7 @@ func (d *VersionDiscovery) fetchGitHubTags(ctx context.Context, apiURL string) (
 				continue
 			}
 
-			versionType := db.VersionTypeStable
-			if isPrerelease(version) {
-				versionType = db.VersionTypeMainline
-			}
+			versionType := determineGitHubVersionType(version, false)
 
 			allVersions = append(allVersions, DiscoveredVersion{
 				Version:     version,
@@ -470,6 +469,69 @@ func (d *VersionDiscovery) discoverHTTPDirectoryVersions(ctx context.Context, ba
 	return versions, nil
 }
 
+// SyncAllSources performs a version sync for all enabled sources
+// This is typically called at startup to refresh the version cache
+func (d *VersionDiscovery) SyncAllSources(ctx context.Context, sourceRepo *db.SourceRepository) {
+	// Get all sources (both default and user)
+	sources, err := sourceRepo.List()
+	if err != nil {
+		log.Error("Failed to list sources for startup sync", "error", err)
+		return
+	}
+
+	if len(sources) == 0 {
+		log.Debug("No sources configured, skipping startup version sync")
+		return
+	}
+
+	log.Info("Starting version sync for all sources", "source_count", len(sources))
+
+	for _, source := range sources {
+		if !source.Enabled {
+			log.Debug("Skipping disabled source", "source_id", source.ID, "source_name", source.Name)
+			continue
+		}
+
+		// Check if a sync job is already running for this source
+		sourceType := db.GetSourceType(&source)
+		runningJob, err := d.versionRepo.GetRunningSyncJob(source.ID, sourceType)
+		if err != nil {
+			log.Error("Failed to check running sync job", "source_id", source.ID, "error", err)
+			continue
+		}
+		if runningJob != nil {
+			log.Debug("Sync already in progress for source", "source_id", source.ID, "source_name", source.Name)
+			continue
+		}
+
+		// Create a new sync job
+		job := &db.VersionSyncJob{
+			SourceID:   source.ID,
+			SourceType: sourceType,
+			Status:     db.SyncStatusPending,
+		}
+
+		if err := d.versionRepo.CreateSyncJob(job); err != nil {
+			log.Error("Failed to create startup sync job", "source_id", source.ID, "error", err)
+			continue
+		}
+
+		// Run sync in background (we copy the source to avoid closure issues)
+		sourceCopy := source
+		go func() {
+			syncCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			log.Info("Starting startup version sync", "source_id", sourceCopy.ID, "source_name", sourceCopy.Name)
+			if err := d.SyncVersions(syncCtx, &sourceCopy, sourceType, job); err != nil {
+				log.Error("Startup version sync failed", "source_id", sourceCopy.ID, "error", err)
+			} else {
+				log.Info("Startup version sync completed", "source_id", sourceCopy.ID, "source_name", sourceCopy.Name)
+			}
+		}()
+	}
+}
+
 // SyncVersions performs a full version sync for a source
 func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.UpstreamSource, sourceType string, job *db.VersionSyncJob) error {
 	// Mark job as running
@@ -570,7 +632,25 @@ func isPrerelease(version string) bool {
 		strings.Contains(lower, "-alpha") ||
 		strings.Contains(lower, "-beta") ||
 		strings.Contains(lower, "-dev") ||
-		strings.Contains(lower, "-pre")
+		strings.Contains(lower, "-pre") ||
+		strings.Contains(lower, ".rc") ||
+		strings.Contains(lower, "_rc") ||
+		strings.Contains(lower, "alpha") ||
+		strings.Contains(lower, "beta")
+}
+
+// determineGitHubVersionType determines the version type for a GitHub release
+// Categories:
+// - mainline: prereleases, rc, alpha, beta, dev versions
+// - stable: regular releases (default)
+func determineGitHubVersionType(version string, isGitHubPrerelease bool) db.VersionType {
+	// If GitHub marks it as prerelease, or version string indicates prerelease
+	if isGitHubPrerelease || isPrerelease(version) {
+		return db.VersionTypeMainline
+	}
+
+	// Default to stable for regular releases
+	return db.VersionTypeStable
 }
 
 // determineKernelVersionType determines the version type for a kernel version

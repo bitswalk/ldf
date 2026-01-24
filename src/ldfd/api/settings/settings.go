@@ -46,6 +46,7 @@ var settingsRegistry = []SettingMeta{
 
 	// WebUI settings
 	{"webui.devmode", "bool", "Enable developer mode in the WebUI (shows debug console and logs)", false, "webui", false},
+	{"webui.app_name", "string", "Custom application name displayed in the header and browser tab (max 32 characters)", false, "webui", false},
 
 	// S3 storage settings
 	{"storage.s3.provider", "string", "S3 provider type: garage, minio, aws, or other", true, "storage", false},
@@ -225,6 +226,18 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 				Error:   "Bad request",
 				Code:    http.StatusBadRequest,
 				Message: fmt.Sprintf("Expected string value for '%s', got %T", key, req.Value),
+			})
+			return
+		}
+	}
+
+	// Validate app_name length constraint
+	if key == "webui.app_name" {
+		if strVal, ok := typedValue.(string); ok && len(strVal) > 32 {
+			c.JSON(http.StatusBadRequest, common.ErrorResponse{
+				Error:   "Bad request",
+				Code:    http.StatusBadRequest,
+				Message: "Application name must be 32 characters or less",
 			})
 			return
 		}

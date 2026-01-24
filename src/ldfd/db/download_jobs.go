@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -32,18 +33,29 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 		job.MaxRetries = 3
 	}
 
+	// Serialize component_ids as JSON
+	var componentIDsJSON []byte
+	var err error
+	if len(job.ComponentIDs) > 0 {
+		componentIDsJSON, err = json.Marshal(job.ComponentIDs)
+		if err != nil {
+			return fmt.Errorf("failed to marshal component_ids: %w", err)
+		}
+	}
+
 	query := `
 		INSERT INTO download_jobs (id, distribution_id, owner_id, component_id,
-			source_id, source_type, retrieval_method, resolved_url, version, status,
+			source_id, source_name, source_type, retrieval_method, resolved_url, version, status,
 			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			artifact_path, checksum, error_message, retry_count, max_retries, component_ids)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.DB().Exec(query,
+	_, err = r.db.DB().Exec(query,
 		job.ID, job.DistributionID, job.OwnerID, job.ComponentID,
-		job.SourceID, job.SourceType, job.RetrievalMethod, job.ResolvedURL, job.Version, job.Status,
+		job.SourceID, job.SourceName, job.SourceType, job.RetrievalMethod, job.ResolvedURL, job.Version, job.Status,
 		job.ProgressBytes, job.TotalBytes, job.CreatedAt, job.StartedAt, job.CompletedAt,
 		job.ArtifactPath, job.Checksum, job.ErrorMessage, job.RetryCount, job.MaxRetries,
+		string(componentIDsJSON),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create download job: %w", err)
@@ -52,12 +64,20 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 	return nil
 }
 
+// GetBySourceAndVersion retrieves an existing job for the same distribution, source, and version
+// Returns nil if no matching job exists
+func (r *DownloadJobRepository) GetBySourceAndVersion(distributionID, sourceID, version string) (*DownloadJob, error) {
+	query := selectJobsQuery + ` WHERE dj.distribution_id = ? AND dj.source_id = ? AND dj.version = ? LIMIT 1`
+	row := r.db.DB().QueryRow(query, distributionID, sourceID, version)
+	return r.scanJob(row)
+}
+
 // selectJobsQuery is the base SELECT query with JOIN to get component name
 const selectJobsQuery = `
 	SELECT dj.id, dj.distribution_id, dj.owner_id, dj.component_id, c.name as component_name,
-		dj.source_id, dj.source_type, dj.retrieval_method, dj.resolved_url, dj.version, dj.status,
+		dj.source_id, dj.source_name, dj.source_type, dj.retrieval_method, dj.resolved_url, dj.version, dj.status,
 		dj.progress_bytes, dj.total_bytes, dj.created_at, dj.started_at, dj.completed_at,
-		dj.artifact_path, dj.checksum, dj.error_message, dj.retry_count, dj.max_retries
+		dj.artifact_path, dj.checksum, dj.error_message, dj.retry_count, dj.max_retries, dj.component_ids
 	FROM download_jobs dj
 	LEFT JOIN components c ON dj.component_id = c.id
 `
@@ -313,13 +333,13 @@ func (r *DownloadJobRepository) DeleteByDistribution(distributionID string) erro
 func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 	var job DownloadJob
 	var startedAt, completedAt sql.NullTime
-	var artifactPath, checksum, errorMsg, componentName sql.NullString
+	var artifactPath, checksum, errorMsg, componentName, sourceName, componentIDsJSON sql.NullString
 
 	err := row.Scan(
 		&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &componentName,
-		&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
+		&job.SourceID, &sourceName, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 		&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
-		&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
+		&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries, &componentIDsJSON,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -338,6 +358,15 @@ func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 	job.Checksum = checksum.String
 	job.ErrorMessage = errorMsg.String
 	job.ComponentName = componentName.String
+	job.SourceName = sourceName.String
+
+	// Parse component_ids JSON
+	if componentIDsJSON.Valid && componentIDsJSON.String != "" {
+		if err := json.Unmarshal([]byte(componentIDsJSON.String), &job.ComponentIDs); err != nil {
+			// Log error but don't fail - just leave ComponentIDs empty
+			job.ComponentIDs = nil
+		}
+	}
 
 	return &job, nil
 }
@@ -349,13 +378,13 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 	for rows.Next() {
 		var job DownloadJob
 		var startedAt, completedAt sql.NullTime
-		var artifactPath, checksum, errorMsg, componentName sql.NullString
+		var artifactPath, checksum, errorMsg, componentName, sourceName, componentIDsJSON sql.NullString
 
 		if err := rows.Scan(
 			&job.ID, &job.DistributionID, &job.OwnerID, &job.ComponentID, &componentName,
-			&job.SourceID, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
+			&job.SourceID, &sourceName, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 			&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
-			&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries,
+			&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries, &componentIDsJSON,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan download job: %w", err)
 		}
@@ -370,6 +399,15 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 		job.Checksum = checksum.String
 		job.ErrorMessage = errorMsg.String
 		job.ComponentName = componentName.String
+		job.SourceName = sourceName.String
+
+		// Parse component_ids JSON
+		if componentIDsJSON.Valid && componentIDsJSON.String != "" {
+			if err := json.Unmarshal([]byte(componentIDsJSON.String), &job.ComponentIDs); err != nil {
+				// Log error but don't fail - just leave ComponentIDs empty
+				job.ComponentIDs = nil
+			}
+		}
 
 		jobs = append(jobs, job)
 	}
@@ -379,4 +417,40 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 	}
 
 	return jobs, nil
+}
+
+// AddComponentToJob adds a component ID to an existing job's component_ids list
+func (r *DownloadJobRepository) AddComponentToJob(jobID, componentID string) error {
+	// Get the current job
+	job, err := r.GetByID(jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	if job == nil {
+		return fmt.Errorf("job not found: %s", jobID)
+	}
+
+	// Check if component already in list
+	for _, id := range job.ComponentIDs {
+		if id == componentID {
+			return nil // Already added
+		}
+	}
+
+	// Add component to list
+	job.ComponentIDs = append(job.ComponentIDs, componentID)
+
+	// Serialize and update
+	componentIDsJSON, err := json.Marshal(job.ComponentIDs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal component_ids: %w", err)
+	}
+
+	query := `UPDATE download_jobs SET component_ids = ? WHERE id = ?`
+	_, err = r.db.DB().Exec(query, string(componentIDsJSON), jobID)
+	if err != nil {
+		return fmt.Errorf("failed to update component_ids: %w", err)
+	}
+
+	return nil
 }

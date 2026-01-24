@@ -43,6 +43,11 @@ import {
   getBrandingAssetURL,
   uploadBrandingAsset,
   deleteBrandingAsset,
+  getAppName,
+  setAppName,
+  updateDocumentTitle,
+  DEFAULT_APP_NAME,
+  APP_NAME_MAX_LENGTH,
   type BrandingAssetInfo,
 } from "../../services/branding";
 
@@ -123,6 +128,10 @@ export const Settings: Component<SettingsProps> = (props) => {
     createSignal(false);
   const [deletingLogo, setDeletingLogo] = createSignal(false);
   const [deletingFavicon, setDeletingFavicon] = createSignal(false);
+
+  // App name state (for root users)
+  const [appName, setAppNameValue] = createSignal("");
+  const [appNameSaving, setAppNameSaving] = createSignal(false);
 
   const loadServerSettings = async () => {
     if (!isRootUser()) return;
@@ -302,9 +311,10 @@ export const Settings: Component<SettingsProps> = (props) => {
     setBrandingLoading(true);
     setBrandingError(null);
 
-    const [logoResult, faviconResult] = await Promise.all([
+    const [logoResult, faviconResult, appNameResult] = await Promise.all([
       getBrandingAssetInfo("logo"),
       getBrandingAssetInfo("favicon"),
+      getAppName(),
     ]);
 
     if (logoResult.success) {
@@ -313,8 +323,34 @@ export const Settings: Component<SettingsProps> = (props) => {
     if (faviconResult.success) {
       setFaviconInfo(faviconResult.info);
     }
+    if (appNameResult.success) {
+      // If it's the default name, show empty so the placeholder shows
+      setAppNameValue(
+        appNameResult.appName === DEFAULT_APP_NAME ? "" : appNameResult.appName,
+      );
+    }
 
     setBrandingLoading(false);
+  };
+
+  const handleAppNameSave = async () => {
+    setAppNameSaving(true);
+    setBrandingError(null);
+
+    const result = await setAppName(appName());
+
+    setAppNameSaving(false);
+
+    if (result.success) {
+      // Update the document title
+      updateDocumentTitle(result.appName);
+      // Trigger a custom event so the Header can update
+      window.dispatchEvent(
+        new CustomEvent("appNameChanged", { detail: result.appName }),
+      );
+    } else {
+      setBrandingError(result.message);
+    }
   };
 
   const handleLogoUpload = async (
@@ -890,6 +926,55 @@ export const Settings: Component<SettingsProps> = (props) => {
                   }
                 >
                   <div class="space-y-6">
+                    {/* Application Name */}
+                    <div class="space-y-3">
+                      <div>
+                        <h4 class="text-sm font-medium">
+                          {t("settings.theme.branding.appName.title")}
+                        </h4>
+                        <p class="text-xs text-muted-foreground">
+                          {t("settings.theme.branding.appName.description")}
+                        </p>
+                      </div>
+
+                      <div class="flex items-center gap-3">
+                        <div class="flex-1">
+                          <input
+                            type="text"
+                            value={appName()}
+                            onInput={(e) =>
+                              setAppNameValue(e.currentTarget.value)
+                            }
+                            placeholder={t(
+                              "settings.theme.branding.appName.placeholder",
+                            )}
+                            maxLength={APP_NAME_MAX_LENGTH}
+                            class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                          <div class="flex justify-between mt-1">
+                            <p class="text-xs text-muted-foreground">
+                              {t("settings.theme.branding.appName.hint")}
+                            </p>
+                            <p class="text-xs text-muted-foreground">
+                              {t("settings.theme.branding.appName.charCount", {
+                                count: appName().length,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleAppNameSave}
+                          disabled={appNameSaving()}
+                          class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <Show when={appNameSaving()}>
+                            <Spinner size="sm" />
+                          </Show>
+                          <span>{t("common.actions.save")}</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Logo Upload */}
                     <div class="space-y-3">
                       <div class="flex items-center justify-between">
@@ -1286,7 +1371,6 @@ export const Settings: Component<SettingsProps> = (props) => {
         }
       >
         <SourceForm
-          key={editingSource()?.id || "new"}
           onSubmit={handleSourceFormSubmit}
           onCancel={handleSourceFormCancel}
           initialData={

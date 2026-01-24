@@ -10,6 +10,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/components"
 	"github.com/bitswalk/ldf/src/ldfd/api/distributions"
 	"github.com/bitswalk/ldf/src/ldfd/api/downloads"
+	apiforge "github.com/bitswalk/ldf/src/ldfd/api/forge"
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
@@ -22,6 +23,7 @@ func SetLogger(l *logs.Logger) {
 	sources.SetLogger(l)
 	settings.SetLogger(l)
 	apiauth.SetLogger(l)
+	apiforge.SetLogger(l)
 }
 
 // SetVersionInfo sets the version info for the api package and subpackages
@@ -79,8 +81,13 @@ func New(cfg Config) *API {
 			Database: cfg.Database,
 		}),
 
-		jwtService: cfg.JWTService,
-		storage:    cfg.Storage,
+		Forge: apiforge.NewHandler(apiforge.Config{
+			Registry: cfg.ForgeRegistry,
+		}),
+
+		jwtService:    cfg.JWTService,
+		storage:       cfg.Storage,
+		forgeRegistry: cfg.ForgeRegistry,
 	}
 }
 

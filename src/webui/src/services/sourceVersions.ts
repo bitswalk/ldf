@@ -451,3 +451,98 @@ export function isSyncInProgress(
   if (!job) return false;
   return job.status === "pending" || job.status === "running";
 }
+
+export type ClearVersionsResult =
+  | { success: true; message: string }
+  | {
+      success: false;
+      error:
+        | "conflict"
+        | "not_found"
+        | "forbidden"
+        | "unauthorized"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+// Clear all cached versions for a source
+export async function clearSourceVersions(
+  sourceId: string,
+  sourceType: SourceType,
+): Promise<ClearVersionsResult> {
+  const path =
+    sourceType === "default"
+      ? `/sources/defaults/${sourceId}/versions`
+      : `/sources/user/${sourceId}/versions`;
+  const url = getApiUrl(path);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        message: data.message || "Version cache cleared",
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Access denied",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Source not found",
+      };
+    }
+
+    if (response.status === 409) {
+      return {
+        success: false,
+        error: "conflict",
+        message: "Cannot clear versions while sync is in progress",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to clear versions",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}

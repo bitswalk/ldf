@@ -130,6 +130,8 @@ type UpstreamSource struct {
 	ComponentIDs    []string  `json:"component_ids"`
 	RetrievalMethod string    `json:"retrieval_method"`
 	URLTemplate     string    `json:"url_template,omitempty"`
+	ForgeType       string    `json:"forge_type"`
+	VersionFilter   string    `json:"version_filter,omitempty"`
 	Priority        int       `json:"priority"`
 	Enabled         bool      `json:"enabled"`
 	IsSystem        bool      `json:"is_system"`
@@ -188,7 +190,9 @@ type DownloadJob struct {
 	OwnerID         string            `json:"owner_id"`
 	ComponentID     string            `json:"component_id"`
 	ComponentName   string            `json:"component_name"`
+	ComponentIDs    []string          `json:"component_ids,omitempty"` // All components sharing this artifact
 	SourceID        string            `json:"source_id"`
+	SourceName      string            `json:"source_name,omitempty"` // Source name for artifact path
 	SourceType      string            `json:"source_type"`
 	RetrievalMethod string            `json:"retrieval_method"` // "release" or "git"
 	ResolvedURL     string            `json:"resolved_url"`

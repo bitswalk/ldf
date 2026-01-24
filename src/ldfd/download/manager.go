@@ -265,7 +265,14 @@ func (m *Manager) GetJobStatus(jobID string) (*db.DownloadJob, error) {
 	return m.jobRepo.GetByID(jobID)
 }
 
+// sourceVersionKey creates a unique key for source+version deduplication
+type sourceVersionKey struct {
+	sourceID string
+	version  string
+}
+
 // CreateJobsForDistribution creates download jobs for all components needed by a distribution
+// It deduplicates downloads when multiple components share the same source and version
 func (m *Manager) CreateJobsForDistribution(dist *db.Distribution, userID string) ([]db.DownloadJob, error) {
 	if dist.Config == nil {
 		return nil, fmt.Errorf("distribution has no configuration")
@@ -276,12 +283,25 @@ func (m *Manager) CreateJobsForDistribution(dist *db.Distribution, userID string
 
 	var jobs []db.DownloadJob
 
+	// Track which source+version combinations we've already created jobs for
+	// Maps sourceVersionKey to the job ID
+	createdJobs := make(map[sourceVersionKey]string)
+
 	for _, componentName := range componentNames {
-		job, err := m.createJobForComponent(dist, componentName, userID)
+		job, existingJobID, err := m.createOrReuseJobForComponent(dist, componentName, userID, createdJobs)
 		if err != nil {
 			log.Warn("Failed to create job for component", "component", componentName, "error", err)
 			continue
 		}
+
+		if existingJobID != "" {
+			// Component was added to an existing job (deduplication)
+			log.Info("Component shares artifact with existing job",
+				"component", componentName,
+				"existing_job_id", existingJobID)
+			continue
+		}
+
 		if job != nil {
 			jobs = append(jobs, *job)
 		}
@@ -290,36 +310,76 @@ func (m *Manager) CreateJobsForDistribution(dist *db.Distribution, userID string
 	return jobs, nil
 }
 
-// createJobForComponent creates a download job for a specific component
-func (m *Manager) createJobForComponent(dist *db.Distribution, componentName string, userID string) (*db.DownloadJob, error) {
+// createOrReuseJobForComponent creates a download job for a component, or reuses an existing job
+// if another component with the same source+version already has a job.
+// Returns (job, "", nil) if a new job was created
+// Returns (nil, existingJobID, nil) if the component was added to an existing job
+// Returns (nil, "", err) on error
+func (m *Manager) createOrReuseJobForComponent(
+	dist *db.Distribution,
+	componentName string,
+	userID string,
+	createdJobs map[sourceVersionKey]string,
+) (*db.DownloadJob, string, error) {
 	// Get component from registry
 	component, err := m.componentRepo.GetByName(componentName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get component: %w", err)
+		return nil, "", fmt.Errorf("failed to get component: %w", err)
 	}
 	if component == nil {
-		return nil, fmt.Errorf("component not found: %s", componentName)
+		return nil, "", fmt.Errorf("component not found: %s", componentName)
 	}
 
 	// Get effective source for this component (priority-based selection)
 	source, err := m.sourceRepo.GetEffectiveSource(component.ID, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get effective source: %w", err)
+		return nil, "", fmt.Errorf("failed to get effective source: %w", err)
 	}
 	if source == nil {
-		return nil, fmt.Errorf("no source available for component: %s", componentName)
+		return nil, "", fmt.Errorf("no source available for component: %s", componentName)
 	}
 
 	// Get version for this component
 	version := m.getComponentVersion(dist.Config, componentName)
 	if version == "" {
-		return nil, fmt.Errorf("no version specified for component: %s", componentName)
+		return nil, "", fmt.Errorf("no version specified for component: %s", componentName)
+	}
+
+	// Check if we already have a job for this source+version in this batch
+	key := sourceVersionKey{sourceID: source.ID, version: version}
+	if existingJobID, exists := createdJobs[key]; exists {
+		// Add this component to the existing job's component list
+		if err := m.jobRepo.AddComponentToJob(existingJobID, component.ID); err != nil {
+			log.Warn("Failed to add component to existing job",
+				"component", componentName,
+				"job_id", existingJobID,
+				"error", err)
+		}
+		return nil, existingJobID, nil
+	}
+
+	// Also check if there's already a job in the database for this distribution+source+version
+	existingJob, err := m.jobRepo.GetBySourceAndVersion(dist.ID, source.ID, version)
+	if err != nil {
+		log.Warn("Failed to check for existing job", "error", err)
+	}
+	if existingJob != nil {
+		// Add this component to the existing job
+		if err := m.jobRepo.AddComponentToJob(existingJob.ID, component.ID); err != nil {
+			log.Warn("Failed to add component to existing job",
+				"component", componentName,
+				"job_id", existingJob.ID,
+				"error", err)
+		}
+		// Track it in our local map too
+		createdJobs[key] = existingJob.ID
+		return nil, existingJob.ID, nil
 	}
 
 	// Build the resolved URL
 	resolvedURL, err := m.urlBuilder.BuildURL(source, component, version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build URL: %w", err)
+		return nil, "", fmt.Errorf("failed to build URL: %w", err)
 	}
 
 	// Determine retrieval method
@@ -328,13 +388,15 @@ func (m *Manager) createJobForComponent(dist *db.Distribution, componentName str
 		retrievalMethod = "release"
 	}
 
-	// Create the job
+	// Create the job with source name for artifact path
 	job := &db.DownloadJob{
 		DistributionID:  dist.ID,
 		OwnerID:         dist.OwnerID,
 		ComponentID:     component.ID,
 		ComponentName:   component.Name,
+		ComponentIDs:    []string{component.ID}, // Initialize with the first component
 		SourceID:        source.ID,
+		SourceName:      source.Name,
 		SourceType:      m.getSourceType(source),
 		RetrievalMethod: retrievalMethod,
 		ResolvedURL:     resolvedURL,
@@ -344,10 +406,19 @@ func (m *Manager) createJobForComponent(dist *db.Distribution, componentName str
 	}
 
 	if err := m.jobRepo.Create(job); err != nil {
-		return nil, fmt.Errorf("failed to create job: %w", err)
+		return nil, "", fmt.Errorf("failed to create job: %w", err)
 	}
 
-	return job, nil
+	// Track this job for deduplication
+	createdJobs[key] = job.ID
+
+	log.Info("Created download job",
+		"job_id", job.ID,
+		"source", source.Name,
+		"version", version,
+		"component", componentName)
+
+	return job, "", nil
 }
 
 // getRequiredComponents determines which components are needed based on distribution config
