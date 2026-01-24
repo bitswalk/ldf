@@ -177,6 +177,22 @@ const settingsStructure: SettingGroupConfig[] = [
       },
     ],
   },
+  {
+    key: "sync",
+    label: "Version Sync",
+    description: "Automatic version discovery settings",
+    icon: "arrows-clockwise",
+    required: false,
+    children: [
+      {
+        key: "sync.cache_duration",
+        label: "Cache Duration (minutes)",
+        description:
+          "Minimum time between automatic version syncs for a source (0 to disable caching)",
+        type: "int",
+      },
+    ],
+  },
 ];
 
 // Component for rendering a single setting input

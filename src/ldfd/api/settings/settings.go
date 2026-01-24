@@ -55,6 +55,9 @@ var settingsRegistry = []SettingMeta{
 	{"storage.s3.bucket", "string", "S3 bucket name for storing artifacts", true, "storage", false},
 	{"storage.s3.access_key", "string", "S3 access key ID", true, "storage", true},
 	{"storage.s3.secret_key", "string", "S3 secret access key", true, "storage", true},
+
+	// Sync settings
+	{"sync.cache_duration", "int", "Minimum minutes between automatic version syncs for a source (0 to disable caching)", false, "sync", false},
 }
 
 // GetSettingsRegistry returns the settings registry for use by core/config.go

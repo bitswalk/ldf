@@ -112,6 +112,7 @@ func init() {
 	viper.SetDefault("storage.s3.region", "us-east-1")
 	viper.SetDefault("storage.s3.bucket", "ldf-distributions")
 	viper.SetDefault("storage.s3.path_style", true)
+	viper.SetDefault("sync.cache_duration", 60) // 60 minutes default
 }
 
 // initConfig reads in config file and ENV variables if set

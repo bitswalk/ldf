@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/spf13/viper"
 )
 
 // VersionDiscovery handles discovering available versions from upstream sources
@@ -146,8 +147,20 @@ func (d *VersionDiscovery) fetchGitHubReleases(ctx context.Context, apiURL strin
 
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			if resp.StatusCode == http.StatusForbidden {
-				// Rate limited, return what we have
+			if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+				// Rate limited - log details and return error if no versions collected yet
+				remaining := resp.Header.Get("X-RateLimit-Remaining")
+				resetTime := resp.Header.Get("X-RateLimit-Reset")
+				log.Warn("GitHub API rate limit hit",
+					"status", resp.StatusCode,
+					"remaining", remaining,
+					"reset", resetTime,
+					"url", url,
+					"versions_collected", len(allVersions))
+				if len(allVersions) == 0 {
+					return nil, fmt.Errorf("GitHub API rate limit exceeded (status %d), no versions could be fetched", resp.StatusCode)
+				}
+				// Return what we have if we collected some versions
 				break
 			}
 			return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
@@ -226,6 +239,17 @@ func (d *VersionDiscovery) fetchGitHubTags(ctx context.Context, apiURL string) (
 
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
+			if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+				// Rate limited - log and return what we have (tags are supplementary)
+				remaining := resp.Header.Get("X-RateLimit-Remaining")
+				resetTime := resp.Header.Get("X-RateLimit-Reset")
+				log.Warn("GitHub API rate limit hit while fetching tags",
+					"status", resp.StatusCode,
+					"remaining", remaining,
+					"reset", resetTime,
+					"url", url,
+					"tags_collected", len(allVersions))
+			}
 			break
 		}
 
@@ -469,9 +493,24 @@ func (d *VersionDiscovery) discoverHTTPDirectoryVersions(ctx context.Context, ba
 	return versions, nil
 }
 
+// GetSyncCacheDuration returns the configured sync cache duration from settings
+func GetSyncCacheDuration() time.Duration {
+	minutes := viper.GetInt("sync.cache_duration")
+	if minutes < 0 {
+		minutes = 0
+	}
+	return time.Duration(minutes) * time.Minute
+}
+
 // SyncAllSources performs a version sync for all enabled sources
 // This is typically called at startup to refresh the version cache
 func (d *VersionDiscovery) SyncAllSources(ctx context.Context, sourceRepo *db.SourceRepository) {
+	d.SyncAllSourcesWithCacheDuration(ctx, sourceRepo, GetSyncCacheDuration())
+}
+
+// SyncAllSourcesWithCacheDuration performs a version sync for all enabled sources,
+// skipping sources that were successfully synced within the cache duration
+func (d *VersionDiscovery) SyncAllSourcesWithCacheDuration(ctx context.Context, sourceRepo *db.SourceRepository, cacheDuration time.Duration) {
 	// Get all sources (both default and user)
 	sources, err := sourceRepo.List()
 	if err != nil {
@@ -484,7 +523,7 @@ func (d *VersionDiscovery) SyncAllSources(ctx context.Context, sourceRepo *db.So
 		return
 	}
 
-	log.Info("Starting version sync for all sources", "source_count", len(sources))
+	log.Info("Starting version sync for all sources", "source_count", len(sources), "cache_duration", cacheDuration.String())
 
 	for _, source := range sources {
 		if !source.Enabled {
@@ -502,6 +541,26 @@ func (d *VersionDiscovery) SyncAllSources(ctx context.Context, sourceRepo *db.So
 		if runningJob != nil {
 			log.Debug("Sync already in progress for source", "source_id", source.ID, "source_name", source.Name)
 			continue
+		}
+
+		// Check if source was recently synced successfully (cache check)
+		if cacheDuration > 0 {
+			latestJob, err := d.versionRepo.GetLatestSyncJob(source.ID, sourceType)
+			if err != nil {
+				log.Error("Failed to check latest sync job", "source_id", source.ID, "error", err)
+				continue
+			}
+			if latestJob != nil && latestJob.Status == db.SyncStatusCompleted && latestJob.CompletedAt != nil {
+				timeSinceSync := time.Since(*latestJob.CompletedAt)
+				if timeSinceSync < cacheDuration {
+					log.Debug("Skipping recently synced source",
+						"source_id", source.ID,
+						"source_name", source.Name,
+						"last_sync", latestJob.CompletedAt.Format(time.RFC3339),
+						"time_since_sync", timeSinceSync.Round(time.Second).String())
+					continue
+				}
+			}
 		}
 
 		// Create a new sync job

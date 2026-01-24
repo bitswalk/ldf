@@ -123,7 +123,7 @@ export const Summary: Component<SummaryProps> = (props) => {
 
   return (
     <SummaryContext.Provider value={contextValue}>
-      <section class={`flex h-full ${props.class ?? ""}`}>
+      <section class={`flex h-full overflow-hidden ${props.class ?? ""}`}>
         {props.children}
       </section>
     </SummaryContext.Provider>
@@ -133,7 +133,9 @@ export const Summary: Component<SummaryProps> = (props) => {
 // Summary Navigation Sidebar
 export const SummaryNav: Component<SummaryNavProps> = (props) => {
   return (
-    <nav class={`w-56 shrink-0 border-r border-border ${props.class ?? ""}`}>
+    <nav
+      class={`w-56 shrink-0 border-r border-border overflow-y-auto ${props.class ?? ""}`}
+    >
       <ul class="flex flex-col py-2">{props.children}</ul>
     </nav>
   );
@@ -204,7 +206,9 @@ export const SummaryNavItem: Component<SummaryNavItemProps> = (props) => {
 // Summary Content Area
 export const SummaryContent: Component<SummaryContentProps> = (props) => {
   return (
-    <article class={`flex-1 ${props.class ?? ""}`}>{props.children}</article>
+    <article class={`flex-1 overflow-y-auto ${props.class ?? ""}`}>
+      {props.children}
+    </article>
   );
 };
 
