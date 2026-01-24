@@ -20,8 +20,11 @@ func SetLogger(l *logs.Logger) {
 // NewHandler creates a new distributions handler
 func NewHandler(cfg Config) *Handler {
 	return &Handler{
-		distRepo:   cfg.DistRepo,
-		jwtService: cfg.JWTService,
+		distRepo:        cfg.DistRepo,
+		downloadJobRepo: cfg.DownloadJobRepo,
+		sourceRepo:      cfg.SourceRepo,
+		jwtService:      cfg.JWTService,
+		storageManager:  cfg.StorageManager,
 	}
 }
 
@@ -301,7 +304,120 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	c.JSON(http.StatusOK, dist)
 }
 
+// HandleDeletionPreview returns a preview of what will be deleted when a distribution is removed
+func (h *Handler) HandleDeletionPreview(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "You can only delete your own distributions",
+		})
+		return
+	}
+
+	preview := DeletionPreviewResponse{
+		Distribution: *dist,
+	}
+
+	// Count download jobs
+	if h.downloadJobRepo != nil {
+		jobs, err := h.downloadJobRepo.ListByDistribution(id)
+		if err != nil {
+			log.Error("Failed to list download jobs for deletion preview", "error", err)
+		} else {
+			jobNames := make([]string, 0, len(jobs))
+			for _, job := range jobs {
+				name := job.ComponentName
+				if name == "" {
+					name = job.SourceName
+				}
+				if name != "" {
+					jobNames = append(jobNames, name+" ("+job.Version+")")
+				}
+			}
+			preview.DownloadJobs = DeletionPreviewCount{
+				Count: len(jobs),
+				Items: jobNames,
+			}
+		}
+	}
+
+	// Count artifacts from storage
+	if h.storageManager != nil {
+		artifacts, err := h.storageManager.ListByDistribution(id)
+		if err != nil {
+			log.Error("Failed to list artifacts for deletion preview", "error", err)
+		} else {
+			preview.Artifacts = DeletionPreviewCount{
+				Count: len(artifacts),
+				Items: artifacts,
+			}
+		}
+	}
+
+	// Count user sources (only sources owned by the distribution owner, not system sources)
+	if h.sourceRepo != nil {
+		userSources, err := h.sourceRepo.ListUserSources(dist.OwnerID)
+		if err != nil {
+			log.Error("Failed to list user sources for deletion preview", "error", err)
+		} else {
+			sourceSummaries := make([]DeletionSourceSummary, 0, len(userSources))
+			for _, s := range userSources {
+				sourceSummaries = append(sourceSummaries, DeletionSourceSummary{
+					ID:   s.ID,
+					Name: s.Name,
+				})
+			}
+			preview.UserSources = DeletionPreviewSources{
+				Count:   len(userSources),
+				Sources: sourceSummaries,
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, preview)
+}
+
 // HandleDelete deletes a distribution by ID (owner or admin only)
+// This performs a cascading delete of all related resources
 func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -350,6 +466,34 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		return
 	}
 
+	// Cascade delete: artifacts from storage
+	if h.storageManager != nil {
+		deletedCount, deletedBytes, err := h.storageManager.DeleteByDistribution(id)
+		if err != nil {
+			log.Error("Failed to delete artifacts for distribution", "distribution_id", id, "error", err)
+		} else if deletedCount > 0 {
+			log.Info("Deleted artifacts for distribution", "distribution_id", id, "count", deletedCount, "bytes", deletedBytes)
+		}
+	}
+
+	// Cascade delete: download jobs
+	if h.downloadJobRepo != nil {
+		if err := h.downloadJobRepo.DeleteByDistribution(id); err != nil {
+			log.Error("Failed to delete download jobs for distribution", "distribution_id", id, "error", err)
+		}
+	}
+
+	// Cascade delete: user sources (only non-system sources owned by the distribution owner)
+	if h.sourceRepo != nil {
+		deletedSources, err := h.sourceRepo.DeleteUserSourcesByOwner(dist.OwnerID)
+		if err != nil {
+			log.Error("Failed to delete user sources for distribution owner", "owner_id", dist.OwnerID, "error", err)
+		} else if deletedSources > 0 {
+			log.Info("Deleted user sources for distribution owner", "owner_id", dist.OwnerID, "count", deletedSources)
+		}
+	}
+
+	// Finally delete the distribution itself
 	if err := h.distRepo.Delete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
@@ -358,6 +502,8 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		})
 		return
 	}
+
+	h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup")
 
 	c.Status(http.StatusNoContent)
 }

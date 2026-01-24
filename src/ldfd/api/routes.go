@@ -45,6 +45,7 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			distributions.GET("", a.Distributions.HandleList)
 			distributions.GET("/:id", a.Distributions.HandleGet)
 			distributions.GET("/:id/logs", a.Distributions.HandleGetLogs)
+			distributions.GET("/:id/deletion-preview", a.Distributions.HandleDeletionPreview)
 			distributions.GET("/stats", a.Distributions.HandleGetStats)
 
 			// Artifact read operations (public)

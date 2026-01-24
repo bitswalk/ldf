@@ -42,8 +42,11 @@ func New(cfg Config) *API {
 		}),
 
 		Distributions: distributions.NewHandler(distributions.Config{
-			DistRepo:   cfg.DistRepo,
-			JWTService: cfg.JWTService,
+			DistRepo:        cfg.DistRepo,
+			DownloadJobRepo: cfg.DownloadJobRepo,
+			SourceRepo:      cfg.SourceRepo,
+			JWTService:      cfg.JWTService,
+			StorageManager:  distributions.NewStorageAdapter(cfg.Storage),
 		}),
 
 		Components: components.NewHandler(components.Config{

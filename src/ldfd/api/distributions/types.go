@@ -7,14 +7,26 @@ import (
 
 // Handler handles distribution-related HTTP requests
 type Handler struct {
-	distRepo   *db.DistributionRepository
-	jwtService *auth.JWTService
+	distRepo        *db.DistributionRepository
+	downloadJobRepo *db.DownloadJobRepository
+	sourceRepo      *db.SourceRepository
+	jwtService      *auth.JWTService
+	storageManager  StorageManager
+}
+
+// StorageManager interface for artifact storage operations
+type StorageManager interface {
+	ListByDistribution(distributionID string) ([]string, error)
+	DeleteByDistribution(distributionID string) (int, int64, error)
 }
 
 // Config contains configuration options for the Handler
 type Config struct {
-	DistRepo   *db.DistributionRepository
-	JWTService *auth.JWTService
+	DistRepo        *db.DistributionRepository
+	DownloadJobRepo *db.DownloadJobRepository
+	SourceRepo      *db.SourceRepository
+	JWTService      *auth.JWTService
+	StorageManager  StorageManager
 }
 
 // CreateDistributionRequest represents the request to create a distribution
@@ -49,4 +61,31 @@ type DistributionListResponse struct {
 type DistributionStatsResponse struct {
 	Total int64            `json:"total" example:"10"`
 	Stats map[string]int64 `json:"stats"`
+}
+
+// DeletionPreviewResponse represents what will be deleted when a distribution is removed
+type DeletionPreviewResponse struct {
+	Distribution   db.Distribution        `json:"distribution"`
+	DownloadJobs   DeletionPreviewCount   `json:"download_jobs"`
+	Artifacts      DeletionPreviewCount   `json:"artifacts"`
+	UserSources    DeletionPreviewSources `json:"user_sources"`
+	TotalSizeBytes int64                  `json:"total_size_bytes"`
+}
+
+// DeletionPreviewCount represents a count with optional details
+type DeletionPreviewCount struct {
+	Count int      `json:"count"`
+	Items []string `json:"items,omitempty"`
+}
+
+// DeletionPreviewSources represents user sources that will be deleted
+type DeletionPreviewSources struct {
+	Count   int                     `json:"count"`
+	Sources []DeletionSourceSummary `json:"sources,omitempty"`
+}
+
+// DeletionSourceSummary represents a summary of a source to be deleted
+type DeletionSourceSummary struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }

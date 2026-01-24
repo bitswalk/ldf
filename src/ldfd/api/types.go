@@ -50,6 +50,7 @@ type Config struct {
 	SourceRepo        *db.SourceRepository
 	ComponentRepo     *db.ComponentRepository
 	SourceVersionRepo *db.SourceVersionRepository
+	DownloadJobRepo   *db.DownloadJobRepository
 	LangPackRepo      *db.LanguagePackRepository
 	Database          *db.Database
 	Storage           storage.Backend

@@ -260,20 +260,15 @@ func (d *Downloader) downloadGit(ctx context.Context, job *db.DownloadJob, progr
 
 // buildArtifactPath constructs the storage path for a download artifact
 // Following the artifact module pattern: distribution/{ownerID}/{distributionID}/{path}
-// Artifacts are stored by source name (not component name) to enable deduplication
-// when multiple components share the same source and version.
-// For release archives: distribution/{ownerID}/{distributionID}/components/{sourceName}/{version}/{filename}
-// For git sources: distribution/{ownerID}/{distributionID}/sources/{sourceName}/{version}/{filename}
+// Artifacts are stored by source ID (not name) to enable deduplication and avoid
+// issues with spaces or special characters in source names.
+// For release archives: distribution/{ownerID}/{distributionID}/components/{sourceID}/{version}/{filename}
+// For git sources: distribution/{ownerID}/{distributionID}/sources/{sourceID}/{version}/{filename}
 func (d *Downloader) buildArtifactPath(job *db.DownloadJob) string {
 	// Extract filename from URL or construct one
 	filename := filepath.Base(job.ResolvedURL)
 	if filename == "" || filename == "." || filename == "/" {
-		// Use source name for the filename if available, otherwise fall back to component name
-		name := job.SourceName
-		if name == "" {
-			name = job.ComponentName
-		}
-		filename = fmt.Sprintf("%s-%s.tar.gz", name, job.Version)
+		filename = fmt.Sprintf("%s-%s.tar.gz", job.SourceID, job.Version)
 	}
 
 	// Determine the subdirectory based on retrieval method
@@ -283,20 +278,20 @@ func (d *Downloader) buildArtifactPath(job *db.DownloadJob) string {
 		subdir = "sources"
 	}
 
-	// Use source name for the path to enable deduplication
-	// Fall back to component name for backward compatibility with older jobs
-	pathName := job.SourceName
-	if pathName == "" {
-		pathName = job.ComponentName
+	// Use source ID for the path to enable deduplication and avoid path issues
+	// Fall back to component ID for backward compatibility with older jobs
+	pathID := job.SourceID
+	if pathID == "" {
+		pathID = job.ComponentID
 	}
 
 	// Build path following artifact module pattern:
-	// distribution/{ownerID}/{distributionID}/{subdir}/{sourceName}/{version}/{filename}
+	// distribution/{ownerID}/{distributionID}/{subdir}/{sourceID}/{version}/{filename}
 	return fmt.Sprintf("distribution/%s/%s/%s/%s/%s/%s",
 		job.OwnerID,
 		job.DistributionID,
 		subdir,
-		pathName,
+		pathID,
 		job.Version,
 		filename,
 	)

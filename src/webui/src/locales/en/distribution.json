@@ -36,7 +36,11 @@
     "title": "Confirm Deletion",
     "confirmSingle": "Are you sure you want to delete \"{{ name }}\"? This action cannot be undone.",
     "confirmMultiple": "Are you sure you want to delete {{ count }} distributions? This action cannot be undone.",
-    "deleting": "Deleting..."
+    "deleting": "Deleting...",
+    "cascadeWarning": "The following related items will also be deleted:",
+    "downloadJobs": "{{ count }} download job(s)",
+    "artifacts": "{{ count }} artifact(s)",
+    "userSources": "{{ count }} user source(s)"
   },
   "status": {
     "pending": "Pending",

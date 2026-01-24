@@ -10,10 +10,12 @@ import {
   getDistribution,
   updateDistribution,
   deleteDistribution,
+  getDeletionPreview,
   type Distribution,
   type DistributionStatus,
   type DistributionConfig,
   type UpdateDistributionRequest,
+  type DeletionPreview,
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
 
@@ -117,6 +119,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isDeleting, setIsDeleting] = createSignal(false);
+  const [deletionPreview, setDeletionPreview] =
+    createSignal<DeletionPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = createSignal(false);
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -224,8 +229,18 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     setEditModalOpen(false);
   };
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = async () => {
     setDeleteModalOpen(true);
+    setLoadingPreview(true);
+    setDeletionPreview(null);
+
+    const result = await getDeletionPreview(props.distributionId);
+
+    setLoadingPreview(false);
+
+    if (result.success) {
+      setDeletionPreview(result.preview);
+    }
   };
 
   const confirmDelete = async () => {
@@ -725,6 +740,104 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             })}
           </p>
 
+          {/* Deletion Preview */}
+          <Show when={loadingPreview()}>
+            <div class="flex items-center justify-center py-4">
+              <Spinner size="md" />
+            </div>
+          </Show>
+
+          <Show when={!loadingPreview() && deletionPreview()}>
+            {(preview) => {
+              const hasRelatedItems =
+                preview().download_jobs.count > 0 ||
+                preview().artifacts.count > 0 ||
+                preview().user_sources.count > 0;
+
+              return (
+                <Show when={hasRelatedItems}>
+                  <div class="rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+                    <div class="flex items-start gap-3">
+                      <Icon
+                        name="warning"
+                        size="md"
+                        class="text-amber-500 mt-0.5"
+                      />
+                      <div class="flex-1">
+                        <h4 class="font-medium text-amber-500 mb-2">
+                          {t("distribution.delete.cascadeWarning")}
+                        </h4>
+                        <ul class="space-y-2 text-sm">
+                          <Show when={preview().download_jobs.count > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="download"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.downloadJobs", {
+                                  count:
+                                    preview().download_jobs.count.toString(),
+                                })}
+                              </span>
+                            </li>
+                          </Show>
+                          <Show when={preview().artifacts.count > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="file"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.artifacts", {
+                                  count: preview().artifacts.count.toString(),
+                                })}
+                              </span>
+                            </li>
+                          </Show>
+                          <Show when={preview().user_sources.count > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="database"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.userSources", {
+                                  count:
+                                    preview().user_sources.count.toString(),
+                                })}
+                              </span>
+                            </li>
+                            <Show
+                              when={
+                                preview().user_sources.sources &&
+                                preview().user_sources.sources!.length > 0
+                              }
+                            >
+                              <ul class="ml-6 text-xs text-muted-foreground space-y-1">
+                                <For each={preview().user_sources.sources}>
+                                  {(source) => (
+                                    <li class="flex items-center gap-1">
+                                      <span class="w-1 h-1 rounded-full bg-muted-foreground" />
+                                      <span>{source.name}</span>
+                                    </li>
+                                  )}
+                                </For>
+                              </ul>
+                            </Show>
+                          </Show>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Show>
+              );
+            }}
+          </Show>
+
           <nav class="flex justify-end gap-3">
             <button
               type="button"
@@ -737,7 +850,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={isDeleting() || loadingPreview()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <Show when={isDeleting()}>

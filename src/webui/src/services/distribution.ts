@@ -348,6 +348,107 @@ export async function deleteDistribution(id: string): Promise<DeleteResult> {
   }
 }
 
+// Deletion preview types
+export interface DeletionPreviewCount {
+  count: number;
+  items?: string[];
+}
+
+export interface DeletionSourceSummary {
+  id: string;
+  name: string;
+}
+
+export interface DeletionPreviewSources {
+  count: number;
+  sources?: DeletionSourceSummary[];
+}
+
+export interface DeletionPreview {
+  distribution: Distribution;
+  download_jobs: DeletionPreviewCount;
+  artifacts: DeletionPreviewCount;
+  user_sources: DeletionPreviewSources;
+  total_size_bytes: number;
+}
+
+export type DeletionPreviewResult =
+  | { success: true; preview: DeletionPreview }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "unauthorized"
+        | "forbidden"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+export async function getDeletionPreview(
+  id: string,
+): Promise<DeletionPreviewResult> {
+  const url = getApiUrl(`/distributions/${id}/deletion-preview`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const preview: DeletionPreview = await response.json();
+      return { success: true, preview };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "You don't have permission to delete this distribution",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Distribution not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to fetch deletion preview",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
 export async function getDistributionStats(): Promise<StatsResult> {
   const url = getApiUrl("/distributions/stats");
 

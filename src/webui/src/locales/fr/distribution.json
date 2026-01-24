@@ -36,7 +36,11 @@
     "title": "Confirmer la suppression",
     "confirmSingle": "Etes-vous sur de vouloir supprimer \"{{ name }}\" ? Cette action est irreversible.",
     "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} distributions ? Cette action est irreversible.",
-    "deleting": "Suppression..."
+    "deleting": "Suppression...",
+    "cascadeWarning": "Les elements suivants seront egalement supprimes :",
+    "downloadJobs": "{{ count }} tache(s) de telechargement",
+    "artifacts": "{{ count }} artefact(s)",
+    "userSources": "{{ count }} source(s) utilisateur"
   },
   "status": {
     "pending": "En attente",

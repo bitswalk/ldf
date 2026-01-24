@@ -36,7 +36,11 @@
     "title": "Loschung bestatigen",
     "confirmSingle": "Sind Sie sicher, dass Sie \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Distributionen loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
-    "deleting": "Loschen..."
+    "deleting": "Loschen...",
+    "cascadeWarning": "Die folgenden verwandten Elemente werden ebenfalls geloscht:",
+    "downloadJobs": "{{ count }} Download-Aufgabe(n)",
+    "artifacts": "{{ count }} Artefakt(e)",
+    "userSources": "{{ count }} Benutzerquelle(n)"
   },
   "status": {
     "pending": "Ausstehend",

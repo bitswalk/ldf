@@ -311,6 +311,21 @@ func (r *SourceRepository) DeleteUserSource(id string) error {
 	return nil
 }
 
+// DeleteUserSourcesByOwner removes all user sources for a specific owner
+func (r *SourceRepository) DeleteUserSourcesByOwner(ownerID string) (int64, error) {
+	result, err := r.db.DB().Exec("DELETE FROM upstream_sources WHERE is_system = 0 AND owner_id = ?", ownerID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete user sources: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return affected, nil
+}
+
 // GetMergedSources returns all sources (defaults + user-specific) merged and sorted by priority
 func (r *SourceRepository) GetMergedSources(userID string) ([]UpstreamSource, error) {
 	var sources []UpstreamSource

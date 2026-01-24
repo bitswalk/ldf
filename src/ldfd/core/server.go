@@ -76,6 +76,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		SourceRepo:        db.NewSourceRepository(database),
 		ComponentRepo:     db.NewComponentRepository(database),
 		SourceVersionRepo: sourceVersionRepo,
+		DownloadJobRepo:   db.NewDownloadJobRepository(database),
 		LangPackRepo:      db.NewLanguagePackRepository(database),
 		Database:          database,
 		Storage:           storageBackend,
