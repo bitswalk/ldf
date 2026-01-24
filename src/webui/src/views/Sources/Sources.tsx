@@ -34,7 +34,7 @@ interface UserInfo {
 interface SourcesProps {
   isLoggedIn?: boolean;
   user?: UserInfo | null;
-  onViewSource?: (sourceId: string, sourceType: "default" | "user") => void;
+  onViewSource?: (sourceId: string) => void;
 }
 
 export const Sources: Component<SourcesProps> = (props) => {
@@ -124,22 +124,25 @@ export const Sources: Component<SourcesProps> = (props) => {
 
   const handleEditSource = (source: Source) => {
     // Navigate to source details view for editing
-    const sourceType = source.is_system ? "default" : "user";
-    props.onViewSource?.(source.id, sourceType);
+    props.onViewSource?.(source.id);
   };
 
   const handleViewSource = (source: Source) => {
-    const sourceType = source.is_system ? "default" : "user";
-    props.onViewSource?.(source.id, sourceType);
+    props.onViewSource?.(source.id);
   };
 
   const openDeleteModal = (srcs: Source[]) => {
-    const userSources = srcs.filter((s) => !s.is_system);
-    if (userSources.length === 0) {
+    // Admins can delete any source, non-admins can only delete user sources
+    const isAdminUser = props.user?.role === "root";
+    const deletableSources = isAdminUser
+      ? srcs
+      : srcs.filter((s) => !s.is_system);
+
+    if (deletableSources.length === 0) {
       setError(t("sources.delete.systemSourceError"));
       return;
     }
-    setSourcesToDelete(userSources);
+    setSourcesToDelete(deletableSources);
     setDeleteModalOpen(true);
   };
 
@@ -275,9 +278,11 @@ export const Sources: Component<SourcesProps> = (props) => {
     };
 
     const canDelete = () => {
+      // Admins can delete any source (including system sources)
+      // Non-admins can only delete their own user sources
+      if (isAdmin()) return true;
       return (
-        !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin())
+        !cellProps.row.is_system && props.user?.id === cellProps.row.owner_id
       );
     };
 
@@ -369,10 +374,15 @@ export const Sources: Component<SourcesProps> = (props) => {
               <button
                 onClick={handleDeleteSelected}
                 disabled={
-                  selectedSources().filter((s) => !s.is_system).length === 0
+                  (isAdmin()
+                    ? selectedSources().length
+                    : selectedSources().filter((s) => !s.is_system).length) ===
+                  0
                 }
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                  selectedSources().filter((s) => !s.is_system).length > 0
+                  (isAdmin()
+                    ? selectedSources().length
+                    : selectedSources().filter((s) => !s.is_system).length) > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
@@ -380,7 +390,10 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("common.actions.delete")} (
-                  {selectedSources().filter((s) => !s.is_system).length})
+                  {isAdmin()
+                    ? selectedSources().length
+                    : selectedSources().filter((s) => !s.is_system).length}
+                  )
                 </span>
               </button>
               <button
@@ -493,7 +506,13 @@ export const Sources: Component<SourcesProps> = (props) => {
             </Show>
           </section>
 
-          <Show when={selectedSources().filter((s) => !s.is_system).length > 0}>
+          <Show
+            when={
+              (isAdmin()
+                ? selectedSources().length
+                : selectedSources().filter((s) => !s.is_system).length) > 0
+            }
+          >
             <footer class="flex justify-end pt-4">
               <button
                 onClick={handleDeleteSelected}
@@ -502,7 +521,9 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("sources.delete.deleteSelected", {
-                    count: selectedSources().filter((s) => !s.is_system).length,
+                    count: isAdmin()
+                      ? selectedSources().length
+                      : selectedSources().filter((s) => !s.is_system).length,
                   })}
                 </span>
               </button>

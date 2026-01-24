@@ -81,3 +81,8 @@ type SyncStatusResponse struct {
 type ClearVersionsResponse struct {
 	Message string `json:"message"`
 }
+
+// VersionTypesResponse represents the list of available version types for a source
+type VersionTypesResponse struct {
+	Types []string `json:"types"`
+}

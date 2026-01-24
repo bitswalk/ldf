@@ -1,7 +1,7 @@
 // Source Versions service for LDF server communication
 
 import { getServerUrl, getAuthToken } from "./storage";
-import type { SourceDefault, UserSource } from "./sources";
+import type { Source } from "./sources";
 
 export type VersionType = "mainline" | "stable" | "longterm" | "linux-next";
 
@@ -32,8 +32,6 @@ export interface VersionSyncJob {
   error_message?: string;
   created_at: string;
 }
-
-export type SourceType = "default" | "user";
 
 export type ListVersionsResult =
   | {
@@ -84,7 +82,7 @@ export type SyncStatusResult =
     };
 
 export type GetSourceResult =
-  | { success: true; source: SourceDefault | UserSource }
+  | { success: true; source: Source }
   | {
       success: false;
       error:
@@ -116,16 +114,9 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-// Get a single source by ID and type
-export async function getSource(
-  sourceId: string,
-  sourceType: SourceType,
-): Promise<GetSourceResult> {
-  const path =
-    sourceType === "default"
-      ? `/sources/defaults/${sourceId}`
-      : `/sources/user/${sourceId}`;
-  const url = getApiUrl(path);
+// Get a single source by ID
+export async function getSource(sourceId: string): Promise<GetSourceResult> {
+  const url = getApiUrl(`/sources/${sourceId}`);
 
   if (!url) {
     return {
@@ -188,15 +179,10 @@ export async function getSource(
 // List versions for a source
 export async function listSourceVersions(
   sourceId: string,
-  sourceType: SourceType,
   limit: number = 50,
   offset: number = 0,
-  versionTypeFilter?: VersionType | "all",
+  versionTypeFilter?: string,
 ): Promise<ListVersionsResult> {
-  const path =
-    sourceType === "default"
-      ? `/sources/defaults/${sourceId}/versions`
-      : `/sources/user/${sourceId}/versions`;
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
@@ -204,7 +190,7 @@ export async function listSourceVersions(
   if (versionTypeFilter && versionTypeFilter !== "all") {
     params.set("version_type", versionTypeFilter);
   }
-  const url = getApiUrl(`${path}?${params.toString()}`);
+  const url = getApiUrl(`/sources/${sourceId}/versions?${params.toString()}`);
 
   if (!url) {
     return {
@@ -272,13 +258,8 @@ export async function listSourceVersions(
 // Trigger a version sync for a source
 export async function triggerVersionSync(
   sourceId: string,
-  sourceType: SourceType,
 ): Promise<SyncResult> {
-  const path =
-    sourceType === "default"
-      ? `/sources/defaults/${sourceId}/sync`
-      : `/sources/user/${sourceId}/sync`;
-  const url = getApiUrl(path);
+  const url = getApiUrl(`/sources/${sourceId}/sync`);
 
   if (!url) {
     return {
@@ -353,13 +334,8 @@ export async function triggerVersionSync(
 // Get sync status for a source
 export async function getSyncStatus(
   sourceId: string,
-  sourceType: SourceType,
 ): Promise<SyncStatusResult> {
-  const path =
-    sourceType === "default"
-      ? `/sources/defaults/${sourceId}/sync/status`
-      : `/sources/user/${sourceId}/sync/status`;
-  const url = getApiUrl(path);
+  const url = getApiUrl(`/sources/${sourceId}/sync/status`);
 
   if (!url) {
     return {
@@ -470,13 +446,8 @@ export type ClearVersionsResult =
 // Clear all cached versions for a source
 export async function clearSourceVersions(
   sourceId: string,
-  sourceType: SourceType,
 ): Promise<ClearVersionsResult> {
-  const path =
-    sourceType === "default"
-      ? `/sources/defaults/${sourceId}/versions`
-      : `/sources/user/${sourceId}/versions`;
-  const url = getApiUrl(path);
+  const url = getApiUrl(`/sources/${sourceId}/versions`);
 
   if (!url) {
     return {
@@ -536,6 +507,87 @@ export async function clearSourceVersions(
       success: false,
       error: "internal_error",
       message: "Failed to clear versions",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+export type GetVersionTypesResult =
+  | { success: true; types: string[] }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "forbidden"
+        | "unauthorized"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
+// Get distinct version types for a source
+export async function getSourceVersionTypes(
+  sourceId: string,
+): Promise<GetVersionTypesResult> {
+  const url = getApiUrl(`/sources/${sourceId}/versions/types`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        types: data.types || [],
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 403) {
+      return {
+        success: false,
+        error: "forbidden",
+        message: "Access denied",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Source not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to get version types",
     };
   } catch (err) {
     return {

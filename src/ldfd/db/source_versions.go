@@ -694,3 +694,33 @@ func (r *SourceVersionRepository) GetLatestStableByComponent(componentID string)
 func (r *SourceVersionRepository) GetLatestLongtermByComponent(componentID string) (*SourceVersion, error) {
 	return r.GetLatestByComponentAndType(componentID, VersionTypeLongterm)
 }
+
+// GetDistinctVersionTypes retrieves all distinct version types for a source
+func (r *SourceVersionRepository) GetDistinctVersionTypes(sourceID, sourceType string) ([]string, error) {
+	query := `
+		SELECT DISTINCT version_type
+		FROM source_versions
+		WHERE source_id = ? AND source_type = ? AND version_type != ''
+		ORDER BY version_type ASC
+	`
+	rows, err := r.db.DB().Query(query, sourceID, sourceType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get distinct version types: %w", err)
+	}
+	defer rows.Close()
+
+	var types []string
+	for rows.Next() {
+		var vt string
+		if err := rows.Scan(&vt); err != nil {
+			return nil, fmt.Errorf("failed to scan version type: %w", err)
+		}
+		types = append(types, vt)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating version types: %w", err)
+	}
+
+	return types, nil
+}

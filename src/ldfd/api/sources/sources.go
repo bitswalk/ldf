@@ -7,6 +7,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -1203,6 +1204,610 @@ func (h *Handler) HandleClearUserVersions(c *gin.Context) {
 	}
 
 	log.Info("Cleared version cache for user source", "source_id", id, "source_name", source.Name, "user_id", claims.UserID)
+
+	c.JSON(http.StatusOK, ClearVersionsResponse{
+		Message: "Version cache cleared successfully",
+	})
+}
+
+// =============================================================================
+// Unified Handlers (replace dual default/user handlers)
+// =============================================================================
+
+// checkSourceAccess verifies user has access to the source
+// Returns the source if access is granted, or nil with appropriate error response
+func (h *Handler) checkSourceAccess(c *gin.Context, claims *auth.TokenClaims, source *db.UpstreamSource, requireWrite bool) bool {
+	// System sources require admin access for write operations
+	if source.IsSystem {
+		if requireWrite && !claims.HasAdminAccess() {
+			c.JSON(http.StatusForbidden, common.ErrorResponse{
+				Error:   "Forbidden",
+				Code:    http.StatusForbidden,
+				Message: "Only administrators can modify system sources",
+			})
+			return false
+		}
+		return true
+	}
+
+	// User sources: owner or admin can access
+	if source.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "You can only access your own sources",
+		})
+		return false
+	}
+
+	return true
+}
+
+// HandleGetByID returns a single source by ID (unified)
+func (h *Handler) HandleGetByID(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, false) {
+		return
+	}
+
+	c.JSON(http.StatusOK, source)
+}
+
+// HandleUpdate updates an existing source (unified)
+func (h *Handler) HandleUpdate(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, true) {
+		return
+	}
+
+	var req UpdateSourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if req.Name != "" {
+		source.Name = req.Name
+	}
+	if req.URL != "" {
+		source.URL = req.URL
+	}
+	if req.ComponentIDs != nil {
+		source.ComponentIDs = req.ComponentIDs
+	}
+	if req.RetrievalMethod != "" {
+		source.RetrievalMethod = req.RetrievalMethod
+	}
+	if req.URLTemplate != "" {
+		source.URLTemplate = req.URLTemplate
+	}
+	if req.ForgeType != nil {
+		source.ForgeType = *req.ForgeType
+	}
+	if req.VersionFilter != nil {
+		source.VersionFilter = *req.VersionFilter
+	}
+	if req.Priority != nil {
+		source.Priority = *req.Priority
+	}
+	if req.Enabled != nil {
+		source.Enabled = *req.Enabled
+	}
+
+	if err := h.sourceRepo.Update(source); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, source)
+}
+
+// HandleDelete deletes a source (unified)
+func (h *Handler) HandleDelete(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, true) {
+		return
+	}
+
+	if err := h.sourceRepo.Delete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// HandleListVersions lists cached versions for a source (unified)
+func (h *Handler) HandleListVersions(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, false) {
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+	limit, offset := common.GetPaginationParams(c, 500)
+	versionType := c.Query("version_type")
+
+	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, sourceType, limit, offset, versionType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if versions == nil {
+		versions = []db.SourceVersion{}
+	}
+
+	syncJob, _ := h.sourceVersionRepo.GetLatestSyncJob(id, sourceType)
+
+	c.JSON(http.StatusOK, SourceVersionListResponse{
+		Count:    len(versions),
+		Total:    total,
+		Versions: versions,
+		SyncJob:  syncJob,
+	})
+}
+
+// HandleSync triggers a version sync for a source (unified)
+func (h *Handler) HandleSync(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, true) {
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+
+	runningJob, err := h.sourceVersionRepo.GetRunningSyncJob(id, sourceType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if runningJob != nil {
+		c.JSON(http.StatusConflict, common.ErrorResponse{
+			Error:   "Conflict",
+			Code:    http.StatusConflict,
+			Message: "A sync job is already running for this source",
+		})
+		return
+	}
+
+	job := &db.VersionSyncJob{
+		SourceID:   id,
+		SourceType: sourceType,
+		Status:     db.SyncStatusPending,
+	}
+
+	if err := h.sourceVersionRepo.CreateSyncJob(job); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		if err := h.versionDiscovery.SyncVersions(ctx, source, sourceType, job); err != nil {
+			log.Error("Version sync failed", "source_id", id, "error", err)
+		}
+	}()
+
+	c.JSON(http.StatusAccepted, SyncTriggerResponse{
+		JobID:   job.ID,
+		Message: "Version sync started",
+	})
+}
+
+// HandleGetSyncStatus returns sync status for a source (unified)
+func (h *Handler) HandleGetSyncStatus(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, false) {
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+
+	job, err := h.sourceVersionRepo.GetLatestSyncJob(id, sourceType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, SyncStatusResponse{
+		Job: job,
+	})
+}
+
+// HandleGetVersionTypes returns the distinct version types for a source (unified)
+func (h *Handler) HandleGetVersionTypes(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, false) {
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+
+	types, err := h.sourceVersionRepo.GetDistinctVersionTypes(id, sourceType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if types == nil {
+		types = []string{}
+	}
+
+	c.JSON(http.StatusOK, VersionTypesResponse{
+		Types: types,
+	})
+}
+
+// HandleClearVersions clears all cached versions for a source (unified)
+func (h *Handler) HandleClearVersions(c *gin.Context) {
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Source ID required",
+		})
+		return
+	}
+
+	source, err := h.sourceRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Source not found",
+		})
+		return
+	}
+
+	if !h.checkSourceAccess(c, claims, source, true) {
+		return
+	}
+
+	sourceType := db.GetSourceType(source)
+
+	// Check for running sync job
+	runningJob, err := h.sourceVersionRepo.GetRunningSyncJob(id, sourceType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if runningJob != nil {
+		c.JSON(http.StatusConflict, common.ErrorResponse{
+			Error:   "Conflict",
+			Code:    http.StatusConflict,
+			Message: "Cannot clear versions while sync is in progress",
+		})
+		return
+	}
+
+	// Delete all versions for this source
+	if err := h.sourceVersionRepo.DeleteBySource(id, sourceType); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	log.Info("Cleared version cache for source", "source_id", id, "source_name", source.Name, "is_system", source.IsSystem)
 
 	c.JSON(http.StatusOK, ClearVersionsResponse{
 		Message: "Version cache cleared successfully",

@@ -13,7 +13,6 @@ import { listSources, type Source } from "../../services/sources";
 import {
   listSourceVersions,
   type SourceVersion,
-  type SourceType,
 } from "../../services/sourceVersions";
 import {
   listComponents,
@@ -132,7 +131,6 @@ interface KernelVersion {
   version: string;
   type: "stable" | "lts" | "mainline";
   sourceId: string;
-  sourceType: SourceType;
 }
 
 // Function to fetch kernel versions from synced sources
@@ -173,8 +171,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
     // Fetch versions from all kernel sources, paginating to get all versions
     const allVersions: KernelVersion[] = [];
     for (const source of kernelSources) {
-      const sourceType: SourceType = source.is_system ? "default" : "user";
-
       // Paginate through all versions
       const pageSize = 100;
       let offset = 0;
@@ -183,7 +179,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
       while (hasMore) {
         const versionsResult = await listSourceVersions(
           source.id,
-          sourceType,
           pageSize,
           offset,
           undefined, // No filter - include all version types
@@ -208,7 +203,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
               version: v.version,
               type: displayType,
               sourceId: source.id,
-              sourceType,
             });
           }
 

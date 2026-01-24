@@ -124,45 +124,24 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			}
 		}
 
-		// Sources routes - authenticated users can read/manage their own sources
+		// Sources routes - unified API (authenticated)
+		// All sources use the same endpoints with permission checks based on is_system/owner_id
 		sourcesGroup := v1.Group("/sources")
 		sourcesGroup.Use(a.authRequired())
 		{
 			sourcesGroup.GET("", a.Sources.HandleList)
 			sourcesGroup.POST("", a.Sources.HandleCreateUserSource)
-			sourcesGroup.PUT("/:id", a.Sources.HandleUpdateUserSource)
-			sourcesGroup.DELETE("/:id", a.Sources.HandleDeleteUserSource)
 			sourcesGroup.GET("/component/:componentId", a.Sources.HandleListByComponent)
 
-			// User source details and versions
-			sourcesGroup.GET("/user/:id", a.Sources.HandleGetUserSourceByID)
-			sourcesGroup.GET("/user/:id/versions", a.Sources.HandleListUserVersions)
-			sourcesGroup.POST("/user/:id/sync", a.Sources.HandleSyncUserVersions)
-			sourcesGroup.GET("/user/:id/sync/status", a.Sources.HandleGetUserSyncStatus)
-			sourcesGroup.DELETE("/user/:id/versions", a.Sources.HandleClearUserVersions)
-
-			// Default sources management - root only
-			defaults := sourcesGroup.Group("/defaults")
-			defaults.Use(a.rootAccessRequired())
-			{
-				defaults.GET("", a.Sources.HandleListDefaults)
-				defaults.POST("", a.Sources.HandleCreateDefault)
-				defaults.PUT("/:id", a.Sources.HandleUpdateDefault)
-				defaults.DELETE("/:id", a.Sources.HandleDeleteDefault)
-			}
-
-			// Default source details (auth required for reading)
-			sourcesGroup.GET("/defaults/:id", a.Sources.HandleGetDefaultByID)
-			sourcesGroup.GET("/defaults/:id/versions", a.Sources.HandleListDefaultVersions)
-			sourcesGroup.GET("/defaults/:id/sync/status", a.Sources.HandleGetDefaultSyncStatus)
-		}
-
-		// Default source sync and version management - root only (separate group for write operations)
-		sourcesDefaultSync := v1.Group("/sources/defaults")
-		sourcesDefaultSync.Use(a.rootAccessRequired())
-		{
-			sourcesDefaultSync.POST("/:id/sync", a.Sources.HandleSyncDefaultVersions)
-			sourcesDefaultSync.DELETE("/:id/versions", a.Sources.HandleClearDefaultVersions)
+			// Unified source operations by ID
+			sourcesGroup.GET("/:id", a.Sources.HandleGetByID)
+			sourcesGroup.PUT("/:id", a.Sources.HandleUpdate)
+			sourcesGroup.DELETE("/:id", a.Sources.HandleDelete)
+			sourcesGroup.GET("/:id/versions", a.Sources.HandleListVersions)
+			sourcesGroup.GET("/:id/versions/types", a.Sources.HandleGetVersionTypes)
+			sourcesGroup.POST("/:id/sync", a.Sources.HandleSync)
+			sourcesGroup.GET("/:id/sync/status", a.Sources.HandleGetSyncStatus)
+			sourcesGroup.DELETE("/:id/versions", a.Sources.HandleClearVersions)
 		}
 
 		// Component routes - read operations (public)

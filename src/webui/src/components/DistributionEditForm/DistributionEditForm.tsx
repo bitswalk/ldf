@@ -6,7 +6,6 @@ import { listSources } from "../../services/sources";
 import {
   listSourceVersions,
   type SourceVersion,
-  type SourceType,
 } from "../../services/sourceVersions";
 import {
   listComponents,
@@ -177,7 +176,6 @@ interface KernelVersion {
   version: string;
   type: "stable" | "lts" | "mainline";
   sourceId: string;
-  sourceType: SourceType;
 }
 
 // Function to fetch kernel versions from synced sources
@@ -210,7 +208,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
 
     const allVersions: KernelVersion[] = [];
     for (const source of kernelSources) {
-      const sourceType: SourceType = source.is_system ? "default" : "user";
       const pageSize = 100;
       let offset = 0;
       let hasMore = true;
@@ -218,7 +215,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
       while (hasMore) {
         const versionsResult = await listSourceVersions(
           source.id,
-          sourceType,
           pageSize,
           offset,
           undefined,
@@ -242,7 +238,6 @@ async function fetchKernelVersions(): Promise<KernelVersion[]> {
               version: v.version,
               type: displayType,
               sourceId: source.id,
-              sourceType,
             });
           }
           hasMore = versionsResult.versions.length === pageSize;

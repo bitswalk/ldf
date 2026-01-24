@@ -20,12 +20,12 @@ import {
 import {
   type SourceVersion,
   type VersionSyncJob,
-  type SourceType,
   type VersionType,
   listSourceVersions,
   triggerVersionSync,
   getSyncStatus,
   clearSourceVersions,
+  getSourceVersionTypes,
   formatRelativeTime,
   isSyncInProgress,
 } from "../../services/sourceVersions";
@@ -37,7 +37,6 @@ import {
 
 interface VersionListProps {
   sourceId: string;
-  sourceType: SourceType;
   baseUrl?: string;
   urlTemplate?: string;
   versionFilter?: string;
@@ -48,13 +47,11 @@ interface VersionListProps {
 
 const PAGE_SIZE = 20;
 
-const VERSION_TYPE_OPTIONS: { value: VersionType | "all"; label: string }[] = [
-  { value: "all", label: "All versions" },
-  { value: "mainline", label: "Mainline" },
-  { value: "stable", label: "Stable" },
-  { value: "longterm", label: "Longterm" },
-  { value: "linux-next", label: "Linux-next" },
-];
+// Format version type label for display
+function formatVersionTypeLabel(type: string): string {
+  if (type === "linux-next") return "Linux-next";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
 
 export const VersionList: Component<VersionListProps> = (props) => {
   const [versions, setVersions] = createSignal<SourceVersion[]>([]);
@@ -65,11 +62,24 @@ export const VersionList: Component<VersionListProps> = (props) => {
   const [error, setError] = createSignal<string | null>(null);
   const [syncing, setSyncing] = createSignal(false);
   const [clearing, setClearing] = createSignal(false);
-  const [versionTypeFilter, setVersionTypeFilter] = createSignal<
-    VersionType | "all"
-  >("all");
+  const [versionTypeFilter, setVersionTypeFilter] = createSignal<string>("all");
+  const [availableVersionTypes, setAvailableVersionTypes] = createSignal<
+    string[]
+  >([]);
   const [dropdownOpen, setDropdownOpen] = createSignal(false);
   const [showFilteredOut, setShowFilteredOut] = createSignal(false);
+
+  // Build version type options from available types
+  const versionTypeOptions = createMemo(() => {
+    const types = availableVersionTypes();
+    const options: { value: string; label: string }[] = [
+      { value: "all", label: "All versions" },
+    ];
+    for (const type of types) {
+      options.push({ value: type, label: formatVersionTypeLabel(type) });
+    }
+    return options;
+  });
 
   const pollInterval = () => props.pollInterval ?? 2000;
 
@@ -119,7 +129,6 @@ export const VersionList: Component<VersionListProps> = (props) => {
     const filter = versionTypeFilter();
     const result = await listSourceVersions(
       props.sourceId,
-      props.sourceType,
       PAGE_SIZE,
       offset,
       filter === "all" ? undefined : filter,
@@ -140,18 +149,28 @@ export const VersionList: Component<VersionListProps> = (props) => {
   };
 
   const fetchSyncStatus = async () => {
-    const result = await getSyncStatus(props.sourceId, props.sourceType);
+    const result = await getSyncStatus(props.sourceId);
     if (result.success && result.job) {
       setSyncJob(result.job);
       if (result.job.status === "completed" || result.job.status === "failed") {
         fetchVersions(currentPage());
+        // Refresh version types after sync completes
+        fetchVersionTypes();
       }
+    }
+  };
+
+  const fetchVersionTypes = async () => {
+    const result = await getSourceVersionTypes(props.sourceId);
+    if (result.success) {
+      setAvailableVersionTypes(result.types);
     }
   };
 
   // Initial fetch
   createEffect(() => {
     fetchVersions(1);
+    fetchVersionTypes();
     setCurrentPage(1);
   });
 
@@ -197,7 +216,7 @@ export const VersionList: Component<VersionListProps> = (props) => {
 
   const handleSync = async () => {
     setSyncing(true);
-    const result = await triggerVersionSync(props.sourceId, props.sourceType);
+    const result = await triggerVersionSync(props.sourceId);
     if (result.success) {
       props.onSuccess?.("Version sync started");
       fetchSyncStatus();
@@ -209,7 +228,7 @@ export const VersionList: Component<VersionListProps> = (props) => {
 
   const handleClear = async () => {
     setClearing(true);
-    const result = await clearSourceVersions(props.sourceId, props.sourceType);
+    const result = await clearSourceVersions(props.sourceId);
     if (result.success) {
       props.onSuccess?.("Version cache cleared");
       setVersions([]);
@@ -419,42 +438,42 @@ export const VersionList: Component<VersionListProps> = (props) => {
             </div>
           </Show>
 
-          {/* Version type filter dropdown */}
-          <div class="relative" data-version-filter-dropdown>
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen())}
-              class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-muted/80 transition-colors"
-            >
-              <Icon name="funnel" size="sm" />
-              <span>
-                {
-                  VERSION_TYPE_OPTIONS.find(
+          {/* Version type filter dropdown - only show if there are multiple types */}
+          <Show when={versionTypeOptions().length > 1}>
+            <div class="relative" data-version-filter-dropdown>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen())}
+                class="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <Icon name="funnel" size="sm" />
+                <span>
+                  {versionTypeOptions().find(
                     (o) => o.value === versionTypeFilter(),
-                  )?.label
-                }
-              </span>
-              <Icon name="caret-down" size="sm" />
-            </button>
-            <Show when={dropdownOpen()}>
-              <div class="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-popover border border-border rounded-md shadow-lg">
-                {VERSION_TYPE_OPTIONS.map((option) => (
-                  <button
-                    onClick={() => {
-                      setVersionTypeFilter(option.value);
-                      setDropdownOpen(false);
-                    }}
-                    class={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-md last:rounded-b-md ${
-                      versionTypeFilter() === option.value
-                        ? "bg-primary/10 text-primary"
-                        : ""
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </Show>
-          </div>
+                  )?.label ?? "All versions"}
+                </span>
+                <Icon name="caret-down" size="sm" />
+              </button>
+              <Show when={dropdownOpen()}>
+                <div class="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-popover border border-border rounded-md shadow-lg">
+                  {versionTypeOptions().map((option) => (
+                    <button
+                      onClick={() => {
+                        setVersionTypeFilter(option.value);
+                        setDropdownOpen(false);
+                      }}
+                      class={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-md last:rounded-b-md ${
+                        versionTypeFilter() === option.value
+                          ? "bg-primary/10 text-primary"
+                          : ""
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </Show>
+            </div>
+          </Show>
 
           {/* Clear button */}
           <Show when={total() > 0}>

@@ -75,9 +75,6 @@ const App: Component = () => {
   const [selectedSourceId, setSelectedSourceId] = createSignal<string | null>(
     null,
   );
-  const [selectedSourceType, setSelectedSourceType] = createSignal<
-    "default" | "user"
-  >("default");
   const [sourceDetailsReturnView, setSourceDetailsReturnView] = createSignal<
     "sources" | "settings"
   >("sources");
@@ -244,11 +241,9 @@ const App: Component = () => {
 
   const handleViewSource = (
     sourceId: string,
-    sourceType: "default" | "user",
     returnTo: "sources" | "settings" = "sources",
   ) => {
     setSelectedSourceId(sourceId);
-    setSelectedSourceType(sourceType);
     setSourceDetailsReturnView(returnTo);
     setCurrentView("source-details");
   };
@@ -383,7 +378,7 @@ const App: Component = () => {
                   <Sources
                     isLoggedIn={isLoggedIn()}
                     user={authState().user}
-                    onViewSource={handleViewSource}
+                    onViewSource={(id) => handleViewSource(id)}
                   />
                 </Match>
                 <Match
@@ -393,7 +388,6 @@ const App: Component = () => {
                 >
                   <SourceDetails
                     sourceId={selectedSourceId()!}
-                    sourceType={selectedSourceType()}
                     onBack={handleBackFromSourceDetails}
                     onDeleted={handleBackFromSourceDetails}
                     user={authState().user}

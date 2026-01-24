@@ -6,16 +6,13 @@ import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { SourceForm } from "../../components/SourceForm";
 import { VersionList } from "../../components/VersionList";
-import { getSource, type SourceType } from "../../services/sourceVersions";
+import { getSource } from "../../services/sourceVersions";
 import {
   updateSource,
-  updateDefaultSource,
   deleteSource,
-  deleteDefaultSource,
+  type Source,
   type CreateSourceRequest,
   type UpdateSourceRequest,
-  type SourceDefault,
-  type UserSource,
 } from "../../services/sources";
 import {
   listComponents,
@@ -32,16 +29,13 @@ interface UserInfo {
 
 interface SourceDetailsProps {
   sourceId: string;
-  sourceType: SourceType;
   onBack: () => void;
   onDeleted?: () => void;
   user?: UserInfo | null;
 }
 
 export const SourceDetails: Component<SourceDetailsProps> = (props) => {
-  const [source, setSource] = createSignal<SourceDefault | UserSource | null>(
-    null,
-  );
+  const [source, setSource] = createSignal<Source | null>(null);
   const [components, setComponents] = createSignal<ComponentType[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -55,14 +49,15 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
   const [isDeleting, setIsDeleting] = createSignal(false);
 
   const isAdmin = () => props.user?.role === "root";
-  const isDefaultSource = () => props.sourceType === "default";
+  const isSystemSource = () => source()?.is_system ?? false;
 
   const canEdit = () => {
-    if (isDefaultSource()) {
+    const src = source();
+    if (!src) return false;
+    if (src.is_system) {
       return isAdmin();
     }
-    const src = source() as UserSource | null;
-    return src && (props.user?.id === src.owner_id || isAdmin());
+    return props.user?.id === src.owner_id || isAdmin();
   };
 
   const canDelete = () => canEdit();
@@ -71,7 +66,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     setLoading(true);
     setError(null);
 
-    const result = await getSource(props.sourceId, props.sourceType);
+    const result = await getSource(props.sourceId);
 
     if (result.success) {
       setSource(result.source);
@@ -143,9 +138,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       enabled: formData.enabled,
     };
 
-    const result = isDefaultSource()
-      ? await updateDefaultSource(props.sourceId, updateReq)
-      : await updateSource(props.sourceId, updateReq);
+    const result = await updateSource(props.sourceId, updateReq);
 
     setIsSubmitting(false);
 
@@ -170,9 +163,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     setIsDeleting(true);
     setError(null);
 
-    const result = isDefaultSource()
-      ? await deleteDefaultSource(props.sourceId)
-      : await deleteSource(props.sourceId);
+    const result = await deleteSource(props.sourceId);
 
     setIsDeleting(false);
 
@@ -213,7 +204,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       version_filter: src.version_filter,
       priority: src.priority,
       enabled: src.enabled,
-      is_system: isDefaultSource(),
+      is_system: src.is_system,
       created_at: src.created_at,
       updated_at: src.updated_at,
     };
@@ -239,12 +230,12 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
               <Show when={source()}>
                 <span
                   class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    isDefaultSource()
+                    isSystemSource()
                       ? "bg-primary/10 text-primary"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {isDefaultSource()
+                  {isSystemSource()
                     ? t("sources.type.system")
                     : t("sources.type.user")}
                 </span>
@@ -455,7 +446,6 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
               <Card header={{ title: t("sources.detail.availableVersions") }}>
                 <VersionList
                   sourceId={props.sourceId}
-                  sourceType={props.sourceType}
                   baseUrl={source()!.url}
                   urlTemplate={source()!.url_template}
                   versionFilter={source()!.version_filter}
