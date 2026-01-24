@@ -53,6 +53,7 @@ interface SourceFormProps {
   onCancel: () => void;
   initialData?: Source;
   isSubmitting?: boolean;
+  isAdmin?: boolean;
 }
 
 export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
@@ -78,6 +79,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
   );
   const [enabled, setEnabled] = createSignal(
     props.initialData?.enabled ?? true,
+  );
+  const [isSystem, setIsSystem] = createSignal(
+    props.initialData?.is_system ?? false,
   );
   const [errors, setErrors] = createSignal<{ name?: string; url?: string }>({});
 
@@ -360,6 +364,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     }
     if (versionFilter().trim()) {
       request.version_filter = versionFilter().trim();
+    }
+    if (props.isAdmin && isSystem()) {
+      request.is_system = true;
     }
 
     props.onSubmit(request);
@@ -768,30 +775,46 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
           <Show when={filterPreview().length > 0}>
             <div class="max-h-40 overflow-y-auto space-y-1">
               <For each={filterPreview().slice(0, 10)}>
-                {(v) => (
-                  <div
-                    class={`flex items-center gap-2 text-xs ${
-                      v.included
-                        ? "text-foreground"
-                        : "text-muted-foreground line-through"
-                    }`}
-                  >
-                    <span
-                      class={v.included ? "text-green-500" : "text-red-500"}
+                {(v, index) => {
+                  const isLatest = () => {
+                    if (!v.included) return false;
+                    // Check if this is the first included version
+                    const allVersions = filterPreview();
+                    for (let i = 0; i < index(); i++) {
+                      if (allVersions[i].included) return false;
+                    }
+                    return true;
+                  };
+                  return (
+                    <div
+                      class={`flex items-center gap-2 text-xs ${
+                        v.included
+                          ? "text-foreground"
+                          : "text-muted-foreground line-through"
+                      }`}
                     >
-                      {v.included ? "+" : "-"}
-                    </span>
-                    <span class="font-mono">{v.version}</span>
-                    <Show when={v.is_prerelease}>
-                      <span class="px-1 py-0.5 bg-blue-500/20 text-blue-500 rounded text-[10px]">
-                        prerelease
+                      <span
+                        class={v.included ? "text-green-500" : "text-red-500"}
+                      >
+                        {v.included ? "+" : "-"}
                       </span>
-                    </Show>
-                    <Show when={v.reason && !v.included}>
-                      <span class="text-muted-foreground">({v.reason})</span>
-                    </Show>
-                  </div>
-                )}
+                      <span class="font-mono">{v.version}</span>
+                      <Show when={isLatest()}>
+                        <span class="px-1 py-0.5 bg-primary/20 text-primary rounded text-[10px] font-medium">
+                          latest
+                        </span>
+                      </Show>
+                      <Show when={v.is_prerelease}>
+                        <span class="px-1 py-0.5 bg-blue-500/20 text-blue-500 rounded text-[10px]">
+                          prerelease
+                        </span>
+                      </Show>
+                      <Show when={v.reason && !v.included}>
+                        <span class="text-muted-foreground">({v.reason})</span>
+                      </Show>
+                    </div>
+                  );
+                }}
               </For>
               <Show when={filterPreview().length > 10}>
                 <p class="text-xs text-muted-foreground pt-1">
@@ -833,6 +856,28 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
         </label>
         <span class="text-sm font-medium">Enabled</span>
       </div>
+
+      <Show when={props.isAdmin}>
+        <div class="space-y-2">
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSystem()}
+                onChange={(e) => setIsSystem(e.target.checked)}
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/20 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+            </label>
+            <span class="text-sm font-medium">
+              {t("sources.form.systemSource.label")}
+            </span>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            {t("sources.form.systemSource.help")}
+          </p>
+        </div>
+      </Show>
 
       <nav class="flex justify-end gap-3 pt-4 border-t border-border">
         <button

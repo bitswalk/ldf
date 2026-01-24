@@ -525,6 +525,7 @@ export const Sources: Component<SourcesProps> = (props) => {
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}
           isSubmitting={isSubmitting()}
+          isAdmin={isAdmin()}
         />
       </Modal>
 

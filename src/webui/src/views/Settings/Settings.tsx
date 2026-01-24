@@ -15,7 +15,6 @@ import {
 } from "../../components/Summary";
 import { ServerSettingsPanel } from "../../components/ServerSettingsPanel";
 import { Modal } from "../../components/Modal";
-import { SourceForm } from "../../components/SourceForm";
 import { Spinner } from "../../components/Spinner";
 import { themeService } from "../../services/theme";
 import { i18nService, t, type LocalePreference } from "../../services/i18n";
@@ -28,15 +27,6 @@ import {
   resetDatabase,
   type ServerSetting,
 } from "../../services/settings";
-import {
-  listDefaultSources,
-  createDefaultSource,
-  updateDefaultSource,
-  deleteDefaultSource,
-  type SourceDefault,
-  type CreateSourceRequest,
-  type UpdateSourceRequest,
-} from "../../services/sources";
 import { isDevMode } from "../../lib/utils";
 import {
   getBrandingAssetInfo,
@@ -55,7 +45,6 @@ type ThemePreference = "system" | "light" | "dark";
 
 interface SettingsProps {
   onBack?: () => void;
-  onViewSource?: (sourceId: string, sourceType: "default" | "user") => void;
 }
 
 export const Settings: Component<SettingsProps> = (props) => {
@@ -76,20 +65,6 @@ export const Settings: Component<SettingsProps> = (props) => {
   const [updatingSettings, setUpdatingSettings] = createSignal<Set<string>>(
     new Set(),
   );
-
-  // Default sources state (for root users)
-  const [defaultSources, setDefaultSources] = createSignal<SourceDefault[]>([]);
-  const [sourcesLoading, setSourcesLoading] = createSignal(false);
-  const [sourcesError, setSourcesError] = createSignal<string | null>(null);
-  const [sourceModalOpen, setSourceModalOpen] = createSignal(false);
-  const [editingSource, setEditingSource] = createSignal<SourceDefault | null>(
-    null,
-  );
-  const [sourceSubmitting, setSourceSubmitting] = createSignal(false);
-  const [deleteSourceModalOpen, setDeleteSourceModalOpen] = createSignal(false);
-  const [sourceToDelete, setSourceToDelete] =
-    createSignal<SourceDefault | null>(null);
-  const [deletingSource, setDeletingSource] = createSignal(false);
 
   // Language packs state (for root users)
   const [languagePacks, setLanguagePacks] = createSignal<
@@ -180,22 +155,6 @@ export const Settings: Component<SettingsProps> = (props) => {
       setDevModeEnabled(enabled);
     }
     setDevModeUpdating(false);
-  };
-
-  const loadDefaultSources = async () => {
-    if (!isRootUser()) return;
-
-    setSourcesLoading(true);
-    setSourcesError(null);
-
-    const result = await listDefaultSources();
-    if (result.success) {
-      setDefaultSources(result.sources);
-    } else {
-      setSourcesError(result.message);
-    }
-
-    setSourcesLoading(false);
   };
 
   const loadLanguagePacks = async () => {
@@ -445,92 +404,6 @@ export const Settings: Component<SettingsProps> = (props) => {
     }
   };
 
-  const handleAddSource = () => {
-    setEditingSource(null);
-    setSourceModalOpen(true);
-  };
-
-  const handleEditSource = (source: SourceDefault) => {
-    // Navigate to source details view instead of opening modal
-    props.onViewSource?.(source.id, "default");
-  };
-
-  const handleSourceFormSubmit = async (formData: CreateSourceRequest) => {
-    setSourceSubmitting(true);
-    setSourcesError(null);
-
-    const editing = editingSource();
-
-    if (editing) {
-      const updateReq: UpdateSourceRequest = {
-        name: formData.name,
-        url: formData.url,
-        component_ids: formData.component_ids,
-        retrieval_method: formData.retrieval_method,
-        url_template: formData.url_template,
-        priority: formData.priority,
-        enabled: formData.enabled,
-      };
-      const result = await updateDefaultSource(editing.id, updateReq);
-
-      setSourceSubmitting(false);
-
-      if (result.success) {
-        setSourceModalOpen(false);
-        setEditingSource(null);
-        loadDefaultSources();
-      } else {
-        setSourcesError(result.message);
-      }
-    } else {
-      const result = await createDefaultSource(formData);
-
-      setSourceSubmitting(false);
-
-      if (result.success) {
-        setSourceModalOpen(false);
-        loadDefaultSources();
-      } else {
-        setSourcesError(result.message);
-      }
-    }
-  };
-
-  const handleSourceFormCancel = () => {
-    setSourceModalOpen(false);
-    setEditingSource(null);
-  };
-
-  const openDeleteSourceModal = (source: SourceDefault) => {
-    setSourceToDelete(source);
-    setDeleteSourceModalOpen(true);
-  };
-
-  const confirmDeleteSource = async () => {
-    const source = sourceToDelete();
-    if (!source) return;
-
-    setDeletingSource(true);
-    setSourcesError(null);
-
-    const result = await deleteDefaultSource(source.id);
-
-    setDeletingSource(false);
-
-    if (result.success) {
-      setDeleteSourceModalOpen(false);
-      setSourceToDelete(null);
-      loadDefaultSources();
-    } else {
-      setSourcesError(result.message);
-    }
-  };
-
-  const cancelDeleteSource = () => {
-    setDeleteSourceModalOpen(false);
-    setSourceToDelete(null);
-  };
-
   onMount(() => {
     // Load current theme preference
     const autoMode = localStorage.getItem("theme-auto");
@@ -555,9 +428,6 @@ export const Settings: Component<SettingsProps> = (props) => {
 
     // Load server settings if user is root
     loadServerSettings();
-
-    // Load default sources if user is root
-    loadDefaultSources();
 
     // Load language packs if user is root
     loadLanguagePacks();
@@ -642,10 +512,6 @@ export const Settings: Component<SettingsProps> = (props) => {
               <SummaryNavItem
                 id="server-settings"
                 label={t("settings.server.settings.title")}
-              />
-              <SummaryNavItem
-                id="default-sources"
-                label={t("settings.server.defaultSources.title")}
               />
             </Show>
           </SummaryCategory>
@@ -1194,105 +1060,6 @@ export const Settings: Component<SettingsProps> = (props) => {
             />
           </SummarySection>
 
-          {/* Default Sources Section (Root users only) */}
-          <SummarySection
-            id="default-sources"
-            title={t("settings.server.defaultSources.title")}
-            description={t("settings.server.defaultSources.description")}
-          >
-            <div class="space-y-4">
-              <Show when={sourcesError()}>
-                <div class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-                  {sourcesError()}
-                </div>
-              </Show>
-
-              <Show
-                when={!sourcesLoading()}
-                fallback={
-                  <div class="flex items-center justify-center py-8">
-                    <Spinner size="lg" />
-                  </div>
-                }
-              >
-                <div class="space-y-2">
-                  <For each={defaultSources()}>
-                    {(source) => (
-                      <div class="flex items-center justify-between p-3 bg-muted/50 rounded-md border border-border">
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2">
-                            <button
-                              onClick={() =>
-                                props.onViewSource?.(source.id, "default")
-                              }
-                              class="font-medium truncate hover:text-primary hover:underline transition-colors text-left"
-                            >
-                              {source.name}
-                            </button>
-                            <span
-                              class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                source.enabled
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {source.enabled
-                                ? t("common.status.enabled")
-                                : t("common.status.disabled")}
-                            </span>
-                            <span class="text-xs text-muted-foreground">
-                              {t("settings.server.defaultSources.priority")}:{" "}
-                              {source.priority}
-                            </span>
-                          </div>
-                          <div class="text-sm text-muted-foreground font-mono truncate mt-1">
-                            {source.url}
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-2 ml-4">
-                          <button
-                            onClick={() => handleEditSource(source)}
-                            class="p-2 rounded-md hover:bg-muted transition-colors"
-                            title={t("common.actions.edit")}
-                          >
-                            <Icon
-                              name="pencil"
-                              size="sm"
-                              class="text-muted-foreground hover:text-foreground"
-                            />
-                          </button>
-                          <button
-                            onClick={() => openDeleteSourceModal(source)}
-                            class="p-2 rounded-md hover:bg-destructive/10 transition-colors"
-                            title={t("common.actions.delete")}
-                          >
-                            <Icon
-                              name="trash"
-                              size="sm"
-                              class="text-muted-foreground hover:text-destructive"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </For>
-
-                  <Show when={defaultSources().length === 0}>
-                    <div class="text-center py-8 text-muted-foreground">
-                      {t("settings.server.defaultSources.noSources")}
-                    </div>
-                  </Show>
-                </div>
-
-                <div class="pt-4">
-                  <SummaryButton onClick={handleAddSource}>
-                    {t("settings.server.defaultSources.addButton")}
-                  </SummaryButton>
-                </div>
-              </Show>
-            </div>
-          </SummarySection>
-
           {/* Profile Section */}
           <SummarySection
             id="profile"
@@ -1359,72 +1126,6 @@ export const Settings: Component<SettingsProps> = (props) => {
           </SummarySection>
         </SummaryContent>
       </Summary>
-
-      {/* Source Form Modal */}
-      <Modal
-        isOpen={sourceModalOpen()}
-        onClose={handleSourceFormCancel}
-        title={
-          editingSource()
-            ? t("settings.server.defaultSources.editSource")
-            : t("settings.server.defaultSources.addSource")
-        }
-      >
-        <SourceForm
-          onSubmit={handleSourceFormSubmit}
-          onCancel={handleSourceFormCancel}
-          initialData={
-            editingSource()
-              ? {
-                  ...editingSource()!,
-                  is_system: true,
-                }
-              : undefined
-          }
-          isSubmitting={sourceSubmitting()}
-        />
-      </Modal>
-
-      {/* Delete Source Confirmation Modal */}
-      <Modal
-        isOpen={deleteSourceModalOpen()}
-        onClose={cancelDeleteSource}
-        title={t("settings.server.defaultSources.deleteSource.title")}
-      >
-        <section class="flex flex-col gap-6">
-          <p class="text-muted-foreground">
-            {t("settings.server.defaultSources.deleteSource.confirm", {
-              name: sourceToDelete()?.name || "",
-            })}
-          </p>
-
-          <nav class="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={cancelDeleteSource}
-              disabled={deletingSource()}
-              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              {t("common.actions.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={confirmDeleteSource}
-              disabled={deletingSource()}
-              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              <Show when={deletingSource()}>
-                <Spinner size="sm" />
-              </Show>
-              <span>
-                {deletingSource()
-                  ? t("common.status.deleting")
-                  : t("common.actions.delete")}
-              </span>
-            </button>
-          </nav>
-        </section>
-      </Modal>
 
       {/* Delete Language Pack Confirmation Modal */}
       <Modal

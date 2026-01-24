@@ -108,6 +108,10 @@
     },
     "enabled": {
       "label": "Activé"
+    },
+    "systemSource": {
+      "label": "Source système",
+      "help": "Les sources système sont disponibles pour tous les utilisateurs et ne peuvent être gérées que par les administrateurs."
     }
   },
   "retrievalMethod": {

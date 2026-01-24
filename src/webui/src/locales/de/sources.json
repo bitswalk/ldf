@@ -108,6 +108,10 @@
     },
     "enabled": {
       "label": "Aktiviert"
+    },
+    "systemSource": {
+      "label": "Systemquelle",
+      "help": "Systemquellen sind für alle Benutzer verfügbar und können nur von Administratoren verwaltet werden."
     }
   },
   "retrievalMethod": {

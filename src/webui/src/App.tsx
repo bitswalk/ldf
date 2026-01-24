@@ -253,13 +253,6 @@ const App: Component = () => {
     setCurrentView("source-details");
   };
 
-  const handleViewSourceFromSettings = (
-    sourceId: string,
-    sourceType: "default" | "user",
-  ) => {
-    handleViewSource(sourceId, sourceType, "settings");
-  };
-
   const handleBackFromSourceDetails = () => {
     setSelectedSourceId(null);
     setCurrentView(sourceDetailsReturnView());
@@ -422,10 +415,7 @@ const App: Component = () => {
                   />
                 </Match>
                 <Match when={currentView() === "settings"}>
-                  <Settings
-                    onBack={handleBackFromSettings}
-                    onViewSource={handleViewSourceFromSettings}
-                  />
+                  <Settings onBack={handleBackFromSettings} />
                 </Match>
               </Switch>
             </Transition>

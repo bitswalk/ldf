@@ -121,6 +121,10 @@
     "enabled": {
       "label": "Enabled"
     },
+    "systemSource": {
+      "label": "System Source",
+      "help": "System sources are available to all users and can only be managed by administrators."
+    },
     "actions": {
       "cancel": "Cancel",
       "add": "Add Source",

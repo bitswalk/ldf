@@ -60,6 +60,7 @@ export interface CreateSourceRequest {
   version_filter?: string;
   priority?: number;
   enabled?: boolean;
+  is_system?: boolean;
 }
 
 export interface UpdateSourceRequest {

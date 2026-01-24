@@ -30,6 +30,7 @@ type CreateSourceRequest struct {
 	VersionFilter   string   `json:"version_filter" example:"!*-rc*,!*alpha*,!*beta*"`
 	Priority        int      `json:"priority" example:"10"`
 	Enabled         *bool    `json:"enabled" example:"true"`
+	IsSystem        *bool    `json:"is_system" example:"false"`
 }
 
 // UpdateSourceRequest represents the request to update a source

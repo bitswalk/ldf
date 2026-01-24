@@ -274,7 +274,7 @@ func (h *Handler) HandleDeleteDefault(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// HandleCreateUserSource creates a new user source
+// HandleCreateUserSource creates a new user source (or system source if admin)
 func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -292,6 +292,17 @@ func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 			Error:   "Bad request",
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
+		})
+		return
+	}
+
+	// Check if this should be a system source (admin only)
+	isSystem := req.IsSystem != nil && *req.IsSystem
+	if isSystem && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Only administrators can create system sources",
 		})
 		return
 	}
@@ -317,7 +328,6 @@ func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 	}
 
 	source := &db.UpstreamSource{
-		OwnerID:         claims.UserID,
 		Name:            req.Name,
 		URL:             req.URL,
 		ComponentIDs:    componentIDs,
@@ -329,16 +339,29 @@ func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 		Enabled:         enabled,
 	}
 
-	if err := h.sourceRepo.CreateUserSource(source); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
-		return
+	// Create as system source (no owner) or user source
+	if isSystem {
+		if err := h.sourceRepo.CreateDefault(source); err != nil {
+			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+				Error:   "Internal server error",
+				Code:    http.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+		h.triggerAutoSync(source, "default")
+	} else {
+		source.OwnerID = claims.UserID
+		if err := h.sourceRepo.CreateUserSource(source); err != nil {
+			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+				Error:   "Internal server error",
+				Code:    http.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+		h.triggerAutoSync(source, "user")
 	}
-
-	h.triggerAutoSync(source, "user")
 
 	c.JSON(http.StatusCreated, source)
 }
