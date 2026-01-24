@@ -574,7 +574,6 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
         title={t("components.create.editModalTitle")}
       >
         <ComponentForm
-          key={component()?.id || "edit"}
           onSubmit={handleEditSubmit}
           onCancel={handleEditCancel}
           initialData={component() || undefined}

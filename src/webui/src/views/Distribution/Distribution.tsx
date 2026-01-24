@@ -1,5 +1,5 @@
 import type { Component, JSX } from "solid-js";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onMount, Show, For } from "solid-js";
 import { Card } from "../../components/Card";
 import { Datagrid } from "../../components/Datagrid";
 import { Spinner } from "../../components/Spinner";
@@ -18,10 +18,12 @@ import {
   deleteDistribution,
   createDistribution,
   updateDistribution,
+  getDeletionPreview,
   type Distribution as DistributionType,
   type DistributionStatus,
   type DistributionVisibility,
   type DistributionConfig,
+  type DeletionPreview,
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
 
@@ -54,6 +56,10 @@ export const Distribution: Component<DistributionProps> = (props) => {
   >([]);
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [showOnlyMine, setShowOnlyMine] = createSignal(false);
+  const [deletionPreviews, setDeletionPreviews] = createSignal<
+    DeletionPreview[]
+  >([]);
+  const [loadingPreviews, setLoadingPreviews] = createSignal(false);
 
   const fetchDistributions = async () => {
     setIsLoading(true);
@@ -122,9 +128,22 @@ export const Distribution: Component<DistributionProps> = (props) => {
     // TODO: Implement edit distribution
   };
 
-  const openDeleteModal = (dists: DistributionType[]) => {
+  const openDeleteModal = async (dists: DistributionType[]) => {
     setDistributionsToDelete(dists);
     setDeleteModalOpen(true);
+    setLoadingPreviews(true);
+    setDeletionPreviews([]);
+
+    // Fetch deletion previews for all distributions
+    const previews: DeletionPreview[] = [];
+    for (const dist of dists) {
+      const result = await getDeletionPreview(dist.id);
+      if (result.success) {
+        previews.push(result.preview);
+      }
+    }
+    setDeletionPreviews(previews);
+    setLoadingPreviews(false);
   };
 
   const handleDeleteDistribution = (id: string) => {
@@ -171,11 +190,16 @@ export const Distribution: Component<DistributionProps> = (props) => {
   const cancelDelete = () => {
     setDeleteModalOpen(false);
     setDistributionsToDelete([]);
+    setDeletionPreviews([]);
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (
+    value: DistributionType[keyof DistributionType],
+    _row: DistributionType,
+  ): JSX.Element => {
+    const dateString = value as string;
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return <span>{date.toLocaleDateString()}</span>;
   };
 
   const isAdmin = () => props.user?.role === "root";
@@ -188,8 +212,10 @@ export const Distribution: Component<DistributionProps> = (props) => {
   };
 
   const renderVisibility = (
-    visibility: DistributionVisibility,
+    value: DistributionType[keyof DistributionType],
+    _row: DistributionType,
   ): JSX.Element => {
+    const visibility = value as DistributionVisibility;
     const isPublic = visibility === "public";
     return (
       <span
@@ -220,7 +246,11 @@ export const Distribution: Component<DistributionProps> = (props) => {
     }
   };
 
-  const renderStatus = (status: DistributionStatus): JSX.Element => {
+  const renderStatus = (
+    value: DistributionType[keyof DistributionType],
+    _row: DistributionType,
+  ): JSX.Element => {
+    const status = value as DistributionStatus;
     const getStatusColor = () => {
       switch (status) {
         case "ready":
@@ -417,12 +447,16 @@ export const Distribution: Component<DistributionProps> = (props) => {
                     label: t("distribution.table.columns.name"),
                     sortable: true,
                     class: "font-medium",
-                    render: (name: string, row: DistributionType) => (
+                    render: (value, row) => (
                       <button
-                        onClick={() => props.onViewDistribution?.(row.id)}
+                        onClick={() =>
+                          props.onViewDistribution?.(
+                            (row as DistributionType).id,
+                          )
+                        }
                         class="text-left hover:text-primary hover:underline transition-colors"
                       >
-                        {name}
+                        {value as string}
                       </button>
                     ),
                   },
@@ -431,11 +465,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
                     label: t("distribution.table.columns.kernelVersion"),
                     sortable: true,
                     class: "font-mono",
-                    render: (
-                      _config: DistributionConfig | undefined,
-                      row: DistributionType,
-                    ) =>
-                      row.config?.core?.kernel?.version ||
+                    render: (_value, row) =>
+                      (row as DistributionType).config?.core?.kernel?.version ||
                       t("distribution.table.noValue"),
                   },
                   {
@@ -455,8 +486,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
                     label: t("distribution.table.columns.owner"),
                     sortable: true,
                     class: "font-mono text-xs",
-                    render: (ownerId: string) =>
-                      ownerId || t("distribution.table.noValue"),
+                    render: (value, _row) =>
+                      (value as string) || t("distribution.table.noValue"),
                   },
                   {
                     key: "created_at",
@@ -540,6 +571,120 @@ export const Distribution: Component<DistributionProps> = (props) => {
             </ul>
           </Show>
 
+          {/* Deletion Preview */}
+          <Show when={loadingPreviews()}>
+            <div class="flex items-center justify-center py-4">
+              <Spinner size="md" />
+            </div>
+          </Show>
+
+          <Show when={!loadingPreviews() && deletionPreviews().length > 0}>
+            {(() => {
+              const previews = deletionPreviews();
+              const totalDownloadJobs = previews.reduce(
+                (sum, p) => sum + p.download_jobs.count,
+                0,
+              );
+              const totalArtifacts = previews.reduce(
+                (sum, p) => sum + p.artifacts.count,
+                0,
+              );
+              const totalUserSources = previews.reduce(
+                (sum, p) => sum + p.user_sources.count,
+                0,
+              );
+              const hasRelatedItems =
+                totalDownloadJobs > 0 ||
+                totalArtifacts > 0 ||
+                totalUserSources > 0;
+
+              return (
+                <Show when={hasRelatedItems}>
+                  <div class="rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+                    <div class="flex items-start gap-3">
+                      <Icon
+                        name="warning"
+                        size="md"
+                        class="text-amber-500 mt-0.5"
+                      />
+                      <div class="flex-1">
+                        <h4 class="font-medium text-amber-500 mb-2">
+                          {t("distribution.delete.cascadeWarning")}
+                        </h4>
+                        <ul class="space-y-2 text-sm">
+                          <Show when={totalDownloadJobs > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="download"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.downloadJobs", {
+                                  count: totalDownloadJobs.toString(),
+                                })}
+                              </span>
+                            </li>
+                          </Show>
+                          <Show when={totalArtifacts > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="file"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.artifacts", {
+                                  count: totalArtifacts.toString(),
+                                })}
+                              </span>
+                            </li>
+                          </Show>
+                          <Show when={totalUserSources > 0}>
+                            <li class="flex items-center gap-2">
+                              <Icon
+                                name="database"
+                                size="sm"
+                                class="text-muted-foreground"
+                              />
+                              <span>
+                                {t("distribution.delete.userSources", {
+                                  count: totalUserSources.toString(),
+                                })}
+                              </span>
+                            </li>
+                            <Show
+                              when={previews.some(
+                                (p) =>
+                                  p.user_sources.sources &&
+                                  p.user_sources.sources.length > 0,
+                              )}
+                            >
+                              <ul class="ml-6 text-xs text-muted-foreground space-y-1">
+                                <For
+                                  each={previews.flatMap(
+                                    (p) => p.user_sources.sources || [],
+                                  )}
+                                >
+                                  {(source) => (
+                                    <li class="flex items-center gap-1">
+                                      <span class="w-1 h-1 rounded-full bg-muted-foreground" />
+                                      <span>{source.name}</span>
+                                    </li>
+                                  )}
+                                </For>
+                              </ul>
+                            </Show>
+                          </Show>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Show>
+              );
+            })()}
+          </Show>
+
           <nav class="flex justify-end gap-3">
             <button
               type="button"
@@ -552,7 +697,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={isDeleting() || loadingPreviews()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <Show when={isDeleting()}>

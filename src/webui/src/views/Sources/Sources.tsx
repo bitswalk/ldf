@@ -189,9 +189,13 @@ export const Sources: Component<SourcesProps> = (props) => {
     setSourcesToDelete([]);
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (
+    value: Source[keyof Source],
+    _row: Source,
+  ): JSX.Element => {
+    const dateString = value as string;
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return <span>{date.toLocaleDateString()}</span>;
   };
 
   const isAdmin = () => props.user?.role === "root";
@@ -223,7 +227,11 @@ export const Sources: Component<SourcesProps> = (props) => {
     }
   };
 
-  const renderEnabled = (enabled: boolean): JSX.Element => {
+  const renderEnabled = (
+    value: Source[keyof Source],
+    _row: Source,
+  ): JSX.Element => {
+    const enabled = value as boolean;
     return (
       <span
         class={`flex items-center gap-2 ${enabled ? "text-primary" : "text-muted-foreground"}`}
@@ -236,7 +244,11 @@ export const Sources: Component<SourcesProps> = (props) => {
     );
   };
 
-  const renderSourceType = (isSystem: boolean): JSX.Element => {
+  const renderSourceType = (
+    value: Source[keyof Source],
+    _row: Source,
+  ): JSX.Element => {
+    const isSystem = value as boolean;
     return (
       <span
         class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -425,12 +437,12 @@ export const Sources: Component<SourcesProps> = (props) => {
                       label: t("sources.table.columns.name"),
                       sortable: true,
                       class: "font-medium",
-                      render: (name: string, row: Source) => (
+                      render: (value, row) => (
                         <button
-                          onClick={() => handleViewSource(row)}
+                          onClick={() => handleViewSource(row as Source)}
                           class="text-left hover:text-primary hover:underline transition-colors"
                         >
-                          {name}
+                          {value as string}
                         </button>
                       ),
                     },
@@ -509,7 +521,6 @@ export const Sources: Component<SourcesProps> = (props) => {
         }
       >
         <SourceForm
-          key={editingSource()?.id || "new"}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}

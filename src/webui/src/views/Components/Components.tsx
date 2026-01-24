@@ -182,9 +182,13 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     setComponentsToDelete([]);
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (
+    value: Component[keyof Component],
+    _row: Component,
+  ): JSX.Element => {
+    const dateString = value as string;
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return <span>{date.toLocaleDateString()}</span>;
   };
 
   const isAdmin = () => props.user?.role === "root";
@@ -202,7 +206,11 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     return components().filter((c) => c.category === filter);
   };
 
-  const renderCategory = (category: string): JSX.Element => {
+  const renderCategory = (
+    value: Component[keyof Component],
+    _row: Component,
+  ): JSX.Element => {
+    const category = value as string;
     const colorMap: Record<string, string> = {
       core: "bg-blue-500/10 text-blue-500",
       bootloader: "bg-orange-500/10 text-orange-500",
@@ -222,7 +230,11 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     );
   };
 
-  const renderOptional = (isOptional: boolean): JSX.Element => {
+  const renderOptional = (
+    value: Component[keyof Component],
+    _row: Component,
+  ): JSX.Element => {
+    const isOptional = value as boolean;
     return (
       <span
         class={`flex items-center gap-2 ${isOptional ? "text-muted-foreground" : "text-primary"}`}
@@ -371,12 +383,12 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                     label: t("components.table.columns.name"),
                     sortable: true,
                     class: "font-medium",
-                    render: (name: string, row: Component) => (
+                    render: (value, row) => (
                       <button
-                        onClick={() => handleViewComponent(row)}
+                        onClick={() => handleViewComponent(row as Component)}
                         class="text-left hover:text-primary hover:underline transition-colors"
                       >
-                        {name}
+                        {value as string}
                       </button>
                     ),
                   },
@@ -396,7 +408,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                     key: "description",
                     label: t("components.table.columns.description"),
                     class: "max-w-xs truncate",
-                    render: (desc: string) => desc || "—",
+                    render: (value, _row) => (value as string) || "—",
                   },
                   {
                     key: "is_optional",
@@ -454,7 +466,6 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
         }
       >
         <ComponentForm
-          key={editingComponent()?.id || "new"}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingComponent() || undefined}

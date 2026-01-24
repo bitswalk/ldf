@@ -223,10 +223,13 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     }
   };
 
-  const formatDate = (value: string | number | undefined): string => {
+  const formatDate = (
+    value: Artifact[keyof Artifact],
+    _row: Artifact,
+  ): JSX.Element => {
     const dateString = value as string;
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return <span>{date.toLocaleDateString()}</span>;
   };
 
   const isAdmin = () => props.user?.role === "root";
@@ -238,13 +241,16 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     return artifacts();
   };
 
-  const renderSize = (value: string | number | undefined): JSX.Element => {
+  const renderSize = (
+    value: Artifact[keyof Artifact],
+    _row: Artifact,
+  ): JSX.Element => {
     const size = value as number;
     return <span class="font-mono text-sm">{formatFileSize(size)}</span>;
   };
 
   const renderDistribution = (
-    _value: string | number | undefined,
+    _value: Artifact[keyof Artifact],
     row: Artifact,
   ): JSX.Element => {
     return (
@@ -410,7 +416,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                       label: t("artifacts.table.columns.type"),
                       sortable: true,
                       class: "font-mono text-xs",
-                      render: (value) => (value as string) || "—",
+                      render: (value, _row) => (value as string) || "—",
                     },
                     {
                       key: "last_modified",
