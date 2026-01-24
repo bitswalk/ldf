@@ -223,7 +223,8 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     }
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (value: string | number | undefined): string => {
+    const dateString = value as string;
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
@@ -237,15 +238,19 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     return artifacts();
   };
 
-  const renderSize = (size: number): JSX.Element => {
+  const renderSize = (value: string | number | undefined): JSX.Element => {
+    const size = value as number;
     return <span class="font-mono text-sm">{formatFileSize(size)}</span>;
   };
 
-  const renderDistribution = (_: string, artifact: Artifact): JSX.Element => {
+  const renderDistribution = (
+    _value: string | number | undefined,
+    row: Artifact,
+  ): JSX.Element => {
     return (
       <span class="flex items-center gap-2">
         <Icon name="cube" size="sm" class="text-muted-foreground" />
-        <span>{artifact.distribution_name}</span>
+        <span>{row.distribution_name}</span>
       </span>
     );
   };
@@ -405,7 +410,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                       label: t("artifacts.table.columns.type"),
                       sortable: true,
                       class: "font-mono text-xs",
-                      render: (type: string) => type || "—",
+                      render: (value) => (value as string) || "—",
                     },
                     {
                       key: "last_modified",
