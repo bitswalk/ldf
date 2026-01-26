@@ -238,6 +238,9 @@ func (h *Handler) HandleUpdateDefault(c *gin.Context) {
 	if req.Enabled != nil {
 		source.Enabled = *req.Enabled
 	}
+	if req.DefaultVersion != nil {
+		source.DefaultVersion = *req.DefaultVersion
+	}
 
 	if err := h.sourceRepo.UpdateDefault(source); err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
@@ -452,6 +455,9 @@ func (h *Handler) HandleUpdateUserSource(c *gin.Context) {
 	}
 	if req.Enabled != nil {
 		source.Enabled = *req.Enabled
+	}
+	if req.DefaultVersion != nil {
+		source.DefaultVersion = *req.DefaultVersion
 	}
 
 	if err := h.sourceRepo.UpdateUserSource(source); err != nil {
@@ -1370,6 +1376,9 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	}
 	if req.Enabled != nil {
 		source.Enabled = *req.Enabled
+	}
+	if req.DefaultVersion != nil {
+		source.DefaultVersion = *req.DefaultVersion
 	}
 
 	if err := h.sourceRepo.Update(source); err != nil {

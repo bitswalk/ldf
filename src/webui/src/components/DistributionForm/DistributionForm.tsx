@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import {
   createSignal,
+  createEffect,
   Show,
   For,
   onMount,
@@ -63,11 +64,13 @@ interface DistributionFormData {
   initSystemVersion?: string;
   filesystem: string;
   filesystemVersion?: string;
+  filesystemUserspaceEnabled: boolean; // Include userspace tools for hybrid filesystem components
   partitioning: string;
   filesystemHierarchy: string;
   packageManager: string;
   securitySystem: string;
   securitySystemVersion?: string;
+  securitySystemUserspaceEnabled: boolean; // Include userspace tools for hybrid security components
   containerRuntime: string;
   containerRuntimeVersion?: string;
   virtualizationRuntime: string;
@@ -99,11 +102,13 @@ interface LDFDistributionConfig {
       hierarchy: string;
     };
     filesystem_version?: string;
+    filesystem_userspace?: boolean; // Include userspace tools for hybrid filesystem components
     packageManager: string;
   };
   security: {
     system: string;
     system_version?: string;
+    system_userspace?: boolean; // Include userspace tools for hybrid security components
   };
   runtime: {
     container: string;
@@ -400,11 +405,13 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     initSystemVersion: undefined,
     filesystem: "",
     filesystemVersion: undefined,
+    filesystemUserspaceEnabled: true, // Default to including userspace tools for hybrid components
     partitioning: "",
     filesystemHierarchy: "",
     packageManager: "",
     securitySystem: "",
     securitySystemVersion: undefined,
+    securitySystemUserspaceEnabled: true, // Default to including userspace tools for hybrid components
     containerRuntime: "",
     containerRuntimeVersion: undefined,
     virtualizationRuntime: "",
@@ -425,16 +432,40 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     Record<string, string>
   >({});
 
+  // Auto-fill kernel version when versions are loaded
+  createEffect(() => {
+    const versions = kernelVersions();
+    if (versions && versions.length > 0 && !formData().kernelVersion) {
+      // Set to the first (latest) version
+      setFormData((prev) => ({ ...prev, kernelVersion: versions[0].version }));
+    }
+  });
+
   // Helper to get component options
   const componentOptions = () => componentsData()?.options;
 
   // Helper to get component map
   const componentMap = () => componentsData()?.componentMap || {};
 
-  // Fetch versions for a component
-  const fetchVersionsForComponent = async (componentName: string) => {
+  // Fetch versions for a component and auto-fill with default version
+  const fetchVersionsForComponent = async (
+    componentName: string,
+    versionField?: VersionFieldKey,
+  ) => {
     const component = componentMap()[componentName];
-    if (!component || componentVersions()[componentName]) return;
+    if (!component || componentVersions()[componentName]) {
+      // If versions already fetched, still auto-fill if we have a resolved version and field
+      if (versionField && resolvedVersions()[componentName]) {
+        const currentValue = formData()[versionField];
+        if (!currentValue) {
+          setFormData((prev) => ({
+            ...prev,
+            [versionField]: resolvedVersions()[componentName],
+          }));
+        }
+      }
+      return;
+    }
 
     setLoadingVersions((prev) => ({ ...prev, [componentName]: true }));
 
@@ -448,7 +479,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
 
     // Also resolve default version
     const rule = component.default_version_rule || "latest-stable";
+    let resolvedVersion: string | undefined;
+
     if (rule === "pinned" && component.default_version) {
+      resolvedVersion = component.default_version;
       setResolvedVersions((prev) => ({
         ...prev,
         [componentName]: component.default_version!,
@@ -456,11 +490,17 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     } else {
       const resolveResult = await resolveVersionRule(component.id, rule);
       if (resolveResult.success && resolveResult.data.resolved_version) {
+        resolvedVersion = resolveResult.data.resolved_version;
         setResolvedVersions((prev) => ({
           ...prev,
           [componentName]: resolveResult.data.resolved_version,
         }));
       }
+    }
+
+    // Auto-fill the version field with the resolved default version
+    if (versionField && resolvedVersion) {
+      setFormData((prev) => ({ ...prev, [versionField]: resolvedVersion }));
     }
 
     setLoadingVersions((prev) => ({ ...prev, [componentName]: false }));
@@ -523,7 +563,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     );
   };
 
-  const updateFormData = (field: keyof DistributionFormData, value: string) => {
+  const updateFormData = (
+    field: keyof DistributionFormData,
+    value: string | boolean,
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -577,6 +620,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
           hierarchy: data.filesystemHierarchy,
         },
         filesystem_version: getVersion(data.filesystemVersion, data.filesystem),
+        filesystem_userspace: data.filesystemUserspaceEnabled,
         packageManager: data.packageManager,
       },
       security: {
@@ -584,6 +628,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         system_version:
           data.securitySystem !== "none"
             ? getVersion(data.securitySystemVersion, data.securitySystem)
+            : undefined,
+        system_userspace:
+          data.securitySystem !== "none"
+            ? data.securitySystemUserspaceEnabled
             : undefined,
       },
       runtime: {
@@ -779,8 +827,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.bootloader || []}>
                   {(bootloader) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted transition-colors">
+                    <article
+                      class={`flex items-stretch border rounded-md transition-colors ${
+                        formData().bootloader === bootloader.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                         <input
                           type="radio"
                           name="bootloader"
@@ -788,7 +842,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                           checked={formData().bootloader === bootloader.id}
                           onChange={(e) => {
                             updateFormData("bootloader", e.target.value);
-                            fetchVersionsForComponent(e.target.value);
+                            fetchVersionsForComponent(
+                              e.target.value,
+                              "bootloaderVersion",
+                            );
                           }}
                           class="mr-3 mt-0.5"
                         />
@@ -831,10 +888,16 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <label class="text-sm font-medium">
                 {t("distribution.form.fields.partitioningSystem")}
               </label>
-              <div class="grid grid-cols-1 gap-2">
+              <div class="grid grid-cols-2 gap-2">
                 <For each={componentOptions()?.partitioningTypes || []}>
                   {(option) => (
-                    <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                    <label
+                      class={`flex items-start p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().partitioningType === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="partitioningType"
@@ -879,8 +942,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.init || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                    <article
+                      class={`flex items-stretch border rounded-md transition-colors ${
+                        formData().initSystem === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                         <input
                           type="radio"
                           name="initSystem"
@@ -888,7 +957,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                           checked={formData().initSystem === option.id}
                           onChange={(e) => {
                             updateFormData("initSystem", e.target.value);
-                            fetchVersionsForComponent(e.target.value);
+                            fetchVersionsForComponent(
+                              e.target.value,
+                              "initSystemVersion",
+                            );
                           }}
                           class="mr-3"
                         />
@@ -927,39 +999,72 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.filesystem || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
-                        <input
-                          type="radio"
-                          name="filesystem"
-                          value={option.id}
-                          checked={formData().filesystem === option.id}
-                          onChange={(e) => {
-                            updateFormData("filesystem", e.target.value);
-                            fetchVersionsForComponent(e.target.value);
-                          }}
-                          class="mr-3"
-                        />
-                        <strong class="font-medium">{option.name}</strong>
-                      </label>
-                      <Show when={formData().filesystem === option.id}>
-                        <aside class="w-52 border-l border-border">
-                          <SearchableSelect
-                            value={formData().filesystemVersion || ""}
-                            options={getVersionOptions(option.id)}
-                            onChange={(value) =>
-                              updateFormData("filesystemVersion", value)
-                            }
-                            placeholder={getVersionPlaceholder(option.id)}
-                            searchPlaceholder={t(
-                              "distribution.versionModal.searchPlaceholder",
-                            )}
-                            loading={loadingVersions()[option.id]}
-                            maxDisplayed={30}
-                            fullWidth
-                            seamless
+                    <article
+                      class={`flex flex-col border rounded-md transition-colors ${
+                        formData().filesystem === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <section class="flex items-stretch">
+                        <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <input
+                            type="radio"
+                            name="filesystem"
+                            value={option.id}
+                            checked={formData().filesystem === option.id}
+                            onChange={(e) => {
+                              updateFormData("filesystem", e.target.value);
+                              fetchVersionsForComponent(
+                                e.target.value,
+                                "filesystemVersion",
+                              );
+                            }}
+                            class="mr-3"
                           />
-                        </aside>
+                          <strong class="font-medium">{option.name}</strong>
+                          <span class="ml-2 text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+                            {t("distribution.form.hybrid")}
+                          </span>
+                        </label>
+                      </section>
+                      <Show when={formData().filesystem === option.id}>
+                        <section class="border-t border-border p-3 bg-muted/30">
+                          <label class="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData().filesystemUserspaceEnabled}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "filesystemUserspaceEnabled",
+                                  e.target.checked,
+                                )
+                              }
+                              class="mr-2"
+                            />
+                            <span class="text-sm">
+                              {t("distribution.form.includeUserspaceTools")}
+                            </span>
+                          </label>
+                          <Show when={formData().filesystemUserspaceEnabled}>
+                            <aside class="mt-2">
+                              <SearchableSelect
+                                value={formData().filesystemVersion || ""}
+                                options={getVersionOptions(option.id)}
+                                onChange={(value) =>
+                                  updateFormData("filesystemVersion", value)
+                                }
+                                placeholder={getVersionPlaceholder(option.id)}
+                                searchPlaceholder={t(
+                                  "distribution.versionModal.searchPlaceholder",
+                                )}
+                                loading={loadingVersions()[option.id]}
+                                maxDisplayed={30}
+                                fullWidth
+                              />
+                            </aside>
+                          </Show>
+                        </section>
                       </Show>
                     </article>
                   )}
@@ -975,7 +1080,13 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <div class="grid grid-cols-2 gap-2">
                 <For each={componentOptions()?.partitioningModes || []}>
                   {(option) => (
-                    <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                    <label
+                      class={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().partitioning === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="partitioning"
@@ -1001,7 +1112,13 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <div class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.filesystemHierarchies || []}>
                   {(option) => (
-                    <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                    <label
+                      class={`flex items-start p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().filesystemHierarchy === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="filesystemHierarchy"
@@ -1032,7 +1149,13 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <div class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.packageManagers || []}>
                   {(option) => (
-                    <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                    <label
+                      class={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().packageManager === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="packageManager"
@@ -1072,46 +1195,85 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.security || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
-                        <input
-                          type="radio"
-                          name="securitySystem"
-                          value={option.id}
-                          checked={formData().securitySystem === option.id}
-                          onChange={(e) => {
-                            updateFormData("securitySystem", e.target.value);
-                            if (e.target.value !== "none") {
-                              fetchVersionsForComponent(e.target.value);
-                            }
-                          }}
-                          class="mr-3"
-                        />
-                        <strong class="font-medium">{option.name}</strong>
-                      </label>
+                    <article
+                      class={`flex flex-col border rounded-md transition-colors ${
+                        formData().securitySystem === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <section class="flex items-stretch">
+                        <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <input
+                            type="radio"
+                            name="securitySystem"
+                            value={option.id}
+                            checked={formData().securitySystem === option.id}
+                            onChange={(e) => {
+                              updateFormData("securitySystem", e.target.value);
+                              if (e.target.value !== "none") {
+                                fetchVersionsForComponent(
+                                  e.target.value,
+                                  "securitySystemVersion",
+                                );
+                              }
+                            }}
+                            class="mr-3"
+                          />
+                          <strong class="font-medium">{option.name}</strong>
+                          <Show when={option.id !== "none"}>
+                            <span class="ml-2 text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+                              {t("distribution.form.hybrid")}
+                            </span>
+                          </Show>
+                        </label>
+                      </section>
                       <Show
                         when={
                           formData().securitySystem === option.id &&
                           option.id !== "none"
                         }
                       >
-                        <aside class="w-52 border-l border-border">
-                          <SearchableSelect
-                            value={formData().securitySystemVersion || ""}
-                            options={getVersionOptions(option.id)}
-                            onChange={(value) =>
-                              updateFormData("securitySystemVersion", value)
-                            }
-                            placeholder={getVersionPlaceholder(option.id)}
-                            searchPlaceholder={t(
-                              "distribution.versionModal.searchPlaceholder",
-                            )}
-                            loading={loadingVersions()[option.id]}
-                            maxDisplayed={30}
-                            fullWidth
-                            seamless
-                          />
-                        </aside>
+                        <section class="border-t border-border p-3 bg-muted/30">
+                          <label class="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={
+                                formData().securitySystemUserspaceEnabled
+                              }
+                              onChange={(e) =>
+                                updateFormData(
+                                  "securitySystemUserspaceEnabled",
+                                  e.target.checked,
+                                )
+                              }
+                              class="mr-2"
+                            />
+                            <span class="text-sm">
+                              {t("distribution.form.includeUserspaceTools")}
+                            </span>
+                          </label>
+                          <Show
+                            when={formData().securitySystemUserspaceEnabled}
+                          >
+                            <aside class="mt-2">
+                              <SearchableSelect
+                                value={formData().securitySystemVersion || ""}
+                                options={getVersionOptions(option.id)}
+                                onChange={(value) =>
+                                  updateFormData("securitySystemVersion", value)
+                                }
+                                placeholder={getVersionPlaceholder(option.id)}
+                                searchPlaceholder={t(
+                                  "distribution.versionModal.searchPlaceholder",
+                                )}
+                                loading={loadingVersions()[option.id]}
+                                maxDisplayed={30}
+                                fullWidth
+                              />
+                            </aside>
+                          </Show>
+                        </section>
                       </Show>
                     </article>
                   )}
@@ -1127,8 +1289,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.container || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                    <article
+                      class={`flex items-stretch border rounded-md transition-colors ${
+                        formData().containerRuntime === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                         <input
                           type="radio"
                           name="containerRuntime"
@@ -1137,7 +1305,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                           onChange={(e) => {
                             updateFormData("containerRuntime", e.target.value);
                             if (e.target.value !== "none") {
-                              fetchVersionsForComponent(e.target.value);
+                              fetchVersionsForComponent(
+                                e.target.value,
+                                "containerRuntimeVersion",
+                              );
                             }
                           }}
                           class="mr-3"
@@ -1182,8 +1353,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.virtualization || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                    <article
+                      class={`flex items-stretch border rounded-md transition-colors ${
+                        formData().virtualizationRuntime === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                         <input
                           type="radio"
                           name="virtualizationRuntime"
@@ -1197,7 +1374,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                               e.target.value,
                             );
                             if (e.target.value !== "none") {
-                              fetchVersionsForComponent(e.target.value);
+                              fetchVersionsForComponent(
+                                e.target.value,
+                                "virtualizationRuntimeVersion",
+                              );
                             }
                           }}
                           class="mr-3"
@@ -1258,10 +1438,16 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
               <label class="text-sm font-medium">
                 {t("distribution.form.fields.targetEnvironment")}
               </label>
-              <div class="grid grid-cols-1 gap-2">
+              <div class="grid grid-cols-2 gap-2">
                 <For each={componentOptions()?.distributionTypes || []}>
                   {(option) => (
-                    <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                    <label
+                      class={`flex items-start p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().distributionType === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="distributionType"
@@ -1296,8 +1482,14 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                 <section class="grid grid-cols-1 gap-2">
                   <For each={componentOptions()?.desktop || []}>
                     {(option) => (
-                      <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                        <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted transition-colors">
+                      <article
+                        class={`flex items-stretch border rounded-md transition-colors ${
+                          formData().desktopEnvironment === option.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-muted-foreground"
+                        }`}
+                      >
+                        <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                           <input
                             type="radio"
                             name="desktopEnvironment"
@@ -1310,7 +1502,10 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                                 "desktopEnvironment",
                                 e.target.value,
                               );
-                              fetchVersionsForComponent(e.target.value);
+                              fetchVersionsForComponent(
+                                e.target.value,
+                                "desktopEnvironmentVersion",
+                              );
                             }}
                             class="mr-3 mt-0.5"
                           />

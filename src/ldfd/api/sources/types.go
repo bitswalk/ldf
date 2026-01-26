@@ -42,6 +42,7 @@ type UpdateSourceRequest struct {
 	URLTemplate     string   `json:"url_template" example:"{base_url}/archive/refs/tags/v{version}.tar.gz"`
 	ForgeType       *string  `json:"forge_type" example:"github"`
 	VersionFilter   *string  `json:"version_filter" example:"!*-rc*,!*alpha*,!*beta*"`
+	DefaultVersion  *string  `json:"default_version" example:"1.2.3"`
 	Priority        *int     `json:"priority" example:"10"`
 	Enabled         *bool    `json:"enabled" example:"true"`
 }

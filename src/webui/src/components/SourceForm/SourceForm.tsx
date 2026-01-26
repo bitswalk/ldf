@@ -83,6 +83,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
   const [isSystem, setIsSystem] = createSignal(
     props.initialData?.is_system ?? false,
   );
+  const [defaultVersion, setDefaultVersion] = createSignal(
+    props.initialData?.default_version || "",
+  );
   const [errors, setErrors] = createSignal<{ name?: string; url?: string }>({});
 
   // Forge detection state
@@ -367,6 +370,9 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
     }
     if (props.isAdmin && isSystem()) {
       request.is_system = true;
+    }
+    if (defaultVersion().trim()) {
+      request.default_version = defaultVersion().trim();
     }
 
     props.onSubmit(request);
@@ -841,6 +847,23 @@ export const SourceForm: SolidComponent<SourceFormProps> = (props) => {
         <p class="text-xs text-muted-foreground">
           Lower values have higher priority. Sources are sorted by priority
           ascending.
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="source-default-version">
+          {t("sources.form.defaultVersion.label")}
+        </label>
+        <input
+          id="source-default-version"
+          type="text"
+          class="w-full px-3 py-2 bg-background border-2 border-border rounded-md focus:outline-none focus:border-primary transition-colors font-mono text-sm"
+          placeholder={t("sources.form.defaultVersion.placeholder")}
+          value={defaultVersion()}
+          onInput={(e) => setDefaultVersion(e.target.value)}
+        />
+        <p class="text-xs text-muted-foreground">
+          {t("sources.form.defaultVersion.help")}
         </p>
       </div>
 

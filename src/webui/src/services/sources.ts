@@ -11,6 +11,7 @@ export interface Source {
   url_template?: string;
   forge_type: string;
   version_filter?: string;
+  default_version?: string;
   priority: number;
   enabled: boolean;
   is_system: boolean;
@@ -27,6 +28,7 @@ export interface CreateSourceRequest {
   url_template?: string;
   forge_type?: string;
   version_filter?: string;
+  default_version?: string;
   priority?: number;
   enabled?: boolean;
   is_system?: boolean;
@@ -40,6 +42,7 @@ export interface UpdateSourceRequest {
   url_template?: string;
   forge_type?: string;
   version_filter?: string;
+  default_version?: string;
   priority?: number;
   enabled?: boolean;
 }

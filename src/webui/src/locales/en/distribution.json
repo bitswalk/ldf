@@ -172,7 +172,9 @@
       "notSynced": "Not synced",
       "loading": "Loading...",
       "select": "Select"
-    }
+    },
+    "hybrid": "Hybrid",
+    "includeUserspaceTools": "Include userspace tools"
   },
   "editForm": {
     "modalTitle": "Edit Distribution",

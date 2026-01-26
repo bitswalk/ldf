@@ -524,8 +524,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.bootloader || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().core.bootloader === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="bootloader"
@@ -656,8 +662,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.init || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().system.init === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="initSystem"
@@ -704,8 +716,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.filesystem || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().system.filesystem.type === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="filesystem"
@@ -755,7 +773,13 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.filesystemHierarchies || []}>
                 {(option) => (
-                  <label class="flex items-start p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                  <label
+                    class={`flex items-start p-3 border rounded-md cursor-pointer transition-colors ${
+                      config().system.filesystem.hierarchy === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted"
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="filesystemHierarchy"
@@ -793,7 +817,13 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.packageManagers || []}>
                 {(option) => (
-                  <label class="flex items-center p-3 border border-border rounded-md cursor-pointer hover:bg-muted transition-colors">
+                  <label
+                    class={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                      config().system.packageManager === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted"
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="packageManager"
@@ -826,8 +856,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.security || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().security.system === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="securitySystem"
@@ -881,8 +917,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.container || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().runtime.container === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="containerRuntime"
@@ -936,8 +978,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
             <section class="grid grid-cols-1 gap-2">
               <For each={componentOptions()?.virtualization || []}>
                 {(option) => (
-                  <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted transition-colors">
+                  <article
+                    class={`flex items-stretch border rounded-md transition-colors ${
+                      config().runtime.virtualization === option.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    <label class="flex-1 flex items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                       <input
                         type="radio"
                         name="virtualizationRuntime"
@@ -1047,8 +1095,14 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
               <section class="grid grid-cols-1 gap-2">
                 <For each={componentOptions()?.desktop || []}>
                   {(option) => (
-                    <article class="flex items-stretch border border-border rounded-md hover:border-muted-foreground transition-colors">
-                      <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted transition-colors">
+                    <article
+                      class={`flex items-stretch border rounded-md transition-colors ${
+                        config().target.desktop?.environment === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground"
+                      }`}
+                    >
+                      <label class="flex-1 flex items-start p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                         <input
                           type="radio"
                           name="desktopEnvironment"

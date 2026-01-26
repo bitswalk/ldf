@@ -136,6 +136,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       version_filter: formData.version_filter,
       priority: formData.priority,
       enabled: formData.enabled,
+      default_version: formData.default_version,
     };
 
     const result = await updateSource(props.sourceId, updateReq);
@@ -205,6 +206,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
       priority: src.priority,
       enabled: src.enabled,
       is_system: src.is_system,
+      default_version: src.default_version,
       created_at: src.created_at,
       updated_at: src.updated_at,
     };
@@ -391,6 +393,17 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                       </span>
                       <p class="font-mono text-sm break-all">
                         {source()!.url_template}
+                      </p>
+                    </div>
+                  </Show>
+
+                  <Show when={source()!.default_version}>
+                    <div>
+                      <span class="text-sm text-muted-foreground">
+                        {t("sources.detail.defaultVersion")}
+                      </span>
+                      <p class="font-mono text-sm">
+                        {source()!.default_version}
                       </p>
                     </div>
                   </Show>
