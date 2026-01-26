@@ -36,6 +36,7 @@ type SystemConfig struct {
 	InitVersion           string           `json:"init_version,omitempty"`
 	Filesystem            FilesystemConfig `json:"filesystem"`
 	FilesystemVersion     string           `json:"filesystem_version,omitempty"`
+	FilesystemUserspace   bool             `json:"filesystem_userspace,omitempty"` // Include userspace tools for hybrid filesystem components
 	PackageManager        string           `json:"packageManager"`
 	PackageManagerVersion string           `json:"package_manager_version,omitempty"`
 }
@@ -48,8 +49,9 @@ type FilesystemConfig struct {
 
 // SecurityConfig contains security configuration
 type SecurityConfig struct {
-	System        string `json:"system"`
-	SystemVersion string `json:"system_version,omitempty"`
+	System          string `json:"system"`
+	SystemVersion   string `json:"system_version,omitempty"`
+	SystemUserspace bool   `json:"system_userspace,omitempty"` // Include userspace tools for hybrid security components (SELinux, AppArmor)
 }
 
 // RuntimeConfig contains runtime configuration
@@ -132,6 +134,7 @@ type UpstreamSource struct {
 	URLTemplate     string    `json:"url_template,omitempty"`
 	ForgeType       string    `json:"forge_type"`
 	VersionFilter   string    `json:"version_filter,omitempty"`
+	DefaultVersion  string    `json:"default_version,omitempty"` // Default/recommended version for this source
 	Priority        int       `json:"priority"`
 	Enabled         bool      `json:"enabled"`
 	IsSystem        bool      `json:"is_system"`

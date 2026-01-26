@@ -462,6 +462,12 @@ func (m *Manager) getRequiredComponents(config *db.DistributionConfig) []string 
 		findComponent("init", config.System.Init)
 	}
 
+	// Filesystem userspace tools - only download if userspace is enabled for hybrid components
+	// Kernel module configuration is handled separately; this is for userspace tools like btrfs-progs, xfsprogs, etc.
+	if config.System.Filesystem.Type != "" && config.System.FilesystemUserspace {
+		findComponent("filesystem", config.System.Filesystem.Type)
+	}
+
 	// Virtualization
 	if config.Runtime.Virtualization != "" {
 		findComponent("runtime", config.Runtime.Virtualization)
@@ -472,8 +478,9 @@ func (m *Manager) getRequiredComponents(config *db.DistributionConfig) []string 
 		findComponent("runtime", config.Runtime.Container)
 	}
 
-	// Security
-	if config.Security.System != "" {
+	// Security userspace tools - only download if userspace is enabled for hybrid components
+	// Kernel module configuration is handled separately; this is for userspace tools like libselinux, etc.
+	if config.Security.System != "" && config.Security.System != "none" && config.Security.SystemUserspace {
 		findComponent("security", config.Security.System)
 	}
 

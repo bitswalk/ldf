@@ -62,7 +62,9 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 
 	// Initialize source version repository and discovery service
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
-	versionDiscovery := download.NewVersionDiscovery(sourceVersionRepo)
+	componentRepo := db.NewComponentRepository(database)
+	sourceRepo := db.NewSourceRepository(database)
+	versionDiscovery := download.NewVersionDiscovery(sourceVersionRepo, componentRepo, sourceRepo)
 
 	// Initialize forge registry for source detection and defaults
 	forge.SetLogger(log)
@@ -73,8 +75,8 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	api.SetVersionInfo(VersionInfo)
 	apiInstance := api.New(api.Config{
 		DistRepo:          db.NewDistributionRepository(database),
-		SourceRepo:        db.NewSourceRepository(database),
-		ComponentRepo:     db.NewComponentRepository(database),
+		SourceRepo:        sourceRepo,
+		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
 		DownloadJobRepo:   db.NewDownloadJobRepository(database),
 		LangPackRepo:      db.NewLanguagePackRepository(database),
@@ -107,7 +109,6 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 
 	// Start version sync for all sources at startup
 	// This refreshes the upstream versions cache
-	sourceRepo := db.NewSourceRepository(database)
 	go func() {
 		// Small delay to allow server to fully initialize
 		time.Sleep(2 * time.Second)

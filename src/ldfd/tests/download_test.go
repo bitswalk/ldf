@@ -460,10 +460,11 @@ func setupVersionDiscoveryTestDB(t *testing.T) (*db.Database, *db.SourceVersionR
 }
 
 func TestVersionDiscovery_DetectDiscoveryMethod(t *testing.T) {
-	_, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
+	database, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
 	defer cleanup()
 
-	discovery := download.NewVersionDiscovery(versionRepo)
+	componentRepo := db.NewComponentRepository(database)
+	discovery := download.NewVersionDiscovery(versionRepo, componentRepo, nil)
 
 	tests := []struct {
 		url      string
@@ -488,8 +489,10 @@ func TestVersionDiscovery_DetectDiscoveryMethod(t *testing.T) {
 }
 
 func TestVersionDiscovery_DiscoverVersions_GitHub(t *testing.T) {
-	_, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
+	database, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
 	defer cleanup()
+
+	componentRepo := db.NewComponentRepository(database)
 
 	// Create a mock GitHub API server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -537,7 +540,7 @@ func TestVersionDiscovery_DiscoverVersions_GitHub(t *testing.T) {
 
 	// We can't easily test with real GitHub API, so we skip actual HTTP test
 	// but verify the discovery method detection works
-	discovery := download.NewVersionDiscovery(versionRepo)
+	discovery := download.NewVersionDiscovery(versionRepo, componentRepo, nil)
 
 	source := &db.UpstreamSource{
 		URL: "https://github.com/owner/repo",
@@ -550,8 +553,10 @@ func TestVersionDiscovery_DiscoverVersions_GitHub(t *testing.T) {
 }
 
 func TestVersionDiscovery_DiscoverVersions_HTTPDirectory(t *testing.T) {
-	_, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
+	database, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
 	defer cleanup()
+
+	componentRepo := db.NewComponentRepository(database)
 
 	// Create a mock HTTP server with directory listing
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -570,7 +575,7 @@ func TestVersionDiscovery_DiscoverVersions_HTTPDirectory(t *testing.T) {
 	}))
 	defer server.Close()
 
-	discovery := download.NewVersionDiscovery(versionRepo)
+	discovery := download.NewVersionDiscovery(versionRepo, componentRepo, nil)
 
 	source := &db.UpstreamSource{
 		URL: server.URL,
@@ -601,6 +606,8 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 	database, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
 	defer cleanup()
 
+	componentRepo := db.NewComponentRepository(database)
+
 	// Create a mock HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -616,7 +623,7 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 	}))
 	defer server.Close()
 
-	discovery := download.NewVersionDiscovery(versionRepo)
+	discovery := download.NewVersionDiscovery(versionRepo, componentRepo, nil)
 
 	// Create source
 	sourceRepo := db.NewSourceRepository(database)
@@ -659,8 +666,10 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 }
 
 func TestVersionDiscovery_SyncVersions_Failure(t *testing.T) {
-	_, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
+	database, versionRepo, cleanup := setupVersionDiscoveryTestDB(t)
 	defer cleanup()
+
+	componentRepo := db.NewComponentRepository(database)
 
 	// Create a mock server that returns an error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -668,7 +677,7 @@ func TestVersionDiscovery_SyncVersions_Failure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	discovery := download.NewVersionDiscovery(versionRepo)
+	discovery := download.NewVersionDiscovery(versionRepo, componentRepo, nil)
 
 	source := &db.UpstreamSource{
 		ID:   "test-source-id",

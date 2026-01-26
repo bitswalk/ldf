@@ -70,6 +70,7 @@
     "retrievalMethod": "Retrieval Method",
     "urlTemplate": "URL Template",
     "priority": "Priority",
+    "defaultVersion": "Default Version",
     "status": "Status",
     "created": "Created",
     "updated": "Updated",
@@ -117,6 +118,11 @@
       "label": "Priority",
       "placeholder": "0",
       "help": "Lower values have higher priority. Sources are sorted by priority ascending."
+    },
+    "defaultVersion": {
+      "label": "Default Version (optional)",
+      "placeholder": "e.g., 6.12.5",
+      "help": "Recommended version for this source. Auto-detected from latest release during sync if not set."
     },
     "enabled": {
       "label": "Enabled"
