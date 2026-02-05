@@ -21,6 +21,24 @@ Monorepo with three main components:
 | Build | Taskfile (go-task), Docker, GitHub Actions |
 | Docs | MkDocs Material |
 
+## Branch Workflow
+
+- **Naming**: `feature/m<milestone>_<task>-<sequential>` (e.g., `feature/m1_1-1`, `feature/m1_1-2`, `feature/m1_1-3`). The last number is sequential within the milestone, not per-task.
+- **Before starting work**: Create a feature branch from `main`.
+- **After completing work**: Merge back to `main` with `--no-ff`, then delete the feature branch.
+- **Never** switch to a new feature branch without merging the current one back to `main` first.
+
+```bash
+# Create
+git checkout main
+git checkout -b feature/m1_1-3
+
+# Merge back
+git checkout main
+git merge --no-ff feature/m1_1-3 -m "Merge feature/m1_1-3: <description>"
+git branch -d feature/m1_1-3
+```
+
 ## Environment Notes
 
 - **Bun** is installed at `/home/flint/.bun/bin/bun` (not in default PATH). Use full path or `export PATH="$HOME/.bun/bin:$PATH"` before running bun commands.
