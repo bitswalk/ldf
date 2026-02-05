@@ -1,6 +1,16 @@
 site_name: Linux Distribution Factory
 site_url: https://ldf.bitswalk.com
-copyright: Copyright &copy; 2025 - Bitswalk, inc.
+copyright: Copyright &copy; 2025-2026 - Bitswalk, inc.
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture: architecture.md
+  - Configuration: configuration.md
+  - Deployment: deployment.md
+  - Sources: sources.md
+  - Blog:
+      - blog/index.md
 
 theme:
   name: material
