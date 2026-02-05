@@ -13,11 +13,14 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
+	_ "github.com/bitswalk/ldf/src/ldfd/docs"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // Server holds the HTTP server instance and configuration
@@ -91,6 +94,9 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 
 	// Register all routes
 	apiInstance.RegisterRoutes(router)
+
+	// Swagger UI
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	s := &Server{
 		router:          router,

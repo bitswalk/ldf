@@ -124,6 +124,11 @@ tasks:
     cmds:
       - bun install
 
+  docs:api:
+    desc: Generate OpenAPI spec from annotations
+    cmds:
+      - swag init --dir src/ldfd,src/common -g docs.go -o src/ldfd/docs --parseDependency --parseInternal
+
   fmt:
     desc: Format code
     cmds:

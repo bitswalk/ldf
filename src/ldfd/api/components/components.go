@@ -17,6 +17,13 @@ func NewHandler(cfg Config) *Handler {
 }
 
 // HandleList returns all components
+// @Summary      List components
+// @Description  Returns all registered components
+// @Tags         Components
+// @Produce      json
+// @Success      200  {object}  ComponentListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	components, err := h.componentRepo.List()
 	if err != nil {
@@ -39,6 +46,16 @@ func (h *Handler) HandleList(c *gin.Context) {
 }
 
 // HandleGet returns a single component by ID
+// @Summary      Get a component
+// @Description  Returns a single component by ID
+// @Tags         Components
+// @Produce      json
+// @Param        id   path      string  true  "Component ID"
+// @Success      200  {object}  db.Component
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components/{id} [get]
 func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -73,6 +90,15 @@ func (h *Handler) HandleGet(c *gin.Context) {
 }
 
 // HandleListByCategory returns components in a specific category
+// @Summary      List components by category
+// @Description  Returns components in a specific category
+// @Tags         Components
+// @Produce      json
+// @Param        category  path      string  true  "Category name"
+// @Success      200       {object}  ComponentListResponse
+// @Failure      400       {object}  common.ErrorResponse
+// @Failure      500       {object}  common.ErrorResponse
+// @Router       /v1/components/category/{category} [get]
 func (h *Handler) HandleListByCategory(c *gin.Context) {
 	category := c.Param("category")
 	if category == "" {
@@ -105,6 +131,13 @@ func (h *Handler) HandleListByCategory(c *gin.Context) {
 }
 
 // HandleGetCategories returns all distinct component categories
+// @Summary      List component categories
+// @Description  Returns all distinct component categories
+// @Tags         Components
+// @Produce      json
+// @Success      200  {object}  object  "Categories list with count"
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components/categories [get]
 func (h *Handler) HandleGetCategories(c *gin.Context) {
 	categories, err := h.componentRepo.GetCategories()
 	if err != nil {
@@ -127,6 +160,17 @@ func (h *Handler) HandleGetCategories(c *gin.Context) {
 }
 
 // HandleCreate creates a new component (root only)
+// @Summary      Create a component
+// @Description  Creates a new component (root only)
+// @Tags         Components
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateComponentRequest  true  "Component creation request"
+// @Success      201      {object}  db.Component
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/components [post]
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateComponentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -194,6 +238,20 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 }
 
 // HandleUpdate updates an existing component (root only)
+// @Summary      Update a component
+// @Description  Updates an existing component (root only)
+// @Tags         Components
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                  true  "Component ID"
+// @Param        request  body      UpdateComponentRequest   true  "Component update request"
+// @Success      200      {object}  db.Component
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      404      {object}  common.ErrorResponse
+// @Failure      409      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/components/{id} [put]
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -309,6 +367,15 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 }
 
 // HandleDelete deletes a component (root only)
+// @Summary      Delete a component
+// @Description  Deletes a component (root only)
+// @Tags         Components
+// @Param        id   path      string  true  "Component ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/components/{id} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -333,6 +400,19 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 }
 
 // HandleGetVersions returns paginated versions for a component
+// @Summary      Get component versions
+// @Description  Returns paginated versions for a component
+// @Tags         Components
+// @Produce      json
+// @Param        id            path      string  true   "Component ID"
+// @Param        limit         query     int     false  "Maximum results"
+// @Param        offset        query     int     false  "Offset for pagination"
+// @Param        version_type  query     string  false  "Filter by version type"
+// @Success      200           {object}  ComponentVersionsResponse
+// @Failure      400           {object}  common.ErrorResponse
+// @Failure      404           {object}  common.ErrorResponse
+// @Failure      500           {object}  common.ErrorResponse
+// @Router       /v1/components/{id}/versions [get]
 func (h *Handler) HandleGetVersions(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -388,6 +468,17 @@ func (h *Handler) HandleGetVersions(c *gin.Context) {
 }
 
 // HandleResolveVersion resolves a version rule to an actual version
+// @Summary      Resolve version rule
+// @Description  Resolves a version rule (pinned, latest-stable, latest-lts) to an actual version
+// @Tags         Components
+// @Produce      json
+// @Param        id    path      string  true  "Component ID"
+// @Param        rule  query     string  true  "Version rule (pinned, latest-stable, latest-lts)"
+// @Success      200   {object}  ResolvedVersionResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Router       /v1/components/{id}/resolve-version [get]
 func (h *Handler) HandleResolveVersion(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -485,6 +576,13 @@ func isValidVersionRule(rule db.VersionRule) bool {
 }
 
 // HandleListKernelModules returns all components that are kernel modules
+// @Summary      List kernel module components
+// @Description  Returns all components that are kernel modules
+// @Tags         Components
+// @Produce      json
+// @Success      200  {object}  ComponentListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components/kernel-modules [get]
 func (h *Handler) HandleListKernelModules(c *gin.Context) {
 	components, err := h.componentRepo.ListKernelModules()
 	if err != nil {
@@ -507,6 +605,13 @@ func (h *Handler) HandleListKernelModules(c *gin.Context) {
 }
 
 // HandleListUserspace returns all components that are userspace tools
+// @Summary      List userspace components
+// @Description  Returns all components that are userspace tools
+// @Tags         Components
+// @Produce      json
+// @Success      200  {object}  ComponentListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components/userspace [get]
 func (h *Handler) HandleListUserspace(c *gin.Context) {
 	components, err := h.componentRepo.ListUserspace()
 	if err != nil {
@@ -529,6 +634,13 @@ func (h *Handler) HandleListUserspace(c *gin.Context) {
 }
 
 // HandleListHybrid returns all components that are both kernel modules and userspace tools
+// @Summary      List hybrid components
+// @Description  Returns all components that are both kernel modules and userspace tools
+// @Tags         Components
+// @Produce      json
+// @Success      200  {object}  ComponentListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/components/hybrid [get]
 func (h *Handler) HandleListHybrid(c *gin.Context) {
 	components, err := h.componentRepo.ListHybrid()
 	if err != nil {

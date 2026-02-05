@@ -27,6 +27,17 @@ func NewHandler(cfg Config) *Handler {
 }
 
 // HandleCreate handles user registration and creates a new user account
+// @Summary      Create a new user account
+// @Description  Registers a new user with username, password, and email. Returns JWT tokens.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      AuthRequest  true  "Authentication request"
+// @Success      200      {object}  object       "User info with JWT tokens"
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      409      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Router       /auth/create [post]
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -114,6 +125,17 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 }
 
 // HandleLogin handles user authentication with username and password
+// @Summary      Authenticate a user
+// @Description  Authenticates a user with username and password. Returns JWT tokens.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      AuthRequest  true  "Authentication request"
+// @Success      200      {object}  object       "User info with JWT tokens"
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Router       /auth/login [post]
 func (h *Handler) HandleLogin(c *gin.Context) {
 	var req AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,6 +192,15 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 }
 
 // HandleLogout handles user logout and revokes the current JWT token
+// @Summary      Logout and revoke token
+// @Description  Revokes the current JWT token, effectively logging the user out.
+// @Tags         Auth
+// @Produce      json
+// @Success      498  {object}  object  "Token revoked successfully"
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /auth/logout [post]
 func (h *Handler) HandleLogout(c *gin.Context) {
 	token := c.GetHeader("X-Subject-Token")
 	if token == "" {
@@ -213,6 +244,17 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 }
 
 // HandleRefresh handles token refresh requests
+// @Summary      Refresh access token
+// @Description  Refreshes an expired access token using a valid refresh token.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      RefreshRequest  true  "Refresh token request"
+// @Success      200      {object}  object          "New JWT tokens with user info"
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Router       /auth/refresh [post]
 func (h *Handler) HandleRefresh(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -253,6 +295,14 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 }
 
 // HandleValidate validates the current access token and returns user info
+// @Summary      Validate access token
+// @Description  Validates the current access token and returns the associated user information.
+// @Tags         Auth
+// @Produce      json
+// @Success      200  {object}  object  "Token validation result with user info"
+// @Failure      401  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /auth/validate [get]
 func (h *Handler) HandleValidate(c *gin.Context) {
 	token := c.GetHeader("X-Subject-Token")
 	if token == "" {

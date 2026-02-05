@@ -26,6 +26,21 @@ func calculateProgress(progressBytes, totalBytes int64) float64 {
 }
 
 // HandleStartDistributionDownloads starts downloads for a distribution
+// @Summary      Start distribution downloads
+// @Description  Starts downloads for all or selected components of a distribution
+// @Tags         Downloads
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                true  "Distribution ID"
+// @Param        request  body      StartDownloadsRequest  true  "Download request"
+// @Success      202      {object}  StartDownloadsResponse
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      403      {object}  common.ErrorResponse
+// @Failure      404      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/downloads [post]
 func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
@@ -125,6 +140,18 @@ func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 }
 
 // HandleListDistributionDownloads lists download jobs for a distribution
+// @Summary      List distribution downloads
+// @Description  Lists download jobs for a distribution
+// @Tags         Downloads
+// @Produce      json
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      200  {object}  DownloadJobsListResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/downloads [get]
 func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
@@ -197,6 +224,18 @@ func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
 }
 
 // HandleGetDownloadJob returns a single download job
+// @Summary      Get download job
+// @Description  Returns a single download job by ID
+// @Tags         Downloads
+// @Produce      json
+// @Param        jobId  path      string  true  "Download job ID"
+// @Success      200    {object}  DownloadJobResponse
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      403    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/downloads/{jobId} [get]
 func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
@@ -261,6 +300,18 @@ func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
 }
 
 // HandleCancelDownload cancels a download job
+// @Summary      Cancel download
+// @Description  Cancels an active download job
+// @Tags         Downloads
+// @Param        jobId  path      string  true  "Download job ID"
+// @Success      204    "No Content"
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      401    {object}  common.ErrorResponse
+// @Failure      403    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/downloads/{jobId}/cancel [post]
 func (h *Handler) HandleCancelDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
@@ -332,6 +383,19 @@ func (h *Handler) HandleCancelDownload(c *gin.Context) {
 }
 
 // HandleRetryDownload retries a failed download job
+// @Summary      Retry download
+// @Description  Retries a failed download job
+// @Tags         Downloads
+// @Produce      json
+// @Param        jobId  path      string  true  "Download job ID"
+// @Success      200    {object}  DownloadJobResponse
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      401    {object}  common.ErrorResponse
+// @Failure      403    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/downloads/{jobId}/retry [post]
 func (h *Handler) HandleRetryDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
@@ -418,6 +482,14 @@ func (h *Handler) HandleRetryDownload(c *gin.Context) {
 }
 
 // HandleListActiveDownloads lists all active downloads (admin only)
+// @Summary      List active downloads
+// @Description  Lists all active downloads (admin only)
+// @Tags         Downloads
+// @Produce      json
+// @Success      200  {object}  DownloadJobsListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/downloads/active [get]
 func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
 	jobs, err := h.downloadManager.JobRepo().ListActive()
 	if err != nil {
@@ -450,6 +522,18 @@ func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
 }
 
 // HandleFlushDistributionDownloads deletes all download jobs for a distribution
+// @Summary      Flush distribution downloads
+// @Description  Deletes all download jobs for a distribution
+// @Tags         Downloads
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/downloads [delete]
 func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {

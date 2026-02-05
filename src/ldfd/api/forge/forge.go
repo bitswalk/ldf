@@ -26,6 +26,18 @@ func NewHandler(cfg Config) *Handler {
 }
 
 // HandleDetect detects the forge type for a given URL and returns defaults
+//
+// @Summary      Detect forge type
+// @Description  Detects the forge type for a given URL and returns repository info, defaults, and available forge types
+// @Tags         Forge
+// @Accept       json
+// @Produce      json
+// @Param        body  body      DetectRequest   true  "URL to detect"
+// @Success      200   {object}  DetectResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/forge/detect [post]
 func (h *Handler) HandleDetect(c *gin.Context) {
 	var req DetectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -68,6 +80,19 @@ func (h *Handler) HandleDetect(c *gin.Context) {
 }
 
 // HandlePreviewFilter previews the effect of a version filter on actual versions
+//
+// @Summary      Preview version filter
+// @Description  Fetches versions from upstream and previews which ones match the given filter expression
+// @Tags         Forge
+// @Accept       json
+// @Produce      json
+// @Param        body  body      PreviewFilterRequest   true  "Filter preview request"
+// @Success      200   {object}  PreviewFilterResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      502   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/forge/preview-filter [post]
 func (h *Handler) HandlePreviewFilter(c *gin.Context) {
 	var req PreviewFilterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,6 +195,15 @@ func (h *Handler) HandlePreviewFilter(c *gin.Context) {
 }
 
 // HandleListForgeTypes returns all available forge types
+//
+// @Summary      List forge types
+// @Description  Returns all available forge types with their metadata
+// @Tags         Forge
+// @Produce      json
+// @Success      200   {object}  object
+// @Failure      401   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/forge/types [get]
 func (h *Handler) HandleListForgeTypes(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"forge_types": forge.GetForgeTypeInfo(),
@@ -177,6 +211,15 @@ func (h *Handler) HandleListForgeTypes(c *gin.Context) {
 }
 
 // HandleCommonFilters returns common filter presets
+//
+// @Summary      List common filters
+// @Description  Returns common version filter presets that can be applied to sources
+// @Tags         Forge
+// @Produce      json
+// @Success      200   {object}  CommonFiltersResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/forge/common-filters [get]
 func (h *Handler) HandleCommonFilters(c *gin.Context) {
 	c.JSON(http.StatusOK, CommonFiltersResponse{
 		Filters: forge.CommonFilters,

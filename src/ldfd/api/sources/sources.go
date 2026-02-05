@@ -60,6 +60,15 @@ func (h *Handler) triggerAutoSync(source *db.UpstreamSource, sourceType string) 
 }
 
 // HandleList returns merged sources (defaults + user) for the authenticated user
+// @Summary      List sources
+// @Description  Returns merged sources (system + user) for the authenticated user
+// @Tags         Sources
+// @Produce      json
+// @Success      200  {object}  SourceListResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -279,6 +288,19 @@ func (h *Handler) HandleDeleteDefault(c *gin.Context) {
 }
 
 // HandleCreateUserSource creates a new user source (or system source if admin)
+// @Summary      Create a source
+// @Description  Creates a new user source, or a system source if admin and is_system=true
+// @Tags         Sources
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateSourceRequest  true  "Source creation request"
+// @Success      201      {object}  db.UpstreamSource
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      403      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources [post]
 func (h *Handler) HandleCreateUserSource(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -534,6 +556,17 @@ func (h *Handler) HandleDeleteUserSource(c *gin.Context) {
 }
 
 // HandleListByComponent returns merged sources for a specific component
+// @Summary      List sources by component
+// @Description  Returns merged sources for a specific component
+// @Tags         Sources
+// @Produce      json
+// @Param        componentId  path      string  true  "Component ID"
+// @Success      200          {object}  SourceListResponse
+// @Failure      400          {object}  common.ErrorResponse
+// @Failure      401          {object}  common.ErrorResponse
+// @Failure      500          {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/component/{componentId} [get]
 func (h *Handler) HandleListByComponent(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1250,6 +1283,19 @@ func (h *Handler) checkSourceAccess(c *gin.Context, claims *auth.TokenClaims, so
 }
 
 // HandleGetByID returns a single source by ID (unified)
+// @Summary      Get a source
+// @Description  Returns a single source by ID
+// @Tags         Sources
+// @Produce      json
+// @Param        id   path      string  true  "Source ID"
+// @Success      200  {object}  db.UpstreamSource
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id} [get]
 func (h *Handler) HandleGetByID(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1297,6 +1343,21 @@ func (h *Handler) HandleGetByID(c *gin.Context) {
 }
 
 // HandleUpdate updates an existing source (unified)
+// @Summary      Update a source
+// @Description  Updates an existing source
+// @Tags         Sources
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string               true  "Source ID"
+// @Param        request  body      UpdateSourceRequest   true  "Source update request"
+// @Success      200      {object}  db.UpstreamSource
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      403      {object}  common.ErrorResponse
+// @Failure      404      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id} [put]
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1394,6 +1455,18 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 }
 
 // HandleDelete deletes a source (unified)
+// @Summary      Delete a source
+// @Description  Deletes a source
+// @Tags         Sources
+// @Param        id   path      string  true  "Source ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1450,6 +1523,22 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 }
 
 // HandleListVersions lists cached versions for a source (unified)
+// @Summary      List source versions
+// @Description  Lists cached versions for a source
+// @Tags         Sources
+// @Produce      json
+// @Param        id            path      string  true   "Source ID"
+// @Param        limit         query     int     false  "Maximum results"
+// @Param        offset        query     int     false  "Offset for pagination"
+// @Param        version_type  query     string  false  "Filter by version type"
+// @Success      200           {object}  SourceVersionListResponse
+// @Failure      400           {object}  common.ErrorResponse
+// @Failure      401           {object}  common.ErrorResponse
+// @Failure      403           {object}  common.ErrorResponse
+// @Failure      404           {object}  common.ErrorResponse
+// @Failure      500           {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id}/versions [get]
 func (h *Handler) HandleListVersions(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1522,6 +1611,20 @@ func (h *Handler) HandleListVersions(c *gin.Context) {
 }
 
 // HandleSync triggers a version sync for a source (unified)
+// @Summary      Trigger version sync
+// @Description  Triggers a version sync for a source
+// @Tags         Sources
+// @Produce      json
+// @Param        id   path      string  true  "Source ID"
+// @Success      202  {object}  SyncTriggerResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      409  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id}/sync [post]
 func (h *Handler) HandleSync(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1616,6 +1719,19 @@ func (h *Handler) HandleSync(c *gin.Context) {
 }
 
 // HandleGetSyncStatus returns sync status for a source (unified)
+// @Summary      Get sync status
+// @Description  Returns sync status for a source
+// @Tags         Sources
+// @Produce      json
+// @Param        id   path      string  true  "Source ID"
+// @Success      200  {object}  SyncStatusResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id}/sync/status [get]
 func (h *Handler) HandleGetSyncStatus(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1677,6 +1793,19 @@ func (h *Handler) HandleGetSyncStatus(c *gin.Context) {
 }
 
 // HandleGetVersionTypes returns the distinct version types for a source (unified)
+// @Summary      Get version types
+// @Description  Returns the distinct version types for a source
+// @Tags         Sources
+// @Produce      json
+// @Param        id   path      string  true  "Source ID"
+// @Success      200  {object}  VersionTypesResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id}/versions/types [get]
 func (h *Handler) HandleGetVersionTypes(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
@@ -1742,6 +1871,20 @@ func (h *Handler) HandleGetVersionTypes(c *gin.Context) {
 }
 
 // HandleClearVersions clears all cached versions for a source (unified)
+// @Summary      Clear version cache
+// @Description  Clears all cached versions for a source
+// @Tags         Sources
+// @Produce      json
+// @Param        id   path      string  true  "Source ID"
+// @Success      200  {object}  ClearVersionsResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      409  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/sources/{id}/versions [delete]
 func (h *Handler) HandleClearVersions(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
