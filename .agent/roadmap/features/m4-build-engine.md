@@ -43,9 +43,19 @@ Implement the core Linux distribution build pipeline that transforms component d
 - [ ] Store final artifacts in configured storage backend
 - **Files**: `src/ldfd/build/image/`
 
+### 4.5 WebUI Build Integration
+- [ ] Wire up existing "Build" button on distribution detail page
+- [ ] Add build start dialog (arch/format selection)
+- [ ] Add builds list view (on distribution detail or separate page)
+- [ ] Add build detail view with stage progress
+- [ ] Implement SSE log streaming display
+- [ ] Add build cancel/retry actions
+- **Files**: `src/webui/src/api/`, `src/webui/src/views/DistributionDetail/`, `src/webui/src/components/`
+
 ## Acceptance Criteria
 
 - Can build a minimal bootable Linux image from a distribution definition
-- Build progress is trackable via API
+- Build progress is trackable via API and WebUI
 - At least x86_64 target works end-to-end
 - Artifacts are stored and downloadable via existing storage/artifact system
+- WebUI allows starting, monitoring, and managing builds

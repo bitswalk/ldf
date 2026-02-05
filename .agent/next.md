@@ -31,6 +31,7 @@ M4.2 implements the first 4 build stages:
 Remaining after M4.2:
 - M4.3 -- Root Filesystem Assembly (rootfs skeleton, init/bootloader/security installers, initramfs, assemble stage)
 - M4.4 -- Image Generation (raw/qcow2/ISO image generators, package stage, end-to-end verification)
+- M4.5 -- WebUI Build Integration (wire up build button, build dialog, builds list, build detail view, SSE log streaming)
 
 ## Context for next session
 
