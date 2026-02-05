@@ -93,19 +93,32 @@ func init() {
 	distributionUpdateCmd.Flags().String("visibility", "", "Visibility (public, private)")
 	distributionUpdateCmd.Flags().String("source-url", "", "Source URL")
 	distributionUpdateCmd.Flags().String("checksum", "", "Checksum")
+
+	// List flags
+	distributionListCmd.Flags().Int("limit", 0, "Maximum number of results")
+	distributionListCmd.Flags().Int("offset", 0, "Number of results to skip")
+	distributionListCmd.Flags().String("status", "", "Filter by status (pending, downloading, validating, ready, failed)")
 }
 
 func runDistributionList(cmd *cobra.Command, args []string) error {
 	c := getClient()
 	ctx := context.Background()
 
-	resp, err := c.ListDistributions(ctx)
+	opts := &client.ListOptions{}
+	opts.Limit, _ = cmd.Flags().GetInt("limit")
+	opts.Offset, _ = cmd.Flags().GetInt("offset")
+	opts.Status, _ = cmd.Flags().GetString("status")
+
+	resp, err := c.ListDistributions(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {
@@ -130,8 +143,11 @@ func runDistributionGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(
@@ -173,8 +189,11 @@ func runDistributionCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Distribution %q created (ID: %s)", resp.Name, resp.ID))
@@ -216,8 +235,11 @@ func runDistributionUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Distribution %q updated.", resp.Name))
@@ -232,8 +254,11 @@ func runDistributionDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Distribution deleted", "id": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Distribution deleted", "id": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Distribution %s deleted.", args[0]))
@@ -261,8 +286,11 @@ func runDistributionStats(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Total distributions: %d", resp.Total))

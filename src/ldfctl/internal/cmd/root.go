@@ -71,7 +71,7 @@ func init() {
 	cli.RegisterConfigFlag(rootCmd, &cfgFile, "~/.ldfctl/ldfctl.yaml")
 
 	rootCmd.PersistentFlags().StringP("server", "s", "", "LDF server URL (default: http://localhost:8443)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json, yaml")
 
 	cli.RegisterLogFlags(rootCmd)
 
@@ -94,6 +94,55 @@ func init() {
 	rootCmd.AddCommand(forgeCmd)
 	rootCmd.AddCommand(brandingCmd)
 	rootCmd.AddCommand(langpackCmd)
+	rootCmd.AddCommand(releaseCmd)
+
+	registerCompletions()
+}
+
+func registerCompletions() {
+	// Global flag completions
+	rootCmd.RegisterFlagCompletionFunc("output", completionOutputFormat)
+
+	// Distribution ID completions
+	distributionGetCmd.ValidArgsFunction = completionDistributionIDs
+	distributionUpdateCmd.ValidArgsFunction = completionDistributionIDs
+	distributionDeleteCmd.ValidArgsFunction = completionDistributionIDs
+	distributionLogsCmd.ValidArgsFunction = completionDistributionIDs
+	distributionDeletionPreviewCmd.ValidArgsFunction = completionDistributionIDs
+
+	// Distribution flag completions
+	distributionListCmd.RegisterFlagCompletionFunc("status", completionDistributionStatus)
+	distributionCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+	distributionUpdateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+
+	// Component ID completions
+	componentGetCmd.ValidArgsFunction = completionComponentIDs
+	componentUpdateCmd.ValidArgsFunction = completionComponentIDs
+	componentDeleteCmd.ValidArgsFunction = completionComponentIDs
+	componentVersionsCmd.ValidArgsFunction = completionComponentIDs
+	componentResolveVersionCmd.ValidArgsFunction = completionComponentIDs
+
+	// Component flag completions
+	componentListCmd.RegisterFlagCompletionFunc("category", completionCategories)
+
+	// Source ID completions
+	sourceGetCmd.ValidArgsFunction = completionSourceIDs
+	sourceUpdateCmd.ValidArgsFunction = completionSourceIDs
+	sourceDeleteCmd.ValidArgsFunction = completionSourceIDs
+	sourceSyncCmd.ValidArgsFunction = completionSourceIDs
+	sourceVersionsCmd.ValidArgsFunction = completionSourceIDs
+	sourceSyncStatusCmd.ValidArgsFunction = completionSourceIDs
+	sourceClearVersionsCmd.ValidArgsFunction = completionSourceIDs
+
+	// Role ID completions
+	roleGetCmd.ValidArgsFunction = completionRoleIDs
+	roleUpdateCmd.ValidArgsFunction = completionRoleIDs
+	roleDeleteCmd.ValidArgsFunction = completionRoleIDs
+
+	// Release completions
+	releaseConfigureCmd.ValidArgsFunction = completionDistributionIDs
+	releaseShowCmd.ValidArgsFunction = completionDistributionIDs
+	releaseCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
 }
 
 func initConfig() error {

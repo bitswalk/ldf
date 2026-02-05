@@ -32,9 +32,9 @@ type StartDownloadsRequest struct {
 }
 
 // ListDistributionDownloads returns downloads for a distribution
-func (c *Client) ListDistributionDownloads(ctx context.Context, distID string) (*DownloadJobsListResponse, error) {
+func (c *Client) ListDistributionDownloads(ctx context.Context, distID string, opts *ListOptions) (*DownloadJobsListResponse, error) {
 	var resp DownloadJobsListResponse
-	if err := c.Get(ctx, fmt.Sprintf("/v1/distributions/%s/downloads", distID), &resp); err != nil {
+	if err := c.Get(ctx, fmt.Sprintf("/v1/distributions/%s/downloads", distID)+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

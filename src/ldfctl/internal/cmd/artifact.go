@@ -80,8 +80,11 @@ func runArtifactList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {
@@ -108,8 +111,11 @@ func runArtifactUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Artifact uploaded", "distribution_id": distID, "file": filePath})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Artifact uploaded", "distribution_id": distID, "file": filePath})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Artifact %q uploaded to distribution %s.", filepath.Base(filePath), distID))
@@ -131,8 +137,11 @@ func runArtifactDownload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Artifact downloaded", "path": destPath})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Artifact downloaded", "path": destPath})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Artifact downloaded to %s.", destPath))
@@ -150,8 +159,11 @@ func runArtifactDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Artifact deleted", "path": artifactPath})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Artifact deleted", "path": artifactPath})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Artifact %q deleted.", artifactPath))
@@ -167,8 +179,11 @@ func runArtifactURL(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("%v", resp))
@@ -184,8 +199,11 @@ func runArtifactStorageStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	available := "no"
@@ -219,8 +237,11 @@ func runArtifactListAll(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {

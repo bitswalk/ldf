@@ -59,8 +59,11 @@ func runForgeDetect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(
@@ -90,8 +93,11 @@ func runForgePreviewFilter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Filter: %s (source: %s)", resp.AppliedFilter, resp.FilterSource))
@@ -131,8 +137,11 @@ func runForgeFilters(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	rows := make([][]string, 0, len(resp.Filters))

@@ -79,6 +79,12 @@ func init() {
 	componentCmd.AddCommand(componentResolveVersionCmd)
 
 	componentListCmd.Flags().String("category", "", "Filter by category")
+	componentListCmd.Flags().Int("limit", 0, "Maximum number of results")
+	componentListCmd.Flags().Int("offset", 0, "Number of results to skip")
+
+	componentVersionsCmd.Flags().Int("limit", 0, "Maximum number of results")
+	componentVersionsCmd.Flags().Int("offset", 0, "Number of results to skip")
+	componentVersionsCmd.Flags().String("version-type", "", "Filter by version type")
 
 	componentCreateCmd.Flags().String("name", "", "Component name (required)")
 	componentCreateCmd.Flags().String("category", "", "Component category")
@@ -100,19 +106,26 @@ func runComponentList(cmd *cobra.Command, args []string) error {
 
 	category, _ := cmd.Flags().GetString("category")
 
+	opts := &client.ListOptions{}
+	opts.Limit, _ = cmd.Flags().GetInt("limit")
+	opts.Offset, _ = cmd.Flags().GetInt("offset")
+
 	var resp *client.ComponentListResponse
 	var err error
 	if category != "" {
 		resp, err = c.ListComponentsByCategory(ctx, category)
 	} else {
-		resp, err = c.ListComponents(ctx)
+		resp, err = c.ListComponents(ctx, opts)
 	}
 	if err != nil {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {
@@ -141,8 +154,11 @@ func runComponentGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	isSystem := "no"
@@ -190,8 +206,11 @@ func runComponentCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Component %q created (ID: %s)", resp.Name, resp.ID))
@@ -229,8 +248,11 @@ func runComponentUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Component %q updated.", resp.Name))
@@ -245,8 +267,11 @@ func runComponentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Component deleted", "id": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Component deleted", "id": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Component %s deleted.", args[0]))
@@ -262,8 +287,11 @@ func runComponentCategories(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	categories, ok := resp["categories"].([]interface{})
@@ -283,13 +311,21 @@ func runComponentVersions(cmd *cobra.Command, args []string) error {
 	c := getClient()
 	ctx := context.Background()
 
-	resp, err := c.GetComponentVersions(ctx, args[0])
+	opts := &client.ListOptions{}
+	opts.Limit, _ = cmd.Flags().GetInt("limit")
+	opts.Offset, _ = cmd.Flags().GetInt("offset")
+	opts.VersionType, _ = cmd.Flags().GetString("version-type")
+
+	resp, err := c.GetComponentVersions(ctx, args[0], opts)
 	if err != nil {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	rows := make([][]string, len(resp.Versions))
@@ -309,8 +345,11 @@ func runComponentResolveVersion(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(

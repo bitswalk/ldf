@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+
+	"github.com/goccy/go-yaml"
 )
 
 // PrintJSON writes data as indented JSON to stdout
@@ -12,6 +14,26 @@ func PrintJSON(data interface{}) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(data)
+}
+
+// PrintYAML writes data as YAML to stdout
+func PrintYAML(data interface{}) error {
+	// Marshal through JSON first to respect json tags,
+	// then unmarshal into a generic structure for clean YAML output
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	var generic interface{}
+	if err := json.Unmarshal(jsonBytes, &generic); err != nil {
+		return err
+	}
+	out, err := yaml.Marshal(generic)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write(out)
+	return err
 }
 
 // PrintTable writes tabular data to stdout

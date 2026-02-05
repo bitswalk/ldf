@@ -29,8 +29,11 @@ func runHealth(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(

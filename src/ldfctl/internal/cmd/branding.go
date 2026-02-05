@@ -64,8 +64,11 @@ func runBrandingGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Asset downloaded", "asset": asset, "path": destPath})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Asset downloaded", "asset": asset, "path": destPath})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Branding asset %q downloaded to %s.", asset, destPath))
@@ -81,8 +84,11 @@ func runBrandingInfo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(
@@ -109,8 +115,11 @@ func runBrandingUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Asset uploaded", "asset": asset, "file": filePath})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Asset uploaded", "asset": asset, "file": filePath})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Branding asset %q uploaded from %s.", asset, filepath.Base(filePath)))
@@ -125,8 +134,11 @@ func runBrandingDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Asset deleted", "asset": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Asset deleted", "asset": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Branding asset %q deleted.", args[0]))

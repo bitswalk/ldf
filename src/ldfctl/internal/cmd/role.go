@@ -81,8 +81,11 @@ func runRoleList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if len(resp.Roles) == 0 {
@@ -124,8 +127,11 @@ func runRoleGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	r := resp.Role
@@ -172,8 +178,11 @@ func runRoleCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Role %q created (ID: %s)", resp.Role.Name, resp.Role.ID))
@@ -218,8 +227,11 @@ func runRoleUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Role %q updated.", resp.Role.Name))
@@ -234,8 +246,11 @@ func runRoleDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Role deleted", "id": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Role deleted", "id": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Role %s deleted.", args[0]))
