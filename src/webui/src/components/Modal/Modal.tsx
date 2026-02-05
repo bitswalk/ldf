@@ -1,6 +1,7 @@
 import type { Component, JSX } from "solid-js";
 import { createEffect, onCleanup, Show } from "solid-js";
 import { Icon } from "../Icon";
+import { t } from "../../services/i18n";
 
 interface ModalProps {
   isOpen: boolean;
@@ -56,7 +57,7 @@ export const Modal: Component<ModalProps> = (props) => {
               <button
                 onClick={props.onClose}
                 class="p-2 rounded-md hover:bg-muted transition-colors"
-                title="Close"
+                title={t("common.actions.close")}
               >
                 <Icon name="x" size="sm" />
               </button>

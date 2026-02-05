@@ -80,6 +80,9 @@
   "pagination": {
     "previous": "Precedent",
     "next": "Suivant",
+    "goPrevious": "Aller a la page precedente",
+    "goNext": "Aller a la page suivante",
+    "morePages": "Plus de pages",
     "page": "Page",
     "of": "sur",
     "showing": "Affichage de",
@@ -99,5 +102,21 @@
     "hoursAgo": "Il y a {{ count }} heure(s)",
     "daysAgo": "Il y a {{ count }} jour(s)"
   },
-  "optional": "optionnel"
+  "downloads": {
+    "title": "Telechargements",
+    "startButton": "Lancer les telechargements",
+    "starting": "Demarrage...",
+    "clear": "Effacer",
+    "clearing": "Effacement...",
+    "clearHistory": "Effacer l'historique des telechargements",
+    "started": "Telechargements lances",
+    "cancelled": "Telechargement annule",
+    "retried": "Telechargement relance",
+    "historyCleared": "Historique des telechargements efface",
+    "noDownloads": "Aucun telechargement",
+    "emptyHint": "Cliquez sur \"Lancer les telechargements\" pour commencer a recuperer les composants"
+  },
+  "optional": "optionnel",
+  "yes": "Oui",
+  "no": "Non"
 }

@@ -80,6 +80,103 @@
       }
     }
   },
+  "serverPanel": {
+    "loading": "Chargement des parametres du serveur...",
+    "requiresRestart": "Redemarrage requis",
+    "resetDatabase": {
+      "title": "Reinitialiser la base de donnees",
+      "description": "Reinitialiser la base de donnees a son etat par defaut. Toutes les donnees utilisateur seront supprimees."
+    },
+    "server": {
+      "label": "Serveur",
+      "description": "Configuration du serveur principal",
+      "bind": {
+        "label": "Adresse de liaison",
+        "description": "Adresse reseau a laquelle se lier"
+      },
+      "port": {
+        "label": "Port",
+        "description": "Port d'ecoute du serveur"
+      }
+    },
+    "log": {
+      "label": "Journalisation",
+      "description": "Configuration de la journalisation",
+      "output": {
+        "label": "Sortie",
+        "description": "Destination des journaux",
+        "auto": "Automatique",
+        "stdout": "Sortie standard",
+        "journald": "Journald"
+      },
+      "level": {
+        "label": "Niveau",
+        "description": "Niveau minimum de journalisation",
+        "debug": "Debogage",
+        "info": "Info",
+        "warn": "Avertissement",
+        "error": "Erreur"
+      }
+    },
+    "database": {
+      "label": "Base de donnees",
+      "description": "Parametres de persistance de la base de donnees",
+      "path": {
+        "label": "Chemin de persistance",
+        "description": "Chemin de sauvegarde de la base de donnees a l'arret"
+      }
+    },
+    "storage": {
+      "label": "Stockage",
+      "description": "Backend de stockage des artefacts",
+      "local": {
+        "label": "Systeme de fichiers local",
+        "path": {
+          "label": "Chemin",
+          "description": "Repertoire racine pour les artefacts"
+        }
+      },
+      "s3": {
+        "label": "Compatible S3",
+        "provider": {
+          "label": "Fournisseur",
+          "description": "Fournisseur de stockage compatible S3",
+          "garage": "GarageHQ",
+          "minio": "MinIO",
+          "aws": "Amazon S3",
+          "other": "Autre"
+        },
+        "endpoint": {
+          "label": "Point d'acces",
+          "description": "Domaine S3 de base (ex: s3.exemple.com)"
+        },
+        "region": {
+          "label": "Region",
+          "description": "Region AWS/S3"
+        },
+        "bucket": {
+          "label": "Bucket",
+          "description": "Nom du bucket pour les artefacts"
+        },
+        "accessKey": {
+          "label": "Cle d'acces",
+          "description": "Identifiant de cle d'acces S3"
+        },
+        "secretKey": {
+          "label": "Cle secrete",
+          "description": "Cle d'acces secrete S3"
+        }
+      }
+    },
+    "sync": {
+      "label": "Synchronisation des versions",
+      "description": "Parametres de decouverte automatique des versions",
+      "cacheDuration": {
+        "label": "Duree du cache (minutes)",
+        "description": "Temps minimum entre les synchronisations automatiques de versions pour une source (0 pour desactiver le cache)"
+      }
+    }
+  },
   "server": {
     "connection": {
       "title": "Connexion",

@@ -1,6 +1,7 @@
 import type { Component } from "solid-js";
 import { createSignal, createMemo, Show, For } from "solid-js";
 import { Icon } from "../Icon";
+import { t } from "../../services/i18n";
 import { getServerSetting, type ServerSetting } from "../../services/settings";
 
 interface ServerSettingsPanelProps {
@@ -38,139 +39,171 @@ interface SettingConfig {
   options?: { value: string; label: string }[];
 }
 
-// Define the settings structure
-const settingsStructure: SettingGroupConfig[] = [
+// Define the settings structure (function to resolve i18n at call time)
+const getSettingsStructure = (): SettingGroupConfig[] => [
   {
     key: "server",
-    label: "Server",
-    description: "Core server configuration",
+    label: t("settings.serverPanel.server.label"),
+    description: t("settings.serverPanel.server.description"),
     icon: "desktop-tower",
     required: true,
     children: [
       {
         key: "server.bind",
-        label: "Bind Address",
-        description: "Network address to bind to",
+        label: t("settings.serverPanel.server.bind.label"),
+        description: t("settings.serverPanel.server.bind.description"),
         type: "string",
       },
       {
         key: "server.port",
-        label: "Port",
-        description: "Port for the server to listen on",
+        label: t("settings.serverPanel.server.port.label"),
+        description: t("settings.serverPanel.server.port.description"),
         type: "int",
       },
     ],
   },
   {
     key: "log",
-    label: "Logging",
-    description: "Logging configuration",
+    label: t("settings.serverPanel.log.label"),
+    description: t("settings.serverPanel.log.description"),
     icon: "note",
     required: false,
     children: [
       {
         key: "log.output",
-        label: "Output",
-        description: "Where to send log output",
+        label: t("settings.serverPanel.log.output.label"),
+        description: t("settings.serverPanel.log.output.description"),
         type: "string",
         options: [
-          { value: "auto", label: "Auto" },
-          { value: "stdout", label: "Standard Output" },
-          { value: "journald", label: "Journald" },
+          { value: "auto", label: t("settings.serverPanel.log.output.auto") },
+          {
+            value: "stdout",
+            label: t("settings.serverPanel.log.output.stdout"),
+          },
+          {
+            value: "journald",
+            label: t("settings.serverPanel.log.output.journald"),
+          },
         ],
       },
       {
         key: "log.level",
-        label: "Level",
-        description: "Minimum log level to display",
+        label: t("settings.serverPanel.log.level.label"),
+        description: t("settings.serverPanel.log.level.description"),
         type: "string",
         options: [
-          { value: "debug", label: "Debug" },
-          { value: "info", label: "Info" },
-          { value: "warn", label: "Warning" },
-          { value: "error", label: "Error" },
+          { value: "debug", label: t("settings.serverPanel.log.level.debug") },
+          { value: "info", label: t("settings.serverPanel.log.level.info") },
+          { value: "warn", label: t("settings.serverPanel.log.level.warn") },
+          { value: "error", label: t("settings.serverPanel.log.level.error") },
         ],
       },
     ],
   },
   {
     key: "database",
-    label: "Database",
-    description: "Database persistence settings",
+    label: t("settings.serverPanel.database.label"),
+    description: t("settings.serverPanel.database.description"),
     icon: "database",
     required: true,
     children: [
       {
         key: "database.path",
-        label: "Persist Path",
-        description: "Path to save database on shutdown",
+        label: t("settings.serverPanel.database.path.label"),
+        description: t("settings.serverPanel.database.path.description"),
         type: "string",
       },
     ],
   },
   {
     key: "storage",
-    label: "Storage",
-    description: "Artifact storage backend",
+    label: t("settings.serverPanel.storage.label"),
+    description: t("settings.serverPanel.storage.description"),
     icon: "hard-drives",
     required: true,
     variants: [
       {
         key: "local",
-        label: "Local Filesystem",
+        label: t("settings.serverPanel.storage.local.label"),
         children: [
           {
             key: "storage.local.path",
-            label: "Path",
-            description: "Root directory for artifacts",
+            label: t("settings.serverPanel.storage.local.path.label"),
+            description: t(
+              "settings.serverPanel.storage.local.path.description",
+            ),
             type: "string",
           },
         ],
       },
       {
         key: "s3",
-        label: "S3 Compatible",
+        label: t("settings.serverPanel.storage.s3.label"),
         children: [
           {
             key: "storage.s3.provider",
-            label: "Provider",
-            description: "S3-compatible storage provider",
+            label: t("settings.serverPanel.storage.s3.provider.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.provider.description",
+            ),
             type: "string",
             options: [
-              { value: "garage", label: "GarageHQ" },
-              { value: "minio", label: "MinIO" },
-              { value: "aws", label: "Amazon S3" },
-              { value: "other", label: "Other" },
+              {
+                value: "garage",
+                label: t("settings.serverPanel.storage.s3.provider.garage"),
+              },
+              {
+                value: "minio",
+                label: t("settings.serverPanel.storage.s3.provider.minio"),
+              },
+              {
+                value: "aws",
+                label: t("settings.serverPanel.storage.s3.provider.aws"),
+              },
+              {
+                value: "other",
+                label: t("settings.serverPanel.storage.s3.provider.other"),
+              },
             ],
           },
           {
             key: "storage.s3.endpoint",
-            label: "Endpoint",
-            description: "Base S3 domain (e.g., s3.example.com)",
+            label: t("settings.serverPanel.storage.s3.endpoint.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.endpoint.description",
+            ),
             type: "string",
           },
           {
             key: "storage.s3.region",
-            label: "Region",
-            description: "AWS/S3 region",
+            label: t("settings.serverPanel.storage.s3.region.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.region.description",
+            ),
             type: "string",
           },
           {
             key: "storage.s3.bucket",
-            label: "Bucket",
-            description: "Bucket name for artifacts",
+            label: t("settings.serverPanel.storage.s3.bucket.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.bucket.description",
+            ),
             type: "string",
           },
           {
             key: "storage.s3.access_key",
-            label: "Access Key",
-            description: "S3 access key ID",
+            label: t("settings.serverPanel.storage.s3.accessKey.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.accessKey.description",
+            ),
             type: "string",
           },
           {
             key: "storage.s3.secret_key",
-            label: "Secret Key",
-            description: "S3 secret access key",
+            label: t("settings.serverPanel.storage.s3.secretKey.label"),
+            description: t(
+              "settings.serverPanel.storage.s3.secretKey.description",
+            ),
             type: "string",
           },
         ],
@@ -179,16 +212,15 @@ const settingsStructure: SettingGroupConfig[] = [
   },
   {
     key: "sync",
-    label: "Version Sync",
-    description: "Automatic version discovery settings",
+    label: t("settings.serverPanel.sync.label"),
+    description: t("settings.serverPanel.sync.description"),
     icon: "arrows-clockwise",
     required: false,
     children: [
       {
         key: "sync.cache_duration",
-        label: "Cache Duration (minutes)",
-        description:
-          "Minimum time between automatic version syncs for a source (0 to disable caching)",
+        label: t("settings.serverPanel.sync.cacheDuration.label"),
+        description: t("settings.serverPanel.sync.cacheDuration.description"),
         type: "int",
       },
     ],
@@ -553,7 +585,7 @@ const SettingGroup: Component<{
         <Show when={hasRebootRequired()}>
           <span class="text-xs text-amber-500 flex items-center gap-1">
             <Icon name="warning" size="xs" />
-            Requires restart
+            {t("settings.serverPanel.requiresRestart")}
           </span>
         </Show>
       </header>
@@ -581,11 +613,10 @@ const SettingGroup: Component<{
             <article class="flex items-center justify-between py-3 pl-8 pr-4 gap-4 border-t border-border">
               <section class="flex flex-col min-w-0 flex-1">
                 <span class="text-sm font-medium text-destructive">
-                  Reset Database
+                  {t("settings.serverPanel.resetDatabase.title")}
                 </span>
                 <span class="text-xs text-muted-foreground">
-                  Reset the database to its default state. This will delete all
-                  user data.
+                  {t("settings.serverPanel.resetDatabase.description")}
                 </span>
               </section>
               <button
@@ -593,7 +624,7 @@ const SettingGroup: Component<{
                 onClick={props.onResetDatabase}
                 class="px-3 py-1.5 text-sm text-destructive border border-destructive rounded hover:bg-destructive/10 transition-colors"
               >
-                Reset
+                {t("common.actions.reset")}
               </button>
             </article>
           </Show>
@@ -674,7 +705,7 @@ export const ServerSettingsPanel: Component<ServerSettingsPanelProps> = (
       <Show when={props.loading}>
         <article class="flex items-center justify-center py-8 text-muted-foreground">
           <Icon name="spinner" size="md" class="animate-spin mr-2" />
-          <span>Loading server settings...</span>
+          <span>{t("settings.serverPanel.loading")}</span>
         </article>
       </Show>
 
@@ -686,13 +717,13 @@ export const ServerSettingsPanel: Component<ServerSettingsPanelProps> = (
             onClick={props.onRetry}
             class="px-4 py-2 text-sm border border-border rounded hover:bg-muted/50 transition-colors"
           >
-            Retry
+            {t("common.actions.retry")}
           </button>
         </article>
       </Show>
 
       <Show when={!props.loading && !props.error}>
-        <For each={settingsStructure}>
+        <For each={getSettingsStructure()}>
           {(group) => (
             <SettingGroup
               group={group}

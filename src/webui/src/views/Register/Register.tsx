@@ -12,21 +12,21 @@ interface RoleOption {
   description: string;
 }
 
-const ROLE_OPTIONS: RoleOption[] = [
+const getRoleOptions = (): RoleOption[] => [
   {
     value: "developer",
-    label: "Developer",
-    description: "Standard user with development access",
+    label: t("auth.register.roles.developer"),
+    description: t("auth.register.roles.developerDescription"),
   },
   {
     value: "root",
-    label: "Root",
-    description: "Full administrative privileges",
+    label: t("auth.register.roles.root"),
+    description: t("auth.register.roles.rootDescription"),
   },
   {
     value: "anonymous",
-    label: "Anonymous",
-    description: "Limited read-only access",
+    label: t("auth.register.roles.anonymous"),
+    description: t("auth.register.roles.anonymousDescription"),
   },
 ];
 
@@ -151,7 +151,7 @@ export const Register: Component<RegisterProps> = (props) => {
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted-foreground flex items-center gap-2">
               <Icon name="user-circle" size="sm" />
-              Role
+              {t("auth.register.form.role.label")}
             </span>
             <select
               value={role()}
@@ -159,14 +159,17 @@ export const Register: Component<RegisterProps> = (props) => {
               class="px-4 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               required
             >
-              <For each={ROLE_OPTIONS}>
+              <For each={getRoleOptions()}>
                 {(option) => (
                   <option value={option.value}>{option.label}</option>
                 )}
               </For>
             </select>
             <span class="text-xs text-muted-foreground">
-              {ROLE_OPTIONS.find((opt) => opt.value === role())?.description}
+              {
+                getRoleOptions().find((opt) => opt.value === role())
+                  ?.description
+              }
             </span>
           </label>
 

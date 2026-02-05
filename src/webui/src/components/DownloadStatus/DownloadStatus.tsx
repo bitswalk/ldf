@@ -8,6 +8,7 @@ import {
   createMemo,
 } from "solid-js";
 import { Icon } from "../Icon";
+import { t } from "../../services/i18n";
 import {
   type DownloadJob,
   type DownloadJobStatus,
@@ -85,7 +86,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     const result = await startDownloads(props.distributionId);
     if (result.success) {
       setJobs(result.jobs);
-      props.onSuccess?.("Downloads started");
+      props.onSuccess?.(t("common.downloads.started"));
     } else {
       props.onError?.(result.message);
     }
@@ -97,7 +98,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     const result = await cancelDownload(jobId);
     if (result.success) {
       await fetchJobs();
-      props.onSuccess?.("Download cancelled");
+      props.onSuccess?.(t("common.downloads.cancelled"));
     } else {
       props.onError?.(result.message);
     }
@@ -109,7 +110,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     const result = await retryDownload(jobId);
     if (result.success) {
       await fetchJobs();
-      props.onSuccess?.("Download retried");
+      props.onSuccess?.(t("common.downloads.retried"));
     } else {
       props.onError?.(result.message);
     }
@@ -121,7 +122,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     const result = await flushDownloads(props.distributionId);
     if (result.success) {
       setJobs([]);
-      props.onSuccess?.("Download history cleared");
+      props.onSuccess?.(t("common.downloads.historyCleared"));
     } else {
       props.onError?.(result.message);
     }
@@ -174,7 +175,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <Icon name="cloud-arrow-down" size="lg" class="text-primary" />
-          <h3 class="text-lg font-semibold">Downloads</h3>
+          <h3 class="text-lg font-semibold">{t("common.downloads.title")}</h3>
           <Show when={jobs().length > 0}>
             <span class="text-sm text-muted-foreground">
               ({completedCount()}/{jobs().length} completed
@@ -188,7 +189,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
               onClick={handleFlush}
               disabled={flushing() || hasActiveJobs()}
               class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Clear download history"
+              title={t("common.downloads.clearHistory")}
             >
               <Show
                 when={!flushing()}
@@ -198,7 +199,11 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
               >
                 <Icon name="trash" size="sm" />
               </Show>
-              <span>{flushing() ? "Clearing..." : "Clear"}</span>
+              <span>
+                {flushing()
+                  ? t("common.downloads.clearing")
+                  : t("common.downloads.clear")}
+              </span>
             </button>
           </Show>
           <button
@@ -214,7 +219,11 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
             >
               <Icon name="download" size="sm" />
             </Show>
-            <span>{starting() ? "Starting..." : "Start Downloads"}</span>
+            <span>
+              {starting()
+                ? t("common.downloads.starting")
+                : t("common.downloads.startButton")}
+            </span>
           </button>
         </div>
       </div>
@@ -248,10 +257,8 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
             size="2xl"
             class="mx-auto mb-2 opacity-50"
           />
-          <p>No downloads yet</p>
-          <p class="text-sm">
-            Click "Start Downloads" to begin fetching components
-          </p>
+          <p>{t("common.downloads.noDownloads")}</p>
+          <p class="text-sm">{t("common.downloads.emptyHint")}</p>
         </div>
       </Show>
 

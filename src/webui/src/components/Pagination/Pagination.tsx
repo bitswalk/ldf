@@ -1,6 +1,7 @@
 import type { Component, JSX } from "solid-js";
 import { splitProps, mergeProps } from "solid-js";
 import { Icon } from "../Icon";
+import { t } from "../../services/i18n";
 
 // Pagination Root Component
 interface PaginationProps extends JSX.HTMLAttributes<HTMLElement> {
@@ -109,12 +110,12 @@ export const PaginationPrevious: Component<PaginationPreviousProps> = (
 
   return (
     <a
-      aria-label="Go to previous page"
+      aria-label={t("common.pagination.goPrevious")}
       class={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground ${customClass}`}
       {...others}
     >
       <Icon name="caret-left" size="sm" />
-      <span>Previous</span>
+      <span>{t("common.pagination.previous")}</span>
     </a>
   );
 };
@@ -131,11 +132,11 @@ export const PaginationNext: Component<PaginationNextProps> = (props) => {
 
   return (
     <a
-      aria-label="Go to next page"
+      aria-label={t("common.pagination.goNext")}
       class={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground ${customClass}`}
       {...others}
     >
-      <span>Next</span>
+      <span>{t("common.pagination.next")}</span>
       <Icon name="caret-right" size="sm" />
     </a>
   );
@@ -159,7 +160,7 @@ export const PaginationEllipsis: Component<PaginationEllipsisProps> = (
       {...others}
     >
       <Icon name="dots-three" size="lg" />
-      <span class="sr-only">More pages</span>
+      <span class="sr-only">{t("common.pagination.morePages")}</span>
     </span>
   );
 };
