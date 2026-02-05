@@ -4003,6 +4003,10 @@ const docTemplate = `{
                 "auth": {
                     "$ref": "#/definitions/base.AuthEndpoints"
                 },
+                "docs": {
+                    "type": "string",
+                    "example": "/swagger/index.html"
+                },
                 "health": {
                     "type": "string",
                     "example": "/v1/health"

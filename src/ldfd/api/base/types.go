@@ -17,6 +17,7 @@ type APIInfoEndpoints struct {
 	Health  string        `json:"health" example:"/v1/health"`
 	Version string        `json:"version" example:"/v1/version"`
 	APIv1   string        `json:"api_v1" example:"/v1/"`
+	Docs    string        `json:"docs" example:"/swagger/index.html"`
 	Auth    AuthEndpoints `json:"auth"`
 }
 

@@ -161,6 +161,9 @@ definitions:
         type: string
       auth:
         $ref: '#/definitions/base.AuthEndpoints'
+      docs:
+        example: /swagger/index.html
+        type: string
       health:
         example: /v1/health
         type: string

@@ -37,6 +37,7 @@ func (h *Handler) HandleRoot(c *gin.Context) {
 			Health:  "/v1/health",
 			Version: "/v1/version",
 			APIv1:   "/v1/",
+			Docs:    "/swagger/index.html",
 			Auth: AuthEndpoints{
 				Create:   "/auth/create",
 				Login:    "/auth/login",
