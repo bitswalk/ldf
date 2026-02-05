@@ -1,7 +1,7 @@
 # M1 -- Stabilization & Polish
 
 **Priority**: Critical
-**Status**: Not started
+**Status**: In progress
 **Depends on**: Nothing
 
 ## Goal
@@ -11,9 +11,12 @@ Harden existing features, fix known issues, bring everything to production quali
 ## Tasks
 
 ### 1.1 Fix Dockerfile
-- [ ] Replace `make build` with `task build` in `tools/docker/Dockerfile`
-- [ ] Update base Go image from 1.21 to 1.24
-- [ ] Align exposed port to 8443 (or make configurable)
+- [x] Replace `make build` with `task build` in `tools/docker/Dockerfile`
+- [x] Update base Go image from 1.21 to 1.24
+- [x] Align exposed port to 8443 (or make configurable)
+- [x] Fix binary paths (`build/bin/` output), config path (`docs/samples/ldfd.yml`), and CMD (`ldfd`)
+- [x] Add go-task and bun installation in builder stage
+- [x] Add WebUI dist copy to runtime stage
 - [ ] Validate multi-stage build produces working container
 - **Files**: `tools/docker/Dockerfile`
 
