@@ -1,22 +1,28 @@
 # Current Priorities
 
-**Active milestone**: M1 -- Stabilization & Polish
+**Active milestone**: M1 -- Stabilization & Polish (nearly complete)
 **Feature spec**: @.agent/roadmap/features/m1-stabilization.md
 
 ## Completed
 
 - ~~**Fix Dockerfile** (M1.1)~~ -- Done on `feature/m1_1-1` (commit 0c144e8). Pending: container build validation.
-- ~~**WebUI i18n completion** (M1.2)~~ -- Done on `feature/m1_1-2` (commit 808086d). Replaced all hardcoded strings in Pagination, DownloadStatus, Modal, Badge, Register, ServerSettingsPanel with `t()` calls. Updated EN/FR/DE locale files (common.json, auth.json, settings.json).
-- ~~**WebUI test setup** (M1.3)~~ -- Done on `feature/m1_1-3` (commit 91d6b5a). Vitest + jsdom, 117 unit tests across 7 test files covering services (downloads, forge, storage, settings, branding) and utilities (globFilter, sorting). `task test:webui` integrated. Component/integration tests remain open.
+- ~~**WebUI i18n completion** (M1.2)~~ -- Done on `feature/m1_1-2` (commit 808086d). All hardcoded strings replaced with `t()` calls. EN/FR/DE locale files updated.
+- ~~**WebUI test setup** (M1.3)~~ -- Done on `feature/m1_1-3` (commit 91d6b5a). Vitest + jsdom, 117 unit tests across 7 files. Component/integration tests deferred.
+- ~~**CI/CD hardening** (M1.4)~~ -- Done on `feature/m1_1-4` (commit bd7b182). `build.yml` (lint, fmt, test-server, test-webui, build + artifacts) and `documentation.yml` (MkDocs gh-deploy). Pending: verify green after push.
 
-## Next tasks (in order)
+## M1 Remaining
 
-1. **CI/CD hardening** (M1.4) -- Review `.github/workflows/build.yml`, ensure full pipeline: lint, fmt, test (server + webui), build, artifact upload. Verify documentation workflow.
+- M1.1: Validate Docker container build
+- M1.3: Component tests and integration tests (deferred)
+- M1.4: Verify CI runs green after push to origin
+
+## Next milestone
+
+**M2 -- API Documentation** -- Generate OpenAPI/Swagger docs from ldfd endpoints, serve via MkDocs or standalone.
 
 ## Context for next session
 
-- M1.1, M1.2, and M1.3 are merged to main.
-- M1.3 partial: component tests (Login, Distribution, Components) and integration tests (auth flow) are deferred. The test runner and service-layer tests are in place.
-- M1.4 (CI/CD) is next. Requires reviewing GitHub Actions workflows, adding webui test step, ensuring build artifacts are uploaded.
-- Bun is at `/home/flint/.bun/bin/bun` (not in default PATH). Taskfile uses bare `bun` which works when bun is in PATH.
+- All M1 tasks (M1.1-M1.4) are merged to main. Main is 11 commits ahead of origin.
+- Push to origin will trigger the new CI workflows for the first time.
+- Bun is at `/home/flint/.bun/bin/bun` (not in default PATH).
 - All rules, feature specs, and project memory are in `.agent/` (not `.claude/`), per project convention.

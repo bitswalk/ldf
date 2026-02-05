@@ -37,10 +37,11 @@ Harden existing features, fix known issues, bring everything to production quali
 - **Files**: `src/webui/`, `Taskfile.yml`
 
 ### 1.4 CI/CD Hardening
-- [ ] Review and complete `.github/workflows/build.yml`
-- [ ] Pipeline must run: lint, fmt, test (server + webui), build all
-- [ ] Add artifact upload for built binaries
-- [ ] Verify `.github/workflows/documentation.yml` deploys mkdocs
+- [x] Review and complete `.github/workflows/build.yml`
+- [x] Pipeline must run: lint, fmt, test (server + webui), build all
+- [x] Add artifact upload for built binaries
+- [x] Verify `.github/workflows/documentation.yml` deploys mkdocs
+- [ ] Verify workflows run green after push to origin
 - **Files**: `.github/workflows/`
 
 ## Acceptance Criteria
