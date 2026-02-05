@@ -1,28 +1,29 @@
 # Current Priorities
 
-**Active milestone**: M1 -- Stabilization & Polish (nearly complete)
-**Feature spec**: @.agent/roadmap/features/m1-stabilization.md
+**Active milestone**: M2 -- API Documentation & Developer Experience
+**Feature spec**: @.agent/roadmap/features/m2-api-docs.md
 
 ## Completed
 
-- ~~**Fix Dockerfile** (M1.1)~~ -- Done on `feature/m1_1-1` (commit 0c144e8). Pending: container build validation.
-- ~~**WebUI i18n completion** (M1.2)~~ -- Done on `feature/m1_1-2` (commit 808086d). All hardcoded strings replaced with `t()` calls. EN/FR/DE locale files updated.
-- ~~**WebUI test setup** (M1.3)~~ -- Done on `feature/m1_1-3` (commit 91d6b5a). Vitest + jsdom, 117 unit tests across 7 files. Component/integration tests deferred.
-- ~~**CI/CD hardening** (M1.4)~~ -- Done on `feature/m1_1-4` (commit bd7b182). `build.yml` (lint, fmt, test-server, test-webui, build + artifacts) and `documentation.yml` (MkDocs gh-deploy). Pending: verify green after push.
+- ~~**Fix Dockerfile** (M1.1)~~ -- Done on `feature/m1_1-1`.
+- ~~**WebUI i18n completion** (M1.2)~~ -- Done on `feature/m1_1-2`.
+- ~~**WebUI test setup** (M1.3)~~ -- Done on `feature/m1_1-3`. 117 unit tests. Component/integration tests deferred.
+- ~~**CI/CD hardening** (M1.4)~~ -- Done on `feature/m1_1-4`. Pending: verify green after push.
+- ~~**OpenAPI spec + Swagger UI** (M2.1 + M2.2)~~ -- Done on `feature/m2_1-1`. swaggo/swag annotations on all 74 operations (52 paths, 84 definitions). Swagger UI at `/swagger/index.html`. `docs:api` Taskfile task added.
 
-## M1 Remaining
+## M2 Remaining
 
-- M1.1: Validate Docker container build
-- M1.3: Component tests and integration tests (deferred)
-- M1.4: Verify CI runs green after push to origin
+- **M2.3: Project Documentation** -- Expand `docs/` with getting-started, architecture, deployment, configuration, and sources guides. Update `mkdocs.yml` nav.
 
 ## Next milestone
 
-**M2 -- API Documentation** -- Generate OpenAPI/Swagger docs from ldfd endpoints, serve via MkDocs or standalone.
+**M3 -- CLI Client (ldfctl)** -- Implement CLI commands for all API operations.
 
 ## Context for next session
 
-- All M1 tasks (M1.1-M1.4) are merged to main. Main is 11 commits ahead of origin.
-- Push to origin will trigger the new CI workflows for the first time.
+- M2.1 + M2.2 are merged to main. Main is ahead of origin (unpushed).
+- Swagger UI is available at `/swagger/index.html` when ldfd runs.
+- OpenAPI spec regeneration: `task docs:api` (requires `swag` in PATH or `~/go/bin/swag`).
+- Generated spec files: `src/ldfd/docs/` (docs.go, swagger.json, swagger.yaml).
 - Bun is at `/home/flint/.bun/bin/bun` (not in default PATH).
 - All rules, feature specs, and project memory are in `.agent/` (not `.claude/`), per project convention.
