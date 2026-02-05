@@ -80,6 +80,9 @@
   "pagination": {
     "previous": "Previous",
     "next": "Next",
+    "goPrevious": "Go to previous page",
+    "goNext": "Go to next page",
+    "morePages": "More pages",
     "page": "Page",
     "of": "of",
     "showing": "Showing",
@@ -98,6 +101,20 @@
     "minutesAgo": "{{ count }} minute(s) ago",
     "hoursAgo": "{{ count }} hour(s) ago",
     "daysAgo": "{{ count }} day(s) ago"
+  },
+  "downloads": {
+    "title": "Downloads",
+    "startButton": "Start Downloads",
+    "starting": "Starting...",
+    "clear": "Clear",
+    "clearing": "Clearing...",
+    "clearHistory": "Clear download history",
+    "started": "Downloads started",
+    "cancelled": "Download cancelled",
+    "retried": "Download retried",
+    "historyCleared": "Download history cleared",
+    "noDownloads": "No downloads yet",
+    "emptyHint": "Click \"Start Downloads\" to begin fetching components"
   },
   "optional": "optional",
   "yes": "Yes",

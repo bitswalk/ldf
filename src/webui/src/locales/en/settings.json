@@ -109,6 +109,103 @@
       }
     }
   },
+  "serverPanel": {
+    "loading": "Loading server settings...",
+    "requiresRestart": "Requires restart",
+    "resetDatabase": {
+      "title": "Reset Database",
+      "description": "Reset the database to its default state. This will delete all user data."
+    },
+    "server": {
+      "label": "Server",
+      "description": "Core server configuration",
+      "bind": {
+        "label": "Bind Address",
+        "description": "Network address to bind to"
+      },
+      "port": {
+        "label": "Port",
+        "description": "Port for the server to listen on"
+      }
+    },
+    "log": {
+      "label": "Logging",
+      "description": "Logging configuration",
+      "output": {
+        "label": "Output",
+        "description": "Where to send log output",
+        "auto": "Auto",
+        "stdout": "Standard Output",
+        "journald": "Journald"
+      },
+      "level": {
+        "label": "Level",
+        "description": "Minimum log level to display",
+        "debug": "Debug",
+        "info": "Info",
+        "warn": "Warning",
+        "error": "Error"
+      }
+    },
+    "database": {
+      "label": "Database",
+      "description": "Database persistence settings",
+      "path": {
+        "label": "Persist Path",
+        "description": "Path to save database on shutdown"
+      }
+    },
+    "storage": {
+      "label": "Storage",
+      "description": "Artifact storage backend",
+      "local": {
+        "label": "Local Filesystem",
+        "path": {
+          "label": "Path",
+          "description": "Root directory for artifacts"
+        }
+      },
+      "s3": {
+        "label": "S3 Compatible",
+        "provider": {
+          "label": "Provider",
+          "description": "S3-compatible storage provider",
+          "garage": "GarageHQ",
+          "minio": "MinIO",
+          "aws": "Amazon S3",
+          "other": "Other"
+        },
+        "endpoint": {
+          "label": "Endpoint",
+          "description": "Base S3 domain (e.g., s3.example.com)"
+        },
+        "region": {
+          "label": "Region",
+          "description": "AWS/S3 region"
+        },
+        "bucket": {
+          "label": "Bucket",
+          "description": "Bucket name for artifacts"
+        },
+        "accessKey": {
+          "label": "Access Key",
+          "description": "S3 access key ID"
+        },
+        "secretKey": {
+          "label": "Secret Key",
+          "description": "S3 secret access key"
+        }
+      }
+    },
+    "sync": {
+      "label": "Version Sync",
+      "description": "Automatic version discovery settings",
+      "cacheDuration": {
+        "label": "Cache Duration (minutes)",
+        "description": "Minimum time between automatic version syncs for a source (0 to disable caching)"
+      }
+    }
+  },
   "server": {
     "connection": {
       "title": "Connection",

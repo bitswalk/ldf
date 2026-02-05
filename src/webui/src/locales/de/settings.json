@@ -80,6 +80,103 @@
       }
     }
   },
+  "serverPanel": {
+    "loading": "Servereinstellungen werden geladen...",
+    "requiresRestart": "Neustart erforderlich",
+    "resetDatabase": {
+      "title": "Datenbank zurucksetzen",
+      "description": "Die Datenbank auf den Standardzustand zurucksetzen. Alle Benutzerdaten werden geloscht."
+    },
+    "server": {
+      "label": "Server",
+      "description": "Grundlegende Serverkonfiguration",
+      "bind": {
+        "label": "Bindungsadresse",
+        "description": "Netzwerkadresse zum Binden"
+      },
+      "port": {
+        "label": "Port",
+        "description": "Port, auf dem der Server lauscht"
+      }
+    },
+    "log": {
+      "label": "Protokollierung",
+      "description": "Protokollierungskonfiguration",
+      "output": {
+        "label": "Ausgabe",
+        "description": "Ziel der Protokollausgabe",
+        "auto": "Automatisch",
+        "stdout": "Standardausgabe",
+        "journald": "Journald"
+      },
+      "level": {
+        "label": "Stufe",
+        "description": "Minimale Protokollierungsstufe",
+        "debug": "Debug",
+        "info": "Info",
+        "warn": "Warnung",
+        "error": "Fehler"
+      }
+    },
+    "database": {
+      "label": "Datenbank",
+      "description": "Persistenzeinstellungen der Datenbank",
+      "path": {
+        "label": "Persistenzpfad",
+        "description": "Pfad zum Speichern der Datenbank beim Herunterfahren"
+      }
+    },
+    "storage": {
+      "label": "Speicher",
+      "description": "Artefakt-Speicher-Backend",
+      "local": {
+        "label": "Lokales Dateisystem",
+        "path": {
+          "label": "Pfad",
+          "description": "Stammverzeichnis fur Artefakte"
+        }
+      },
+      "s3": {
+        "label": "S3-kompatibel",
+        "provider": {
+          "label": "Anbieter",
+          "description": "S3-kompatibler Speicheranbieter",
+          "garage": "GarageHQ",
+          "minio": "MinIO",
+          "aws": "Amazon S3",
+          "other": "Andere"
+        },
+        "endpoint": {
+          "label": "Endpunkt",
+          "description": "S3-Basisdomane (z.B. s3.beispiel.com)"
+        },
+        "region": {
+          "label": "Region",
+          "description": "AWS/S3-Region"
+        },
+        "bucket": {
+          "label": "Bucket",
+          "description": "Bucket-Name fur Artefakte"
+        },
+        "accessKey": {
+          "label": "Zugriffsschlussel",
+          "description": "S3-Zugriffsschlussel-ID"
+        },
+        "secretKey": {
+          "label": "Geheimer Schlussel",
+          "description": "Geheimer S3-Zugriffsschlussel"
+        }
+      }
+    },
+    "sync": {
+      "label": "Versionssynchronisation",
+      "description": "Einstellungen zur automatischen Versionserkennung",
+      "cacheDuration": {
+        "label": "Cache-Dauer (Minuten)",
+        "description": "Mindestzeit zwischen automatischen Versionssynchronisationen fur eine Quelle (0 zum Deaktivieren des Caches)"
+      }
+    }
+  },
   "server": {
     "connection": {
       "title": "Verbindung",

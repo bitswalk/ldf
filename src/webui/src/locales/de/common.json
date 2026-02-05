@@ -80,6 +80,9 @@
   "pagination": {
     "previous": "Zuruck",
     "next": "Weiter",
+    "goPrevious": "Zur vorherigen Seite",
+    "goNext": "Zur nachsten Seite",
+    "morePages": "Weitere Seiten",
     "page": "Seite",
     "of": "von",
     "showing": "Zeige",
@@ -99,5 +102,21 @@
     "hoursAgo": "Vor {{ count }} Stunde(n)",
     "daysAgo": "Vor {{ count }} Tag(en)"
   },
-  "optional": "optional"
+  "downloads": {
+    "title": "Downloads",
+    "startButton": "Downloads starten",
+    "starting": "Wird gestartet...",
+    "clear": "Loschen",
+    "clearing": "Wird geloscht...",
+    "clearHistory": "Download-Verlauf loschen",
+    "started": "Downloads gestartet",
+    "cancelled": "Download abgebrochen",
+    "retried": "Download erneut versucht",
+    "historyCleared": "Download-Verlauf geloscht",
+    "noDownloads": "Noch keine Downloads",
+    "emptyHint": "Klicken Sie auf \"Downloads starten\", um Komponenten herunterzuladen"
+  },
+  "optional": "optional",
+  "yes": "Ja",
+  "no": "Nein"
 }
