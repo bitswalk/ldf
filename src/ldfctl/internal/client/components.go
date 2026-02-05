@@ -113,3 +113,21 @@ func (c *Client) ResolveVersion(ctx context.Context, id string) (*ResolvedVersio
 	}
 	return &resp, nil
 }
+
+// ListCategories returns all component categories
+func (c *Client) ListCategories(ctx context.Context) (map[string]interface{}, error) {
+	var resp map[string]interface{}
+	if err := c.Get(ctx, "/v1/components/categories", &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// ListComponentsByCategory returns components filtered by category
+func (c *Client) ListComponentsByCategory(ctx context.Context, category string) (*ComponentListResponse, error) {
+	var resp ComponentListResponse
+	if err := c.Get(ctx, fmt.Sprintf("/v1/components/category/%s", category), &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}

@@ -48,12 +48,37 @@ var componentDeleteCmd = &cobra.Command{
 	RunE:  runComponentDelete,
 }
 
+var componentCategoriesCmd = &cobra.Command{
+	Use:   "categories",
+	Short: "List component categories",
+	RunE:  runComponentCategories,
+}
+
+var componentVersionsCmd = &cobra.Command{
+	Use:   "versions <id>",
+	Short: "List versions for a component",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runComponentVersions,
+}
+
+var componentResolveVersionCmd = &cobra.Command{
+	Use:   "resolve-version <id>",
+	Short: "Resolve the best version for a component",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runComponentResolveVersion,
+}
+
 func init() {
 	componentCmd.AddCommand(componentListCmd)
 	componentCmd.AddCommand(componentGetCmd)
 	componentCmd.AddCommand(componentCreateCmd)
 	componentCmd.AddCommand(componentUpdateCmd)
 	componentCmd.AddCommand(componentDeleteCmd)
+	componentCmd.AddCommand(componentCategoriesCmd)
+	componentCmd.AddCommand(componentVersionsCmd)
+	componentCmd.AddCommand(componentResolveVersionCmd)
+
+	componentListCmd.Flags().String("category", "", "Filter by category")
 
 	componentCreateCmd.Flags().String("name", "", "Component name (required)")
 	componentCreateCmd.Flags().String("category", "", "Component category")
@@ -73,7 +98,15 @@ func runComponentList(cmd *cobra.Command, args []string) error {
 	c := getClient()
 	ctx := context.Background()
 
-	resp, err := c.ListComponents(ctx)
+	category, _ := cmd.Flags().GetString("category")
+
+	var resp *client.ComponentListResponse
+	var err error
+	if category != "" {
+		resp, err = c.ListComponentsByCategory(ctx, category)
+	} else {
+		resp, err = c.ListComponents(ctx)
+	}
 	if err != nil {
 		return err
 	}
@@ -217,5 +250,76 @@ func runComponentDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintMessage(fmt.Sprintf("Component %s deleted.", args[0]))
+	return nil
+}
+
+func runComponentCategories(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.ListCategories(ctx)
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	categories, ok := resp["categories"].([]interface{})
+	if !ok {
+		return output.PrintJSON(resp)
+	}
+
+	rows := make([][]string, len(categories))
+	for i, cat := range categories {
+		rows[i] = []string{fmt.Sprintf("%v", cat)}
+	}
+	output.PrintTable([]string{"CATEGORY"}, rows)
+	return nil
+}
+
+func runComponentVersions(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.GetComponentVersions(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	rows := make([][]string, len(resp.Versions))
+	for i, v := range resp.Versions {
+		rows[i] = []string{v}
+	}
+	output.PrintTable([]string{"VERSION"}, rows)
+	return nil
+}
+
+func runComponentResolveVersion(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.ResolveVersion(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	output.PrintTable(
+		[]string{"FIELD", "VALUE"},
+		[][]string{
+			{"Component ID", resp.ComponentID},
+			{"Version", resp.Version},
+			{"Resolved URL", resp.ResolvedURL},
+		},
+	)
 	return nil
 }

@@ -80,6 +80,7 @@ func init() {
 	viper.SetDefault("server.url", "http://localhost:8443")
 
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(healthCmd)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(whoamiCmd)
@@ -89,6 +90,10 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(artifactCmd)
 	rootCmd.AddCommand(settingCmd)
+	rootCmd.AddCommand(roleCmd)
+	rootCmd.AddCommand(forgeCmd)
+	rootCmd.AddCommand(brandingCmd)
+	rootCmd.AddCommand(langpackCmd)
 }
 
 func initConfig() error {

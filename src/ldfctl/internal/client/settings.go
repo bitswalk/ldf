@@ -52,3 +52,8 @@ func (c *Client) UpdateSetting(ctx context.Context, key string, value interface{
 	}
 	return &resp, nil
 }
+
+// ResetDatabase triggers a database reset
+func (c *Client) ResetDatabase(ctx context.Context) error {
+	return c.Post(ctx, "/v1/settings/database/reset", nil, nil)
+}

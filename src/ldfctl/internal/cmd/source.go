@@ -55,6 +55,27 @@ var sourceSyncCmd = &cobra.Command{
 	RunE:  runSourceSync,
 }
 
+var sourceVersionsCmd = &cobra.Command{
+	Use:   "versions <id>",
+	Short: "List discovered versions for a source",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runSourceVersions,
+}
+
+var sourceSyncStatusCmd = &cobra.Command{
+	Use:   "sync-status <id>",
+	Short: "Get sync status for a source",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runSourceSyncStatus,
+}
+
+var sourceClearVersionsCmd = &cobra.Command{
+	Use:   "clear-versions <id>",
+	Short: "Clear cached versions for a source",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runSourceClearVersions,
+}
+
 func init() {
 	sourceCmd.AddCommand(sourceListCmd)
 	sourceCmd.AddCommand(sourceGetCmd)
@@ -62,6 +83,9 @@ func init() {
 	sourceCmd.AddCommand(sourceUpdateCmd)
 	sourceCmd.AddCommand(sourceDeleteCmd)
 	sourceCmd.AddCommand(sourceSyncCmd)
+	sourceCmd.AddCommand(sourceVersionsCmd)
+	sourceCmd.AddCommand(sourceSyncStatusCmd)
+	sourceCmd.AddCommand(sourceClearVersionsCmd)
 
 	sourceCreateCmd.Flags().String("name", "", "Source name (required)")
 	sourceCreateCmd.Flags().String("url", "", "Source URL (required)")
@@ -234,5 +258,73 @@ func runSourceSync(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintMessage(fmt.Sprintf("Sync triggered for source %s: %s", resp.SourceID, resp.Message))
+	return nil
+}
+
+func runSourceVersions(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.ListSourceVersions(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	if resp.Count == 0 {
+		output.PrintMessage("No versions found.")
+		return nil
+	}
+
+	rows := make([][]string, len(resp.Versions))
+	for i, v := range resp.Versions {
+		rows[i] = []string{v.Version, v.Type, v.URL}
+	}
+	output.PrintTable([]string{"VERSION", "TYPE", "URL"}, rows)
+	return nil
+}
+
+func runSourceSyncStatus(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.GetSyncStatus(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	output.PrintTable(
+		[]string{"FIELD", "VALUE"},
+		[][]string{
+			{"Source ID", resp.SourceID},
+			{"Status", resp.Status},
+			{"Last Sync", resp.LastSyncAt},
+			{"Versions", fmt.Sprintf("%d", resp.VersionCount)},
+			{"Error", resp.Error},
+		},
+	)
+	return nil
+}
+
+func runSourceClearVersions(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	if err := c.ClearSourceVersions(ctx, args[0]); err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(map[string]string{"message": "Versions cleared", "source_id": args[0]})
+	}
+
+	output.PrintMessage(fmt.Sprintf("Versions cleared for source %s.", args[0]))
 	return nil
 }
