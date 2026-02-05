@@ -1,6 +1,6 @@
 # Current Priorities
 
-**Active milestone**: M4 -- Build Engine Foundation -- in progress
+**Active milestone**: M4 -- Build Engine Foundation -- complete
 **Feature spec**: @.agent/roadmap/features/m4-build-engine.md
 **Plan**: @~/.claude/plans/modular-orbiting-clock.md
 
@@ -20,26 +20,24 @@
 - ~~**Kernel Compilation** (M4.2)~~ -- Done on `feature/m4_2`. First 4 build pipeline stages: Resolve (parse config, resolve component versions, map to download artifacts), Download check (verify downloads complete, check artifact existence), Prepare (create workspace, extract tar.gz/bz2/xz archives, generate kernel .config, build scripts), Compile (Podman container execution, x86_64/aarch64 cross-compilation, progress tracking). Kernel config generator with 3 modes: defconfig (arch default), options (defconfig + custom CONFIG_ options), custom (user-provided .config from storage). Recommended kernel options based on distribution config (filesystems, init system, security, virtualization, containers). Added KernelConfigMode type and extended KernelConfig struct. 5 new files, 4 modified, 1677 lines added.
 - ~~**Root Filesystem Assembly** (M4.3)~~ -- Done on `feature/m4_3`. Assemble stage orchestrating rootfs construction. Rootfs helpers (rootfs.go): FHS directory skeleton with correct permissions, fstab generation based on filesystem type, os-release/hostname/networking/root account configuration. Init system installers (init.go): SystemdInstaller and OpenRCInstaller with InitInstaller interface for install/configure/enable-service. Bootloader installers (bootloader.go): GRUB2Installer, SystemdBootInstaller, UKIInstaller with BootloaderInstaller interface. Security framework setup (security.go): SELinuxSetup, AppArmorSetup, NoSecuritySetup with SecuritySetup interface. Initramfs generator (initramfs.go): creates minimal initramfs with kernel modules, /init script (mount proc/sys/dev, load fs driver, mount root, switch_root), cpio archive. Stage_assemble.go orchestrates: skeleton (10%), kernel+modules (20%), init (35%), bootloader (50%), fs tools (60%), security (70%), initramfs (80%), system config (90%), validation (100%). 6 new files, 1 modified, 2094 lines added.
 - ~~**Image Generation** (M4.4)~~ -- Done on `feature/m4_4`. Package stage (6th and final build stage). Image generators (image.go): ImageGenerator interface, RawImageGenerator (sparse image, GPT partitioning via sgdisk, loop device setup, ext4/FAT32 formatting, rootfs copy via rsync, bootloader install via chroot), QCOW2ImageGenerator (raw first, qemu-img convert with optional compression), ISOImageGenerator (squashfs, GRUB live boot config, EFI boot image, xorriso hybrid ISO). Package stage: image generation, SHA256 checksum, upload to storage at distributions/{owner}/{dist}/builds/{id}/, checksum file upload. StageContext extended with ArtifactPath/ArtifactChecksum/ArtifactSize for passing artifact info to worker. Worker updates build job with artifact details on completion. Build pipeline complete: resolve → download → prepare → compile → assemble → package. 2 new files, 4 modified, 902 lines added.
+- ~~**WebUI Build Integration** (M4.5)~~ -- Done on `feature/m4_5`. Build API client (services/builds.ts): types for BuildJob/BuildStage/BuildLog, API functions (startBuild, getBuild, listDistributionBuilds, getBuildLogs, cancelBuild, retryBuild, listActiveBuilds), SSE streaming via streamBuildLogs with EventSource, helper functions for status display/formatting. BuildStartDialog component: modal with arch selection (x86_64/aarch64) and format selection (raw/qcow2/iso with descriptions). BuildsList component: recent builds list with status badges, progress, timestamps, click navigation. BuildDetail view: build info card, stages list with progress, real-time log viewer with SSE streaming, stage filtering, cancel/retry actions. DistributionDetail updates: wired build button, added BuildsList card, onNavigateToBuild callback. i18n translations: build.json for en/fr/de locales, i18n service updated to load build translations. 2 new components, 1 new view, 1 new service, 3 locale files, 2 modified files, 1908 lines added.
 
 ## Next tasks
 
-**M4.4 is complete.** Next subtask: **M4.5 -- WebUI Build Integration** (branch `feature/m4_5`).
+**M4 (Build Engine Foundation) is complete!**
 
-M4.5 wires up the WebUI to the build API:
-- Build API client (src/webui/src/api/builds.ts): startBuild, getBuild, listDistributionBuilds, getBuildLogs, streamBuildLogs (SSE), cancelBuild, retryBuild
-- Build start dialog component with arch/format selection
-- Wire up existing disabled build button on distribution detail page
-- Recent builds list on distribution detail
-- Build detail view with stages, progress, action buttons
-- SSE log streaming with auto-scroll and stage filtering
-- i18n translations
+All 5 subtasks done:
+- M4.1: Build Orchestrator (manager, worker, container executor, API, CLI)
+- M4.2: Kernel Compilation (resolve, download, prepare, compile stages)
+- M4.3: Root Filesystem Assembly (assemble stage, installers, initramfs)
+- M4.4: Image Generation (package stage, raw/qcow2/iso generators)
+- M4.5: WebUI Build Integration (dialog, list, detail view, SSE logs)
 
-After M4.5, M4 (Build Engine Foundation) will be complete.
+Next milestone to plan: Review roadmap for M5 or other priorities.
 
 ## Context for next session
 
-- M1, M2, M3 are fully complete and merged to main.
-- M4 (Build Engine Foundation) is in progress: M4.1-M4.4 done, M4.5 remaining.
+- M1, M2, M3, M4 are fully complete and merged to main.
 - Main is ahead of origin (unpushed).
 - Branch naming convention: `feature/m<milestone>_<subtask>` (e.g., M4.2 -> `feature/m4_2`).
 - Build package at `src/ldfd/build/` -- note `.gitignore` was fixed to use `/build/` (top-level only).
