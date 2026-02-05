@@ -116,11 +116,12 @@ func (m *Manager) RegisterDefaultStages() {
 		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
 		NewPrepareStage(m.storage),
 		NewCompileStage(executor),
+		NewAssembleStage(),
 	}
 
 	log.Info("Registered default build stages",
 		"count", len(m.stages),
-		"stages", []string{"resolve", "download", "prepare", "compile"})
+		"stages", []string{"resolve", "download", "prepare", "compile", "assemble"})
 }
 
 // Start begins processing build jobs
