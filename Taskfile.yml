@@ -82,8 +82,7 @@ tasks:
 
   test:
     desc: Run all tests
-    cmds:
-      - go test -v ./src/...
+    deps: [test:srv, test:webui]
 
   test:srv:
     desc: Run server tests
@@ -94,6 +93,12 @@ tasks:
     desc: Run CLI tests
     cmds:
       - go test -v ./src/ldfctl/...
+
+  test:webui:
+    desc: Run WebUI tests
+    dir: "{{.WEBUI_DIR}}"
+    cmds:
+      - bun run test
 
   run:srv:
     desc: Run server (production build)
