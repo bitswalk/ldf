@@ -21,6 +21,10 @@ Monorepo with three main components:
 | Build | Taskfile (go-task), Docker, GitHub Actions |
 | Docs | MkDocs Material |
 
+## Environment Notes
+
+- **Bun** is installed at `/home/flint/.bun/bin/bun` (not in default PATH). Use full path or `export PATH="$HOME/.bun/bin:$PATH"` before running bun commands.
+
 ## Common Commands
 
 ```bash
