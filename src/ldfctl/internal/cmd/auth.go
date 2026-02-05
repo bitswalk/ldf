@@ -85,8 +85,16 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save token: %w", err)
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]interface{}{
+			"message":  "Login successful",
+			"username": resp.User.Name,
+			"role":     resp.User.Role,
+			"server":   serverURL,
+		})
+	case "yaml":
+		return output.PrintYAML(map[string]interface{}{
 			"message":  "Login successful",
 			"username": resp.User.Name,
 			"role":     resp.User.Role,
@@ -109,8 +117,11 @@ func runLogout(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to clear token: %w", err)
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Logged out"})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Logged out"})
 	}
 
 	output.PrintMessage("Logged out successfully.")
@@ -126,8 +137,11 @@ func runWhoami(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("token validation failed: %w", err)
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(

@@ -58,8 +58,11 @@ func runSettingList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	rows := [][]string{}
@@ -80,8 +83,11 @@ func runSettingGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	reboot := "no"
@@ -122,8 +128,11 @@ func runSettingSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Setting %q updated to %v.", key, resp.Value))
@@ -149,8 +158,11 @@ func runSettingResetDB(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Database reset successfully"})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Database reset successfully"})
 	}
 
 	output.PrintMessage("Database reset successfully.")

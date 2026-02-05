@@ -32,10 +32,67 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
+	var base string
 	if e.ErrorCode != "" {
-		return fmt.Sprintf("%s: %s (HTTP %d)", e.ErrorCode, e.Message, e.StatusCode)
+		base = fmt.Sprintf("%s: %s (HTTP %d)", e.ErrorCode, e.Message, e.StatusCode)
+	} else {
+		base = fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.Message)
 	}
-	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.Message)
+
+	switch e.StatusCode {
+	case 401:
+		return base + "\nHint: Authentication required. Run 'ldfctl login' first."
+	case 403:
+		return base + "\nHint: Permission denied. You don't have access to this resource."
+	case 404:
+		return base + "\nHint: Resource not found. Verify the ID or name is correct."
+	case 409:
+		return base + "\nHint: Resource already exists with that name."
+	}
+	return base
+}
+
+// ListOptions holds optional query parameters for list endpoints
+type ListOptions struct {
+	Limit       int
+	Offset      int
+	Status      string
+	VersionType string
+	Category    string
+}
+
+// QueryString builds a URL query string from the options
+func (o *ListOptions) QueryString() string {
+	if o == nil {
+		return ""
+	}
+	params := []string{}
+	if o.Limit > 0 {
+		params = append(params, fmt.Sprintf("limit=%d", o.Limit))
+	}
+	if o.Offset > 0 {
+		params = append(params, fmt.Sprintf("offset=%d", o.Offset))
+	}
+	if o.Status != "" {
+		params = append(params, "status="+o.Status)
+	}
+	if o.VersionType != "" {
+		params = append(params, "version_type="+o.VersionType)
+	}
+	if o.Category != "" {
+		params = append(params, "category="+o.Category)
+	}
+	if len(params) == 0 {
+		return ""
+	}
+	result := "?"
+	for i, p := range params {
+		if i > 0 {
+			result += "&"
+		}
+		result += p
+	}
+	return result
 }
 
 // New creates a new API client

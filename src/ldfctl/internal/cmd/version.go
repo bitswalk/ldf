@@ -32,7 +32,8 @@ func init() {
 func runVersion(cmd *cobra.Command, args []string) error {
 	showServer, _ := cmd.Flags().GetBool("server")
 
-	if getOutputFormat() == "json" {
+	format := getOutputFormat()
+	if format == "json" || format == "yaml" {
 		result := map[string]interface{}{
 			"client": VersionInfo.Map(),
 		}
@@ -47,7 +48,12 @@ func runVersion(cmd *cobra.Command, args []string) error {
 				result["server"] = serverInfo
 			}
 		}
-		return output.PrintJSON(result)
+		switch format {
+		case "json":
+			return output.PrintJSON(result)
+		case "yaml":
+			return output.PrintYAML(result)
+		}
 	}
 
 	fmt.Printf("Client: %s\n", VersionInfo.Full())

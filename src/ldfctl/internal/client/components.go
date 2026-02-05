@@ -56,9 +56,9 @@ type UpdateComponentRequest struct {
 }
 
 // ListComponents returns all components
-func (c *Client) ListComponents(ctx context.Context) (*ComponentListResponse, error) {
+func (c *Client) ListComponents(ctx context.Context, opts *ListOptions) (*ComponentListResponse, error) {
 	var resp ComponentListResponse
-	if err := c.Get(ctx, "/v1/components", &resp); err != nil {
+	if err := c.Get(ctx, "/v1/components"+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -97,9 +97,9 @@ func (c *Client) DeleteComponent(ctx context.Context, id string) error {
 }
 
 // GetComponentVersions returns versions for a component
-func (c *Client) GetComponentVersions(ctx context.Context, id string) (*ComponentVersionsResponse, error) {
+func (c *Client) GetComponentVersions(ctx context.Context, id string, opts *ListOptions) (*ComponentVersionsResponse, error) {
 	var resp ComponentVersionsResponse
-	if err := c.Get(ctx, fmt.Sprintf("/v1/components/%s/versions", id), &resp); err != nil {
+	if err := c.Get(ctx, fmt.Sprintf("/v1/components/%s/versions", id)+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

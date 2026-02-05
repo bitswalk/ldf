@@ -73,9 +73,9 @@ type UpdateSourceRequest struct {
 }
 
 // ListSources returns all sources
-func (c *Client) ListSources(ctx context.Context) (*SourceListResponse, error) {
+func (c *Client) ListSources(ctx context.Context, opts *ListOptions) (*SourceListResponse, error) {
 	var resp SourceListResponse
-	if err := c.Get(ctx, "/v1/sources", &resp); err != nil {
+	if err := c.Get(ctx, "/v1/sources"+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -114,9 +114,9 @@ func (c *Client) DeleteSource(ctx context.Context, id string) error {
 }
 
 // ListSourceVersions returns discovered versions for a source
-func (c *Client) ListSourceVersions(ctx context.Context, id string) (*SourceVersionListResponse, error) {
+func (c *Client) ListSourceVersions(ctx context.Context, id string, opts *ListOptions) (*SourceVersionListResponse, error) {
 	var resp SourceVersionListResponse
-	if err := c.Get(ctx, fmt.Sprintf("/v1/sources/%s/versions", id), &resp); err != nil {
+	if err := c.Get(ctx, fmt.Sprintf("/v1/sources/%s/versions", id)+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

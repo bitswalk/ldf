@@ -55,9 +55,9 @@ type UpdateDistributionRequest struct {
 }
 
 // ListDistributions returns all distributions
-func (c *Client) ListDistributions(ctx context.Context) (*DistributionListResponse, error) {
+func (c *Client) ListDistributions(ctx context.Context, opts *ListOptions) (*DistributionListResponse, error) {
 	var resp DistributionListResponse
-	if err := c.Get(ctx, "/v1/distributions", &resp); err != nil {
+	if err := c.Get(ctx, "/v1/distributions"+opts.QueryString(), &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

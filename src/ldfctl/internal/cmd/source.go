@@ -98,19 +98,35 @@ func init() {
 	sourceUpdateCmd.Flags().String("name", "", "Source name")
 	sourceUpdateCmd.Flags().String("url", "", "Source URL")
 	sourceUpdateCmd.Flags().String("version-filter", "", "Version filter pattern")
+
+	// List flags
+	sourceListCmd.Flags().Int("limit", 0, "Maximum number of results")
+	sourceListCmd.Flags().Int("offset", 0, "Number of results to skip")
+
+	// Versions flags
+	sourceVersionsCmd.Flags().Int("limit", 0, "Maximum number of results")
+	sourceVersionsCmd.Flags().Int("offset", 0, "Number of results to skip")
+	sourceVersionsCmd.Flags().String("version-type", "", "Filter by version type")
 }
 
 func runSourceList(cmd *cobra.Command, args []string) error {
 	c := getClient()
 	ctx := context.Background()
 
-	resp, err := c.ListSources(ctx)
+	opts := &client.ListOptions{}
+	opts.Limit, _ = cmd.Flags().GetInt("limit")
+	opts.Offset, _ = cmd.Flags().GetInt("offset")
+
+	resp, err := c.ListSources(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {
@@ -139,8 +155,11 @@ func runSourceGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	isSystem := "no"
@@ -189,8 +208,11 @@ func runSourceCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Source %q created (ID: %s)", resp.Name, resp.ID))
@@ -220,8 +242,11 @@ func runSourceUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Source %q updated.", resp.Name))
@@ -236,8 +261,11 @@ func runSourceDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Source deleted", "id": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Source deleted", "id": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Source %s deleted.", args[0]))
@@ -253,8 +281,11 @@ func runSourceSync(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintMessage(fmt.Sprintf("Sync triggered for source %s: %s", resp.SourceID, resp.Message))
@@ -265,13 +296,21 @@ func runSourceVersions(cmd *cobra.Command, args []string) error {
 	c := getClient()
 	ctx := context.Background()
 
-	resp, err := c.ListSourceVersions(ctx, args[0])
+	opts := &client.ListOptions{}
+	opts.Limit, _ = cmd.Flags().GetInt("limit")
+	opts.Offset, _ = cmd.Flags().GetInt("offset")
+	opts.VersionType, _ = cmd.Flags().GetString("version-type")
+
+	resp, err := c.ListSourceVersions(ctx, args[0], opts)
 	if err != nil {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	if resp.Count == 0 {
@@ -296,8 +335,11 @@ func runSourceSyncStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(resp)
+	case "yaml":
+		return output.PrintYAML(resp)
 	}
 
 	output.PrintTable(
@@ -321,8 +363,11 @@ func runSourceClearVersions(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if getOutputFormat() == "json" {
+	switch getOutputFormat() {
+	case "json":
 		return output.PrintJSON(map[string]string{"message": "Versions cleared", "source_id": args[0]})
+	case "yaml":
+		return output.PrintYAML(map[string]string{"message": "Versions cleared", "source_id": args[0]})
 	}
 
 	output.PrintMessage(fmt.Sprintf("Versions cleared for source %s.", args[0]))
