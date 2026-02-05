@@ -21,11 +21,11 @@ Harden existing features, fix known issues, bring everything to production quali
 - **Files**: `tools/docker/Dockerfile`
 
 ### 1.2 WebUI i18n Completion
-- [ ] Audit all components and views for hardcoded strings
-- [ ] Complete English locale files in `src/webui/src/locales/en/`
-- [ ] Complete French locale files in `src/webui/src/locales/fr/`
-- [ ] Complete German locale files in `src/webui/src/locales/de/`
-- [ ] Test locale switching end-to-end
+- [x] Audit all components and views for hardcoded strings
+- [x] Complete English locale files in `src/webui/src/locales/en/`
+- [x] Complete French locale files in `src/webui/src/locales/fr/`
+- [x] Complete German locale files in `src/webui/src/locales/de/`
+- [x] Test locale switching end-to-end
 - **Files**: `src/webui/src/locales/`, `src/webui/src/services/i18n.ts`, all views and components
 
 ### 1.3 WebUI Testing
