@@ -19,30 +19,32 @@
 - ~~**Build Orchestrator** (M4.1)~~ -- Done on `feature/m4_1`. Stage-based build pipeline architecture mirroring download manager pattern. Build manager with configurable worker pool (default: 1), dispatcher polling every 10s. Build worker with sequential stage processing. Container executor wrapping Podman CLI. Database migration 012 (build_jobs, build_stages, build_logs tables). BuildJobRepository with full CRUD, status transitions, stage tracking, log management. 8 API endpoints: start build, list builds, get build with stages, query/stream logs (SSE), cancel, retry, list active (admin). CLI commands: build start/get/list/logs/cancel/retry/active with --arch/--format flags. Also fixed: nil interface panic in distribution delete (Go nil-interface pitfall), nil logger panics across 8 packages (initialized with logs.NewDefault()), .gitignore build/ pattern. 14 new files, 10 modified files, 2607 lines added.
 - ~~**Kernel Compilation** (M4.2)~~ -- Done on `feature/m4_2`. First 4 build pipeline stages: Resolve (parse config, resolve component versions, map to download artifacts), Download check (verify downloads complete, check artifact existence), Prepare (create workspace, extract tar.gz/bz2/xz archives, generate kernel .config, build scripts), Compile (Podman container execution, x86_64/aarch64 cross-compilation, progress tracking). Kernel config generator with 3 modes: defconfig (arch default), options (defconfig + custom CONFIG_ options), custom (user-provided .config from storage). Recommended kernel options based on distribution config (filesystems, init system, security, virtualization, containers). Added KernelConfigMode type and extended KernelConfig struct. 5 new files, 4 modified, 1677 lines added.
 - ~~**Root Filesystem Assembly** (M4.3)~~ -- Done on `feature/m4_3`. Assemble stage orchestrating rootfs construction. Rootfs helpers (rootfs.go): FHS directory skeleton with correct permissions, fstab generation based on filesystem type, os-release/hostname/networking/root account configuration. Init system installers (init.go): SystemdInstaller and OpenRCInstaller with InitInstaller interface for install/configure/enable-service. Bootloader installers (bootloader.go): GRUB2Installer, SystemdBootInstaller, UKIInstaller with BootloaderInstaller interface. Security framework setup (security.go): SELinuxSetup, AppArmorSetup, NoSecuritySetup with SecuritySetup interface. Initramfs generator (initramfs.go): creates minimal initramfs with kernel modules, /init script (mount proc/sys/dev, load fs driver, mount root, switch_root), cpio archive. Stage_assemble.go orchestrates: skeleton (10%), kernel+modules (20%), init (35%), bootloader (50%), fs tools (60%), security (70%), initramfs (80%), system config (90%), validation (100%). 6 new files, 1 modified, 2094 lines added.
+- ~~**Image Generation** (M4.4)~~ -- Done on `feature/m4_4`. Package stage (6th and final build stage). Image generators (image.go): ImageGenerator interface, RawImageGenerator (sparse image, GPT partitioning via sgdisk, loop device setup, ext4/FAT32 formatting, rootfs copy via rsync, bootloader install via chroot), QCOW2ImageGenerator (raw first, qemu-img convert with optional compression), ISOImageGenerator (squashfs, GRUB live boot config, EFI boot image, xorriso hybrid ISO). Package stage: image generation, SHA256 checksum, upload to storage at distributions/{owner}/{dist}/builds/{id}/, checksum file upload. StageContext extended with ArtifactPath/ArtifactChecksum/ArtifactSize for passing artifact info to worker. Worker updates build job with artifact details on completion. Build pipeline complete: resolve → download → prepare → compile → assemble → package. 2 new files, 4 modified, 902 lines added.
 
 ## Next tasks
 
-**M4.3 is complete.** Next subtask: **M4.4 -- Image Generation** (branch `feature/m4_4`).
+**M4.4 is complete.** Next subtask: **M4.5 -- WebUI Build Integration** (branch `feature/m4_5`).
 
-M4.4 implements the package stage and image generators:
-- ImageGenerator interface with Generate(ctx, stageContext) (imagePath, error)
-- RawImageGenerator: dd, partition (sgdisk/fdisk), losetup, mkfs, mount, copy rootfs, install bootloader, unmount
-- QCOW2ImageGenerator: generate raw first, qemu-img convert
-- ISOImageGenerator: xorriso/mkisofs with El Torito boot
-- Package stage: create disk image, install bootloader, convert format, generate checksum, upload to storage
-- End-to-end verification
+M4.5 wires up the WebUI to the build API:
+- Build API client (src/webui/src/api/builds.ts): startBuild, getBuild, listDistributionBuilds, getBuildLogs, streamBuildLogs (SSE), cancelBuild, retryBuild
+- Build start dialog component with arch/format selection
+- Wire up existing disabled build button on distribution detail page
+- Recent builds list on distribution detail
+- Build detail view with stages, progress, action buttons
+- SSE log streaming with auto-scroll and stage filtering
+- i18n translations
 
-Remaining after M4.4:
-- M4.5 -- WebUI Build Integration (wire up build button, build dialog, builds list, build detail view, SSE log streaming)
+After M4.5, M4 (Build Engine Foundation) will be complete.
 
 ## Context for next session
 
 - M1, M2, M3 are fully complete and merged to main.
-- M4 (Build Engine Foundation) is in progress: M4.1-M4.3 done, M4.4-M4.5 remaining.
+- M4 (Build Engine Foundation) is in progress: M4.1-M4.4 done, M4.5 remaining.
 - Main is ahead of origin (unpushed).
 - Branch naming convention: `feature/m<milestone>_<subtask>` (e.g., M4.2 -> `feature/m4_2`).
 - Build package at `src/ldfd/build/` -- note `.gitignore` was fixed to use `/build/` (top-level only).
-- Build pipeline stages implemented: resolve, download, prepare, compile, assemble (5 of 6).
+- Build pipeline stages complete: resolve → download → prepare → compile → assemble → package (6 stages).
+- Image generators: RawImageGenerator (GPT, ext4/FAT32, rsync, chroot bootloader), QCOW2ImageGenerator, ISOImageGenerator (squashfs, xorriso).
 - Kernel config modes: defconfig, options (with ConfigOptions map[string]string), custom (CustomConfigPath to storage).
 - Assemble stage uses component installers: InitInstaller (systemd/OpenRC), BootloaderInstaller (GRUB2/systemd-boot/UKI), SecuritySetup (SELinux/AppArmor/none).
 - InitramfsGenerator creates minimal initramfs with /init script and kernel modules.
