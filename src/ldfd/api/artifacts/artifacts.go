@@ -81,6 +81,21 @@ func (h *Handler) checkDistributionAccess(c *gin.Context, distID string) (*struc
 }
 
 // HandleUpload uploads an artifact file for a distribution
+// @Summary      Upload artifact
+// @Description  Uploads an artifact file for a distribution
+// @Tags         Artifacts
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true   "Distribution ID"
+// @Param        file  formData  file    true   "Artifact file"
+// @Param        path  formData  string  false  "Storage path"
+// @Success      201   {object}  ArtifactUploadResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Failure      503   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/artifacts [post]
 func (h *Handler) HandleUpload(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -161,6 +176,17 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 }
 
 // HandleList lists all artifacts for a distribution
+// @Summary      List distribution artifacts
+// @Description  Lists all artifacts for a distribution
+// @Tags         Artifacts
+// @Produce      json
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      200  {object}  ArtifactListResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Failure      503  {object}  common.ErrorResponse
+// @Router       /v1/distributions/{id}/artifacts [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -209,6 +235,17 @@ func (h *Handler) HandleList(c *gin.Context) {
 }
 
 // HandleDownload downloads an artifact file from a distribution
+// @Summary      Download artifact
+// @Description  Downloads an artifact file from a distribution
+// @Tags         Artifacts
+// @Produce      octet-stream
+// @Param        id    path  string  true  "Distribution ID"
+// @Param        path  path  string  true  "Artifact path"
+// @Success      200   {file}    string  "File download"
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      503   {object}  common.ErrorResponse
+// @Router       /v1/distributions/{id}/artifacts/{path} [get]
 func (h *Handler) HandleDownload(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -268,6 +305,18 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 }
 
 // HandleDelete deletes an artifact from a distribution
+// @Summary      Delete artifact
+// @Description  Deletes an artifact from a distribution
+// @Tags         Artifacts
+// @Param        id    path      string  true  "Distribution ID"
+// @Param        path  path      string  true  "Artifact path"
+// @Success      204   "No Content"
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Failure      503   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/artifacts/{path} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -320,6 +369,19 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 }
 
 // HandleGetURL generates a presigned URL for direct artifact download
+// @Summary      Get presigned URL
+// @Description  Generates a presigned URL for direct artifact download
+// @Tags         Artifacts
+// @Produce      json
+// @Param        id      path   string  true   "Distribution ID"
+// @Param        path    path   string  true   "Artifact path"
+// @Param        expiry  query  int     false  "Expiry in seconds"
+// @Success      200     {object}  ArtifactURLResponse
+// @Failure      400     {object}  common.ErrorResponse
+// @Failure      404     {object}  common.ErrorResponse
+// @Failure      500     {object}  common.ErrorResponse
+// @Failure      503     {object}  common.ErrorResponse
+// @Router       /v1/distributions/{id}/artifacts-url/{path} [get]
 func (h *Handler) HandleGetURL(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -394,6 +456,14 @@ func (h *Handler) HandleGetURL(c *gin.Context) {
 }
 
 // HandleListAll lists all artifacts across all accessible distributions
+// @Summary      List all artifacts
+// @Description  Lists all artifacts across all accessible distributions
+// @Tags         Artifacts
+// @Produce      json
+// @Success      200  {object}  GlobalArtifactListResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Failure      503  {object}  common.ErrorResponse
+// @Router       /v1/artifacts [get]
 func (h *Handler) HandleListAll(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
@@ -482,6 +552,12 @@ func (h *Handler) HandleListAll(c *gin.Context) {
 }
 
 // HandleStorageStatus returns the status of the storage backend
+// @Summary      Get storage status
+// @Description  Returns the current status of the storage backend
+// @Tags         Storage
+// @Produce      json
+// @Success      200  {object}  StorageStatusResponse
+// @Router       /v1/storage/status [get]
 func (h *Handler) HandleStorageStatus(c *gin.Context) {
 	if h.storage == nil {
 		c.JSON(http.StatusOK, StorageStatusResponse{

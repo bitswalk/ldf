@@ -23,6 +23,16 @@ func NewHandler(cfg Config) *Handler {
 }
 
 // HandleList returns all available custom language packs
+//
+// @Summary      List language packs
+// @Description  Returns all available custom language packs with metadata
+// @Tags         LanguagePacks
+// @Produce      json
+// @Success      200   {object}  LanguagePackListResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/language-packs [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	packs, err := h.langPackRepo.List()
 	if err != nil {
@@ -44,6 +54,18 @@ func (h *Handler) HandleList(c *gin.Context) {
 }
 
 // HandleGet returns a specific language pack by locale
+//
+// @Summary      Get language pack
+// @Description  Returns a specific language pack including its full translation dictionary
+// @Tags         LanguagePacks
+// @Produce      json
+// @Param        locale  path      string  true  "Locale identifier (e.g. fr, de, ja)"
+// @Success      200     {object}  LanguagePackResponse
+// @Failure      401     {object}  common.ErrorResponse
+// @Failure      404     {object}  common.ErrorResponse
+// @Failure      500     {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/language-packs/{locale} [get]
 func (h *Handler) HandleGet(c *gin.Context) {
 	locale := c.Param("locale")
 
@@ -76,6 +98,21 @@ func (h *Handler) HandleGet(c *gin.Context) {
 }
 
 // HandleUpload handles uploading a new language pack archive
+//
+// @Summary      Upload language pack
+// @Description  Uploads a new language pack from a .tar.xz, .tar.gz, or .xz archive containing meta.json and translation files
+// @Tags         LanguagePacks
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        file  formData  file  true  "Language pack archive (.tar.xz, .tar.gz, or .xz)"
+// @Success      200   {object}  object  "Language pack updated"
+// @Success      201   {object}  object  "Language pack created"
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      403   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/language-packs [post]
 func (h *Handler) HandleUpload(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -197,6 +234,19 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 }
 
 // HandleDelete deletes a language pack by locale
+//
+// @Summary      Delete language pack
+// @Description  Deletes a language pack by its locale identifier
+// @Tags         LanguagePacks
+// @Produce      json
+// @Param        locale  path      string  true  "Locale identifier (e.g. fr, de, ja)"
+// @Success      200     {object}  object
+// @Failure      401     {object}  common.ErrorResponse
+// @Failure      403     {object}  common.ErrorResponse
+// @Failure      404     {object}  common.ErrorResponse
+// @Failure      500     {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/language-packs/{locale} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	locale := c.Param("locale")
 

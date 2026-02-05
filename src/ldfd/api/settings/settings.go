@@ -96,6 +96,18 @@ func findSettingByKey(key string) *SettingMeta {
 }
 
 // HandleGetAll returns all server settings with metadata
+//
+// @Summary      List all settings
+// @Description  Returns all server settings with metadata, grouped by category
+// @Tags         Settings
+// @Accept       json
+// @Produce      json
+// @Param        reveal  query     string  false  "Set to 'true' to reveal sensitive values"
+// @Success      200     {object}  SettingsResponse
+// @Failure      401     {object}  common.ErrorResponse
+// @Failure      403     {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/settings [get]
 func (h *Handler) HandleGetAll(c *gin.Context) {
 	reveal := c.Query("reveal") == "true"
 	settings := make([]SettingDefinition, 0, len(settingsRegistry))
@@ -117,6 +129,20 @@ func (h *Handler) HandleGetAll(c *gin.Context) {
 }
 
 // HandleGet returns a single setting by key
+//
+// @Summary      Get a setting
+// @Description  Returns a single setting by its dotted key path
+// @Tags         Settings
+// @Accept       json
+// @Produce      json
+// @Param        key     path      string  true   "Setting key (e.g. server.port)"
+// @Param        reveal  query     string  false  "Set to 'true' to reveal sensitive values"
+// @Success      200     {object}  SettingDefinition
+// @Failure      401     {object}  common.ErrorResponse
+// @Failure      403     {object}  common.ErrorResponse
+// @Failure      404     {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/settings/{key} [get]
 func (h *Handler) HandleGet(c *gin.Context) {
 	reveal := c.Query("reveal") == "true"
 
@@ -147,6 +173,22 @@ func (h *Handler) HandleGet(c *gin.Context) {
 }
 
 // HandleUpdate updates a setting value
+//
+// @Summary      Update a setting
+// @Description  Updates a single setting value by its dotted key path
+// @Tags         Settings
+// @Accept       json
+// @Produce      json
+// @Param        key   path      string                true  "Setting key (e.g. server.port)"
+// @Param        body  body      UpdateSettingRequest   true  "New value"
+// @Success      200   {object}  UpdateSettingResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      403   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/settings/{key} [put]
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	key := c.Param("key")
 	if wildcard := c.Param("path"); wildcard != "" {
@@ -290,6 +332,20 @@ func (h *Handler) applySettingChange(key string, value interface{}) {
 }
 
 // HandleResetDatabase resets the database to its default state
+//
+// @Summary      Reset database
+// @Description  Resets the database to its default state, deleting all user data. Requires confirmation string.
+// @Tags         Settings
+// @Accept       json
+// @Produce      json
+// @Param        body  body      ResetDatabaseRequest   true  "Confirmation payload"
+// @Success      200   {object}  ResetDatabaseResponse
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      403   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/settings/database/reset [post]
 func (h *Handler) HandleResetDatabase(c *gin.Context) {
 	var req ResetDatabaseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -1,0 +1,3728 @@
+basePath: /
+definitions:
+  artifacts.ArtifactListResponse:
+    properties:
+      artifacts:
+        items:
+          $ref: '#/definitions/storage.ObjectInfo'
+        type: array
+      count:
+        example: 3
+        type: integer
+      distribution_id:
+        example: 1afe09ac3-dddf-48d6-896d-c6321f47c072
+        type: string
+    type: object
+  artifacts.ArtifactURLResponse:
+    properties:
+      expires_at:
+        type: string
+      url:
+        example: https://s3.example.com/bucket/key?signature=...
+        type: string
+      web_url:
+        example: https://ldf.s3.example.com/distribution/49009ac3-dddf-48d6-896d-c6900f47c072/1afe09ac3-dddf-48d6-896d-c6321f47c072/file.iso
+        type: string
+    type: object
+  artifacts.ArtifactUploadResponse:
+    properties:
+      key:
+        example: distribution/49009ac3-dddf-48d6-896d-c6900f47c072/1afe09ac3-dddf-48d6-896d-c6321f47c072/ubuntu-22.04.iso
+        type: string
+      message:
+        example: Artifact uploaded successfully
+        type: string
+      size:
+        example: 2048576000
+        type: integer
+    type: object
+  artifacts.GlobalArtifact:
+    properties:
+      content_type:
+        example: application/octet-stream
+        type: string
+      distribution_id:
+        example: 1afe09ac3-dddf-48d6-896d-c6321f47c072
+        type: string
+      distribution_name:
+        example: ubuntu-server
+        type: string
+      etag:
+        type: string
+      full_key:
+        example: distribution/49009ac3-dddf-48d6-896d-c6900f47c072/1afe09ac3-dddf-48d6-896d-c6321f47c072/boot/vmlinuz
+        type: string
+      key:
+        example: boot/vmlinuz
+        type: string
+      last_modified:
+        type: string
+      owner_id:
+        example: 49009ac3-dddf-48d6-896d-c6900f47c072
+        type: string
+      size:
+        example: 10485760
+        type: integer
+    type: object
+  artifacts.GlobalArtifactListResponse:
+    properties:
+      artifacts:
+        items:
+          $ref: '#/definitions/artifacts.GlobalArtifact'
+        type: array
+      count:
+        example: 10
+        type: integer
+    type: object
+  artifacts.StorageStatusResponse:
+    properties:
+      available:
+        example: true
+        type: boolean
+      location:
+        example: ~/.ldfd/artifacts
+        type: string
+      message:
+        example: Storage is operational
+        type: string
+      type:
+        example: local
+        type: string
+    type: object
+  auth.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  auth.RoleCreateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parent_role_id:
+        type: string
+      permissions:
+        properties:
+          can_admin:
+            type: boolean
+          can_delete:
+            type: boolean
+          can_read:
+            type: boolean
+          can_write:
+            type: boolean
+        type: object
+    required:
+    - name
+    type: object
+  auth.RoleUpdateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        properties:
+          can_admin:
+            type: boolean
+          can_delete:
+            type: boolean
+          can_read:
+            type: boolean
+          can_write:
+            type: boolean
+        type: object
+    type: object
+  base.APIInfo:
+    properties:
+      api_versions:
+        example:
+        - v1
+        items:
+          type: string
+        type: array
+      description:
+        example: LDF Platform API Server
+        type: string
+      endpoints:
+        $ref: '#/definitions/base.APIInfoEndpoints'
+      name:
+        example: ldfd
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  base.APIInfoEndpoints:
+    properties:
+      api_v1:
+        example: /v1/
+        type: string
+      auth:
+        $ref: '#/definitions/base.AuthEndpoints'
+      health:
+        example: /v1/health
+        type: string
+      version:
+        example: /v1/version
+        type: string
+    type: object
+  base.AuthEndpoints:
+    properties:
+      create:
+        example: /auth/create
+        type: string
+      login:
+        example: /auth/login
+        type: string
+      logout:
+        example: /auth/logout
+        type: string
+      refresh:
+        example: /auth/refresh
+        type: string
+      validate:
+        example: /auth/validate
+        type: string
+    type: object
+  base.HealthResponse:
+    properties:
+      status:
+        example: healthy
+        type: string
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  base.VersionResponse:
+    properties:
+      build_date:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      git_commit:
+        example: 4f9f297
+        type: string
+      go_version:
+        example: go1.24
+        type: string
+      release_name:
+        example: Phoenix
+        type: string
+      release_version:
+        example: 1.0.0
+        type: string
+      version:
+        example: Phoenix (2025.12) - v1.0.0-4f9f297
+        type: string
+    type: object
+  branding.BrandingAssetInfo:
+    properties:
+      asset:
+        type: string
+      content_type:
+        type: string
+      exists:
+        type: boolean
+      size:
+        type: integer
+      url:
+        type: string
+    type: object
+  common.ErrorResponse:
+    properties:
+      code:
+        example: 404
+        type: integer
+      error:
+        example: Not found
+        type: string
+      message:
+        example: The requested resource was not found
+        type: string
+    type: object
+  components.ComponentListResponse:
+    properties:
+      components:
+        items:
+          $ref: '#/definitions/db.Component'
+        type: array
+      count:
+        example: 16
+        type: integer
+    type: object
+  components.ComponentVersionsResponse:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+      versions:
+        items:
+          $ref: '#/definitions/db.SourceVersion'
+        type: array
+    type: object
+  components.CreateComponentRequest:
+    properties:
+      artifact_pattern:
+        example: linux-{version}.tar.xz
+        type: string
+      category:
+        example: core
+        type: string
+      default_url_template:
+        example: '{base_url}/linux-{version}.tar.xz'
+        type: string
+      default_version:
+        example: 6.12.1
+        type: string
+      default_version_rule:
+        example: latest-stable
+        type: string
+      description:
+        example: The Linux kernel source code
+        type: string
+      display_name:
+        example: Linux Kernel
+        type: string
+      github_normalized_template:
+        example: '{base_url}/archive/refs/tags/v{version}.tar.gz'
+        type: string
+      is_kernel_module:
+        example: true
+        type: boolean
+      is_optional:
+        example: false
+        type: boolean
+      is_userspace:
+        example: false
+        type: boolean
+      name:
+        example: kernel
+        type: string
+    required:
+    - category
+    - display_name
+    - name
+    type: object
+  components.ResolvedVersionResponse:
+    properties:
+      resolved_version:
+        type: string
+      rule:
+        type: string
+      version:
+        $ref: '#/definitions/db.SourceVersion'
+    type: object
+  components.UpdateComponentRequest:
+    properties:
+      artifact_pattern:
+        example: linux-{version}.tar.xz
+        type: string
+      category:
+        example: core
+        type: string
+      default_url_template:
+        example: '{base_url}/linux-{version}.tar.xz'
+        type: string
+      default_version:
+        example: 6.12.1
+        type: string
+      default_version_rule:
+        example: latest-stable
+        type: string
+      description:
+        example: The Linux kernel source code
+        type: string
+      display_name:
+        example: Linux Kernel
+        type: string
+      github_normalized_template:
+        example: '{base_url}/archive/refs/tags/v{version}.tar.gz'
+        type: string
+      is_kernel_module:
+        example: true
+        type: boolean
+      is_optional:
+        example: false
+        type: boolean
+      is_userspace:
+        example: false
+        type: boolean
+      name:
+        example: kernel
+        type: string
+    type: object
+  db.Component:
+    properties:
+      artifact_pattern:
+        type: string
+      categories:
+        description: All categories (stored as comma-separated in DB)
+        items:
+          type: string
+        type: array
+      category:
+        description: Primary category (first in categories list)
+        type: string
+      created_at:
+        type: string
+      default_url_template:
+        type: string
+      default_version:
+        description: Pinned version or resolved value
+        type: string
+      default_version_rule:
+        allOf:
+        - $ref: '#/definitions/db.VersionRule'
+        description: '"pinned", "latest-stable", "latest-lts"'
+      description:
+        type: string
+      display_name:
+        type: string
+      github_normalized_template:
+        type: string
+      id:
+        type: string
+      is_kernel_module:
+        description: Requires kernel configuration at build time
+        type: boolean
+      is_optional:
+        type: boolean
+      is_system:
+        type: boolean
+      is_userspace:
+        description: Needs to be built as userspace binary
+        type: boolean
+      name:
+        type: string
+      owner_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.CoreConfig:
+    properties:
+      bootloader:
+        type: string
+      bootloader_version:
+        type: string
+      kernel:
+        $ref: '#/definitions/db.KernelConfig'
+      partitioning:
+        $ref: '#/definitions/db.PartitioningConfig'
+    type: object
+  db.DesktopConfig:
+    properties:
+      display_server_version:
+        type: string
+      displayServer:
+        type: string
+      environment:
+        type: string
+      environment_version:
+        type: string
+    type: object
+  db.Distribution:
+    properties:
+      checksum:
+        type: string
+      completed_at:
+        type: string
+      config:
+        $ref: '#/definitions/db.DistributionConfig'
+      created_at:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner_id:
+        type: string
+      size_bytes:
+        type: integer
+      source_url:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/db.DistributionStatus'
+      updated_at:
+        type: string
+      version:
+        type: string
+      visibility:
+        $ref: '#/definitions/db.Visibility'
+    type: object
+  db.DistributionConfig:
+    properties:
+      core:
+        $ref: '#/definitions/db.CoreConfig'
+      runtime:
+        $ref: '#/definitions/db.RuntimeConfig'
+      security:
+        $ref: '#/definitions/db.SecurityConfig'
+      system:
+        $ref: '#/definitions/db.SystemConfig'
+      target:
+        $ref: '#/definitions/db.TargetConfig'
+    type: object
+  db.DistributionLog:
+    properties:
+      created_at:
+        type: string
+      distribution_id:
+        type: string
+      id:
+        type: integer
+      level:
+        type: string
+      message:
+        type: string
+    type: object
+  db.DistributionStatus:
+    enum:
+    - pending
+    - downloading
+    - validating
+    - ready
+    - failed
+    - deleted
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusDownloading
+    - StatusValidating
+    - StatusReady
+    - StatusFailed
+    - StatusDeleted
+  db.DownloadJobStatus:
+    enum:
+    - pending
+    - verifying
+    - downloading
+    - completed
+    - failed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - JobStatusPending
+    - JobStatusVerifying
+    - JobStatusDownloading
+    - JobStatusCompleted
+    - JobStatusFailed
+    - JobStatusCancelled
+  db.FilesystemConfig:
+    properties:
+      hierarchy:
+        type: string
+      type:
+        type: string
+    type: object
+  db.KernelConfig:
+    properties:
+      version:
+        type: string
+    type: object
+  db.LanguagePackMeta:
+    properties:
+      author:
+        type: string
+      created_at:
+        type: string
+      locale:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: string
+    type: object
+  db.PartitioningConfig:
+    properties:
+      mode:
+        type: string
+      type:
+        type: string
+    type: object
+  db.RuntimeConfig:
+    properties:
+      container:
+        type: string
+      container_version:
+        type: string
+      virtualization:
+        type: string
+      virtualization_version:
+        type: string
+    type: object
+  db.SecurityConfig:
+    properties:
+      system:
+        type: string
+      system_userspace:
+        description: Include userspace tools for hybrid security components (SELinux,
+          AppArmor)
+        type: boolean
+      system_version:
+        type: string
+    type: object
+  db.SourceVersion:
+    properties:
+      checksum:
+        type: string
+      checksum_type:
+        type: string
+      discovered_at:
+        type: string
+      download_url:
+        type: string
+      file_size:
+        type: integer
+      id:
+        type: string
+      is_stable:
+        description: Kept for backwards compatibility
+        type: boolean
+      release_date:
+        type: string
+      source_id:
+        type: string
+      source_type:
+        description: '"default" or "user"'
+        type: string
+      version:
+        type: string
+      version_type:
+        allOf:
+        - $ref: '#/definitions/db.VersionType'
+        description: '"mainline", "stable", "longterm", "linux-next"'
+    type: object
+  db.SystemConfig:
+    properties:
+      filesystem:
+        $ref: '#/definitions/db.FilesystemConfig'
+      filesystem_userspace:
+        description: Include userspace tools for hybrid filesystem components
+        type: boolean
+      filesystem_version:
+        type: string
+      init:
+        type: string
+      init_version:
+        type: string
+      package_manager_version:
+        type: string
+      packageManager:
+        type: string
+    type: object
+  db.TargetConfig:
+    properties:
+      desktop:
+        $ref: '#/definitions/db.DesktopConfig'
+      type:
+        type: string
+    type: object
+  db.UpstreamSource:
+    properties:
+      component_ids:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      default_version:
+        description: Default/recommended version for this source
+        type: string
+      enabled:
+        type: boolean
+      forge_type:
+        type: string
+      id:
+        type: string
+      is_system:
+        type: boolean
+      name:
+        type: string
+      owner_id:
+        type: string
+      priority:
+        type: integer
+      retrieval_method:
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+      url_template:
+        type: string
+      version_filter:
+        type: string
+    type: object
+  db.VersionRule:
+    enum:
+    - pinned
+    - latest-stable
+    - latest-lts
+    type: string
+    x-enum-comments:
+      VersionRuleLatestLTS: Resolve to newest longterm/LTS version
+      VersionRuleLatestStable: Resolve to newest stable version
+      VersionRulePinned: Use exact default_version value
+    x-enum-descriptions:
+    - Use exact default_version value
+    - Resolve to newest stable version
+    - Resolve to newest longterm/LTS version
+    x-enum-varnames:
+    - VersionRulePinned
+    - VersionRuleLatestStable
+    - VersionRuleLatestLTS
+  db.VersionSyncJob:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: string
+      source_id:
+        type: string
+      source_type:
+        description: '"default" or "user"'
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/db.VersionSyncStatus'
+      versions_found:
+        type: integer
+      versions_new:
+        type: integer
+    type: object
+  db.VersionSyncStatus:
+    enum:
+    - pending
+    - running
+    - completed
+    - failed
+    type: string
+    x-enum-varnames:
+    - SyncStatusPending
+    - SyncStatusRunning
+    - SyncStatusCompleted
+    - SyncStatusFailed
+  db.VersionType:
+    enum:
+    - mainline
+    - stable
+    - longterm
+    - linux-next
+    type: string
+    x-enum-varnames:
+    - VersionTypeMainline
+    - VersionTypeStable
+    - VersionTypeLongterm
+    - VersionTypeLinuxNext
+  db.Visibility:
+    enum:
+    - public
+    - private
+    type: string
+    x-enum-varnames:
+    - VisibilityPublic
+    - VisibilityPrivate
+  distributions.CreateDistributionRequest:
+    properties:
+      checksum:
+        example: sha256:a4acfda10b18da50e2ec50ccaf860d7f20b389df8765611142305c0e911d16fd
+        type: string
+      config:
+        $ref: '#/definitions/db.DistributionConfig'
+      name:
+        example: ubuntu-22.04
+        type: string
+      source_url:
+        example: https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso
+        type: string
+      version:
+        example: 22.04.3
+        type: string
+      visibility:
+        example: private
+        type: string
+    required:
+    - name
+    type: object
+  distributions.DeletionPreviewCount:
+    properties:
+      count:
+        type: integer
+      items:
+        items:
+          type: string
+        type: array
+    type: object
+  distributions.DeletionPreviewResponse:
+    properties:
+      artifacts:
+        $ref: '#/definitions/distributions.DeletionPreviewCount'
+      distribution:
+        $ref: '#/definitions/db.Distribution'
+      download_jobs:
+        $ref: '#/definitions/distributions.DeletionPreviewCount'
+      total_size_bytes:
+        type: integer
+      user_sources:
+        $ref: '#/definitions/distributions.DeletionPreviewSources'
+    type: object
+  distributions.DeletionPreviewSources:
+    properties:
+      count:
+        type: integer
+      sources:
+        items:
+          $ref: '#/definitions/distributions.DeletionSourceSummary'
+        type: array
+    type: object
+  distributions.DeletionSourceSummary:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  distributions.DistributionListResponse:
+    properties:
+      count:
+        example: 5
+        type: integer
+      distributions:
+        items:
+          $ref: '#/definitions/db.Distribution'
+        type: array
+    type: object
+  distributions.DistributionStatsResponse:
+    properties:
+      stats:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total:
+        example: 10
+        type: integer
+    type: object
+  distributions.UpdateDistributionRequest:
+    properties:
+      checksum:
+        example: sha256:a4acfda10b18da50e2ec50ccaf860d7f20b389df8765611142305c0e911d16fd
+        type: string
+      config:
+        $ref: '#/definitions/db.DistributionConfig'
+      name:
+        example: ubuntu-22.04
+        type: string
+      size_bytes:
+        example: 2048576000
+        type: integer
+      source_url:
+        example: https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso
+        type: string
+      status:
+        example: ready
+        type: string
+      version:
+        example: 22.04.3
+        type: string
+      visibility:
+        example: public
+        type: string
+    type: object
+  downloads.DownloadJobResponse:
+    properties:
+      artifact_path:
+        type: string
+      checksum:
+        type: string
+      completed_at:
+        type: string
+      component_id:
+        type: string
+      component_ids:
+        description: All components sharing this artifact
+        items:
+          type: string
+        type: array
+      component_name:
+        type: string
+      created_at:
+        type: string
+      distribution_id:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: string
+      max_retries:
+        type: integer
+      owner_id:
+        type: string
+      progress:
+        type: number
+      progress_bytes:
+        type: integer
+      resolved_url:
+        type: string
+      retrieval_method:
+        description: '"release" or "git"'
+        type: string
+      retry_count:
+        type: integer
+      source_id:
+        type: string
+      source_name:
+        description: Source name for artifact path
+        type: string
+      source_type:
+        type: string
+      started_at:
+        type: string
+      status:
+        $ref: '#/definitions/db.DownloadJobStatus'
+      total_bytes:
+        type: integer
+      version:
+        type: string
+    type: object
+  downloads.DownloadJobsListResponse:
+    properties:
+      count:
+        type: integer
+      jobs:
+        items:
+          $ref: '#/definitions/downloads.DownloadJobResponse'
+        type: array
+    type: object
+  downloads.StartDownloadsRequest:
+    properties:
+      components:
+        items:
+          type: string
+        type: array
+    type: object
+  downloads.StartDownloadsResponse:
+    properties:
+      count:
+        type: integer
+      jobs:
+        items:
+          $ref: '#/definitions/downloads.DownloadJobResponse'
+        type: array
+    type: object
+  forge.CommonFiltersResponse:
+    properties:
+      filters:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  forge.DetectRequest:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  forge.DetectResponse:
+    properties:
+      defaults:
+        $ref: '#/definitions/forge.ForgeDefaults'
+      forge_type:
+        $ref: '#/definitions/forge.ForgeType'
+      forge_types:
+        items:
+          $ref: '#/definitions/forge.ForgeTypeInfo'
+        type: array
+      repo_info:
+        $ref: '#/definitions/forge.RepoInfo'
+    type: object
+  forge.ForgeDefaults:
+    properties:
+      filter_source:
+        description: '"upstream" or "default"'
+        type: string
+      url_template:
+        type: string
+      version_filter:
+        type: string
+    type: object
+  forge.ForgeType:
+    enum:
+    - github
+    - gitlab
+    - gitea
+    - codeberg
+    - forgejo
+    - generic
+    type: string
+    x-enum-varnames:
+    - ForgeTypeGitHub
+    - ForgeTypeGitLab
+    - ForgeTypeGitea
+    - ForgeTypeCodeberg
+    - ForgeTypeForgejo
+    - ForgeTypeGeneric
+  forge.ForgeTypeInfo:
+    properties:
+      description:
+        type: string
+      display_name:
+        type: string
+      type:
+        $ref: '#/definitions/forge.ForgeType'
+    type: object
+  forge.PreviewFilterRequest:
+    properties:
+      forge_type:
+        type: string
+      url:
+        type: string
+      version_filter:
+        type: string
+    required:
+    - url
+    type: object
+  forge.PreviewFilterResponse:
+    properties:
+      applied_filter:
+        type: string
+      excluded_versions:
+        type: integer
+      filter_source:
+        description: '"custom", "upstream", or "default"'
+        type: string
+      included_versions:
+        type: integer
+      total_versions:
+        type: integer
+      versions:
+        items:
+          $ref: '#/definitions/forge.VersionPreview'
+        type: array
+    type: object
+  forge.RepoInfo:
+    properties:
+      api_base_url:
+        type: string
+      base_url:
+        type: string
+      owner:
+        type: string
+      repo:
+        type: string
+    type: object
+  forge.VersionPreview:
+    properties:
+      included:
+        type: boolean
+      is_prerelease:
+        type: boolean
+      reason:
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_bitswalk_ldf_src_ldfd_api_auth.AuthRequest:
+    properties:
+      auth:
+        properties:
+          identity:
+            properties:
+              methods:
+                items:
+                  type: string
+                type: array
+              password:
+                properties:
+                  user:
+                    properties:
+                      email:
+                        type: string
+                      name:
+                        type: string
+                      password:
+                        type: string
+                      role:
+                        type: string
+                    type: object
+                type: object
+            type: object
+        type: object
+    type: object
+  langpacks.LanguagePackListResponse:
+    properties:
+      language_packs:
+        items:
+          $ref: '#/definitions/db.LanguagePackMeta'
+        type: array
+    type: object
+  langpacks.LanguagePackResponse:
+    properties:
+      author:
+        type: string
+      dictionary:
+        items:
+          type: integer
+        type: array
+      locale:
+        type: string
+      name:
+        type: string
+      version:
+        type: string
+    type: object
+  settings.ResetDatabaseRequest:
+    properties:
+      confirmation:
+        type: string
+    required:
+    - confirmation
+    type: object
+  settings.ResetDatabaseResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  settings.SettingDefinition:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      key:
+        type: string
+      rebootRequired:
+        type: boolean
+      type:
+        type: string
+      value: {}
+    type: object
+  settings.SettingsResponse:
+    properties:
+      settings:
+        items:
+          $ref: '#/definitions/settings.SettingDefinition'
+        type: array
+    type: object
+  settings.UpdateSettingRequest:
+    properties:
+      value: {}
+    type: object
+  settings.UpdateSettingResponse:
+    properties:
+      key:
+        type: string
+      message:
+        type: string
+      rebootRequired:
+        type: boolean
+      value: {}
+    type: object
+  sources.ClearVersionsResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  sources.CreateSourceRequest:
+    properties:
+      component_ids:
+        example:
+        - '["uuid-of-kernel-component"]'
+        items:
+          type: string
+        type: array
+      enabled:
+        example: true
+        type: boolean
+      forge_type:
+        example: github
+        type: string
+      is_system:
+        example: false
+        type: boolean
+      name:
+        example: Ubuntu Releases
+        type: string
+      priority:
+        example: 10
+        type: integer
+      retrieval_method:
+        example: release
+        type: string
+      url:
+        example: https://releases.ubuntu.com
+        type: string
+      url_template:
+        example: '{base_url}/archive/refs/tags/v{version}.tar.gz'
+        type: string
+      version_filter:
+        example: '!*-rc*,!*alpha*,!*beta*'
+        type: string
+    required:
+    - name
+    - url
+    type: object
+  sources.SourceListResponse:
+    properties:
+      count:
+        example: 5
+        type: integer
+      sources:
+        items:
+          $ref: '#/definitions/db.UpstreamSource'
+        type: array
+    type: object
+  sources.SourceVersionListResponse:
+    properties:
+      count:
+        type: integer
+      sync_job:
+        $ref: '#/definitions/db.VersionSyncJob'
+      total:
+        type: integer
+      versions:
+        items:
+          $ref: '#/definitions/db.SourceVersion'
+        type: array
+    type: object
+  sources.SyncStatusResponse:
+    properties:
+      job:
+        $ref: '#/definitions/db.VersionSyncJob'
+    type: object
+  sources.SyncTriggerResponse:
+    properties:
+      job_id:
+        type: string
+      message:
+        type: string
+    type: object
+  sources.UpdateSourceRequest:
+    properties:
+      component_ids:
+        example:
+        - '["uuid-of-kernel-component"]'
+        items:
+          type: string
+        type: array
+      default_version:
+        example: 1.2.3
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      forge_type:
+        example: github
+        type: string
+      name:
+        example: Ubuntu Releases
+        type: string
+      priority:
+        example: 10
+        type: integer
+      retrieval_method:
+        example: release
+        type: string
+      url:
+        example: https://releases.ubuntu.com
+        type: string
+      url_template:
+        example: '{base_url}/archive/refs/tags/v{version}.tar.gz'
+        type: string
+      version_filter:
+        example: '!*-rc*,!*alpha*,!*beta*'
+        type: string
+    type: object
+  sources.VersionTypesResponse:
+    properties:
+      types:
+        items:
+          type: string
+        type: array
+    type: object
+  storage.ObjectInfo:
+    properties:
+      content_type:
+        type: string
+      etag:
+        type: string
+      key:
+        type: string
+      last_modified:
+        type: string
+      size:
+        type: integer
+    type: object
+host: localhost:8443
+info:
+  contact: {}
+  description: Linux Distribution Factory REST API - Build, manage, and distribute
+    custom Linux distributions.
+  title: LDF API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Returns API endpoints and general server information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/base.APIInfo'
+      summary: Get API discovery information
+      tags:
+      - Base
+  /auth/create:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user with username, password, and email. Returns
+        JWT tokens.
+      parameters:
+      - description: Authentication request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bitswalk_ldf_src_ldfd_api_auth.AuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User info with JWT tokens
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Create a new user account
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with username and password. Returns JWT tokens.
+      parameters:
+      - description: Authentication request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bitswalk_ldf_src_ldfd_api_auth.AuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User info with JWT tokens
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Authenticate a user
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Revokes the current JWT token, effectively logging the user out.
+      produces:
+      - application/json
+      responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "498":
+          description: Token revoked successfully
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout and revoke token
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refreshes an expired access token using a valid refresh token.
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New JWT tokens with user info
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/validate:
+    get:
+      description: Validates the current access token and returns the associated user
+        information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token validation result with user info
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Validate access token
+      tags:
+      - Auth
+  /v1/artifacts:
+    get:
+      description: Lists all artifacts across all accessible distributions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifacts.GlobalArtifactListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List all artifacts
+      tags:
+      - Artifacts
+  /v1/branding/{asset}:
+    delete:
+      description: Deletes a branding asset (logo or favicon)
+      parameters:
+      - description: Asset type
+        enum:
+        - logo
+        - favicon
+        in: path
+        name: asset
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete branding asset
+      tags:
+      - Branding
+    get:
+      description: Retrieves a branding asset image (logo or favicon) with appropriate
+        content type
+      parameters:
+      - description: Asset type
+        enum:
+        - logo
+        - favicon
+        in: path
+        name: asset
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/svg+xml
+      - image/x-icon
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get branding asset
+      tags:
+      - Branding
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a branding asset image. Replaces existing asset if one
+        exists. Accepts PNG, JPEG, WebP, SVG, and ICO formats.
+      parameters:
+      - description: Asset type
+        enum:
+        - logo
+        - favicon
+        in: path
+        name: asset
+        required: true
+        type: string
+      - description: Image file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload branding asset
+      tags:
+      - Branding
+  /v1/branding/{asset}/info:
+    get:
+      description: Returns metadata about a branding asset including URL, content
+        type, and size
+      parameters:
+      - description: Asset type
+        enum:
+        - logo
+        - favicon
+        in: path
+        name: asset
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/branding.BrandingAssetInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get branding asset info
+      tags:
+      - Branding
+  /v1/components:
+    get:
+      description: Returns all registered components
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List components
+      tags:
+      - Components
+    post:
+      consumes:
+      - application/json
+      description: Creates a new component (root only)
+      parameters:
+      - description: Component creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/components.CreateComponentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/db.Component'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a component
+      tags:
+      - Components
+  /v1/components/{id}:
+    delete:
+      description: Deletes a component (root only)
+      parameters:
+      - description: Component ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a component
+      tags:
+      - Components
+    get:
+      description: Returns a single component by ID
+      parameters:
+      - description: Component ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.Component'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get a component
+      tags:
+      - Components
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing component (root only)
+      parameters:
+      - description: Component ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Component update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/components.UpdateComponentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.Component'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a component
+      tags:
+      - Components
+  /v1/components/{id}/resolve-version:
+    get:
+      description: Resolves a version rule (pinned, latest-stable, latest-lts) to
+        an actual version
+      parameters:
+      - description: Component ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Version rule (pinned, latest-stable, latest-lts)
+        in: query
+        name: rule
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ResolvedVersionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Resolve version rule
+      tags:
+      - Components
+  /v1/components/{id}/versions:
+    get:
+      description: Returns paginated versions for a component
+      parameters:
+      - description: Component ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by version type
+        in: query
+        name: version_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentVersionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get component versions
+      tags:
+      - Components
+  /v1/components/categories:
+    get:
+      description: Returns all distinct component categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Categories list with count
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List component categories
+      tags:
+      - Components
+  /v1/components/category/{category}:
+    get:
+      description: Returns components in a specific category
+      parameters:
+      - description: Category name
+        in: path
+        name: category
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List components by category
+      tags:
+      - Components
+  /v1/components/hybrid:
+    get:
+      description: Returns all components that are both kernel modules and userspace
+        tools
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List hybrid components
+      tags:
+      - Components
+  /v1/components/kernel-modules:
+    get:
+      description: Returns all components that are kernel modules
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List kernel module components
+      tags:
+      - Components
+  /v1/components/userspace:
+    get:
+      description: Returns all components that are userspace tools
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/components.ComponentListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List userspace components
+      tags:
+      - Components
+  /v1/distributions:
+    get:
+      description: Returns distributions accessible to the current user, optionally
+        filtered by status
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/distributions.DistributionListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List distributions
+      tags:
+      - Distributions
+    post:
+      consumes:
+      - application/json
+      description: Creates a new distribution record
+      parameters:
+      - description: Distribution creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/distributions.CreateDistributionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/db.Distribution'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a distribution
+      tags:
+      - Distributions
+  /v1/distributions/{id}:
+    delete:
+      description: Deletes a distribution and all related resources (cascading delete)
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a distribution
+      tags:
+      - Distributions
+    get:
+      description: Returns a distribution by ID if the user has access
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.Distribution'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get a distribution
+      tags:
+      - Distributions
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing distribution (owner or admin only)
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Distribution update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/distributions.UpdateDistributionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.Distribution'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a distribution
+      tags:
+      - Distributions
+  /v1/distributions/{id}/artifacts:
+    get:
+      description: Lists all artifacts for a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifacts.ArtifactListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List distribution artifacts
+      tags:
+      - Artifacts
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an artifact file for a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Artifact file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Storage path
+        in: formData
+        name: path
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/artifacts.ArtifactUploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload artifact
+      tags:
+      - Artifacts
+  /v1/distributions/{id}/artifacts-url/{path}:
+    get:
+      description: Generates a presigned URL for direct artifact download
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Artifact path
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: Expiry in seconds
+        in: query
+        name: expiry
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifacts.ArtifactURLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get presigned URL
+      tags:
+      - Artifacts
+  /v1/distributions/{id}/artifacts/{path}:
+    delete:
+      description: Deletes an artifact from a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Artifact path
+        in: path
+        name: path
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete artifact
+      tags:
+      - Artifacts
+    get:
+      description: Downloads an artifact file from a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Artifact path
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: File download
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Download artifact
+      tags:
+      - Artifacts
+  /v1/distributions/{id}/deletion-preview:
+    get:
+      description: Returns a preview of what will be deleted when a distribution is
+        removed
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/distributions.DeletionPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview distribution deletion
+      tags:
+      - Distributions
+  /v1/distributions/{id}/downloads:
+    delete:
+      description: Deletes all download jobs for a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Flush distribution downloads
+      tags:
+      - Downloads
+    get:
+      description: Lists download jobs for a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/downloads.DownloadJobsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List distribution downloads
+      tags:
+      - Downloads
+    post:
+      consumes:
+      - application/json
+      description: Starts downloads for all or selected components of a distribution
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Download request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/downloads.StartDownloadsRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/downloads.StartDownloadsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start distribution downloads
+      tags:
+      - Downloads
+  /v1/distributions/{id}/logs:
+    get:
+      description: Returns logs for a distribution if the user has access
+      parameters:
+      - description: Distribution ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Maximum number of logs to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.DistributionLog'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get distribution logs
+      tags:
+      - Distributions
+  /v1/distributions/stats:
+    get:
+      description: Returns statistics about distributions grouped by status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/distributions.DistributionStatsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get distribution statistics
+      tags:
+      - Distributions
+  /v1/downloads/{jobId}:
+    get:
+      description: Returns a single download job by ID
+      parameters:
+      - description: Download job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/downloads.DownloadJobResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get download job
+      tags:
+      - Downloads
+  /v1/downloads/{jobId}/cancel:
+    post:
+      description: Cancels an active download job
+      parameters:
+      - description: Download job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel download
+      tags:
+      - Downloads
+  /v1/downloads/{jobId}/retry:
+    post:
+      description: Retries a failed download job
+      parameters:
+      - description: Download job ID
+        in: path
+        name: jobId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/downloads.DownloadJobResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retry download
+      tags:
+      - Downloads
+  /v1/downloads/active:
+    get:
+      description: Lists all active downloads (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/downloads.DownloadJobsListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List active downloads
+      tags:
+      - Downloads
+  /v1/forge/common-filters:
+    get:
+      description: Returns common version filter presets that can be applied to sources
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/forge.CommonFiltersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List common filters
+      tags:
+      - Forge
+  /v1/forge/detect:
+    post:
+      consumes:
+      - application/json
+      description: Detects the forge type for a given URL and returns repository info,
+        defaults, and available forge types
+      parameters:
+      - description: URL to detect
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/forge.DetectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/forge.DetectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Detect forge type
+      tags:
+      - Forge
+  /v1/forge/preview-filter:
+    post:
+      consumes:
+      - application/json
+      description: Fetches versions from upstream and previews which ones match the
+        given filter expression
+      parameters:
+      - description: Filter preview request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/forge.PreviewFilterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/forge.PreviewFilterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview version filter
+      tags:
+      - Forge
+  /v1/forge/types:
+    get:
+      description: Returns all available forge types with their metadata
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List forge types
+      tags:
+      - Forge
+  /v1/health:
+    get:
+      description: Returns the current health status of the server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/base.HealthResponse'
+      summary: Get health status
+      tags:
+      - Base
+  /v1/language-packs:
+    get:
+      description: Returns all available custom language packs with metadata
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/langpacks.LanguagePackListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List language packs
+      tags:
+      - LanguagePacks
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a new language pack from a .tar.xz, .tar.gz, or .xz archive
+        containing meta.json and translation files
+      parameters:
+      - description: Language pack archive (.tar.xz, .tar.gz, or .xz)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Language pack updated
+          schema:
+            type: object
+        "201":
+          description: Language pack created
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload language pack
+      tags:
+      - LanguagePacks
+  /v1/language-packs/{locale}:
+    delete:
+      description: Deletes a language pack by its locale identifier
+      parameters:
+      - description: Locale identifier (e.g. fr, de, ja)
+        in: path
+        name: locale
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete language pack
+      tags:
+      - LanguagePacks
+    get:
+      description: Returns a specific language pack including its full translation
+        dictionary
+      parameters:
+      - description: Locale identifier (e.g. fr, de, ja)
+        in: path
+        name: locale
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/langpacks.LanguagePackResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get language pack
+      tags:
+      - LanguagePacks
+  /v1/roles:
+    get:
+      description: Returns all available user roles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of roles
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: List all roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Creates a new custom role with the specified permissions.
+      parameters:
+      - description: Role creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RoleCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created role
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - Roles
+  /v1/roles/{id}:
+    delete:
+      description: Deletes a custom role identified by its ID.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion confirmation
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a role
+      tags:
+      - Roles
+    get:
+      description: Returns a specific role identified by its ID.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role details
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      summary: Get a role by ID
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing custom role identified by its ID.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RoleUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated role
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a role
+      tags:
+      - Roles
+  /v1/settings:
+    get:
+      consumes:
+      - application/json
+      description: Returns all server settings with metadata, grouped by category
+      parameters:
+      - description: Set to 'true' to reveal sensitive values
+        in: query
+        name: reveal
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/settings.SettingsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all settings
+      tags:
+      - Settings
+  /v1/settings/{key}:
+    get:
+      consumes:
+      - application/json
+      description: Returns a single setting by its dotted key path
+      parameters:
+      - description: Setting key (e.g. server.port)
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Set to 'true' to reveal sensitive values
+        in: query
+        name: reveal
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/settings.SettingDefinition'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a setting
+      tags:
+      - Settings
+    put:
+      consumes:
+      - application/json
+      description: Updates a single setting value by its dotted key path
+      parameters:
+      - description: Setting key (e.g. server.port)
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: New value
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/settings.UpdateSettingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/settings.UpdateSettingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a setting
+      tags:
+      - Settings
+  /v1/settings/database/reset:
+    post:
+      consumes:
+      - application/json
+      description: Resets the database to its default state, deleting all user data.
+        Requires confirmation string.
+      parameters:
+      - description: Confirmation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/settings.ResetDatabaseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/settings.ResetDatabaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reset database
+      tags:
+      - Settings
+  /v1/sources:
+    get:
+      description: Returns merged sources (system + user) for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SourceListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List sources
+      tags:
+      - Sources
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user source, or a system source if admin and is_system=true
+      parameters:
+      - description: Source creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sources.CreateSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/db.UpstreamSource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a source
+      tags:
+      - Sources
+  /v1/sources/{id}:
+    delete:
+      description: Deletes a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a source
+      tags:
+      - Sources
+    get:
+      description: Returns a single source by ID
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.UpstreamSource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a source
+      tags:
+      - Sources
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Source update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sources.UpdateSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.UpstreamSource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a source
+      tags:
+      - Sources
+  /v1/sources/{id}/sync:
+    post:
+      description: Triggers a version sync for a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/sources.SyncTriggerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Trigger version sync
+      tags:
+      - Sources
+  /v1/sources/{id}/sync/status:
+    get:
+      description: Returns sync status for a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SyncStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get sync status
+      tags:
+      - Sources
+  /v1/sources/{id}/versions:
+    delete:
+      description: Clears all cached versions for a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.ClearVersionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Clear version cache
+      tags:
+      - Sources
+    get:
+      description: Lists cached versions for a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by version type
+        in: query
+        name: version_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SourceVersionListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List source versions
+      tags:
+      - Sources
+  /v1/sources/{id}/versions/types:
+    get:
+      description: Returns the distinct version types for a source
+      parameters:
+      - description: Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.VersionTypesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get version types
+      tags:
+      - Sources
+  /v1/sources/component/{componentId}:
+    get:
+      description: Returns merged sources for a specific component
+      parameters:
+      - description: Component ID
+        in: path
+        name: componentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/sources.SourceListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List sources by component
+      tags:
+      - Sources
+  /v1/storage/status:
+    get:
+      description: Returns the current status of the storage backend
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/artifacts.StorageStatusResponse'
+      summary: Get storage status
+      tags:
+      - Storage
+  /v1/version:
+    get:
+      description: Returns version and build information for the server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/base.VersionResponse'
+      summary: Get version information
+      tags:
+      - Base
+schemes:
+- https
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token authentication. Prefix the token with "Bearer ".
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

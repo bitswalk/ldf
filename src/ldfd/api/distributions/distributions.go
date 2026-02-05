@@ -29,6 +29,14 @@ func NewHandler(cfg Config) *Handler {
 }
 
 // HandleList returns a list of distributions accessible to the current user
+// @Summary      List distributions
+// @Description  Returns distributions accessible to the current user, optionally filtered by status
+// @Tags         Distributions
+// @Produce      json
+// @Param        status  query     string  false  "Filter by status"
+// @Success      200     {object}  DistributionListResponse
+// @Failure      500     {object}  common.ErrorResponse
+// @Router       /v1/distributions [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	var statusFilter *db.DistributionStatus
 	if statusParam := c.Query("status"); statusParam != "" {
@@ -68,6 +76,19 @@ func (h *Handler) HandleList(c *gin.Context) {
 }
 
 // HandleCreate creates a new distribution record
+// @Summary      Create a distribution
+// @Description  Creates a new distribution record
+// @Tags         Distributions
+// @Accept       json
+// @Produce      json
+// @Param        request  body      CreateDistributionRequest  true  "Distribution creation request"
+// @Success      201      {object}  db.Distribution
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      409      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions [post]
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateDistributionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,6 +165,16 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 }
 
 // HandleGet returns a distribution by ID if the user has access
+// @Summary      Get a distribution
+// @Description  Returns a distribution by ID if the user has access
+// @Tags         Distributions
+// @Produce      json
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      200  {object}  db.Distribution
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/distributions/{id} [get]
 func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -203,6 +234,21 @@ func (h *Handler) HandleGet(c *gin.Context) {
 }
 
 // HandleUpdate updates an existing distribution (owner or admin only)
+// @Summary      Update a distribution
+// @Description  Updates an existing distribution (owner or admin only)
+// @Tags         Distributions
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                     true  "Distribution ID"
+// @Param        request  body      UpdateDistributionRequest   true  "Distribution update request"
+// @Success      200      {object}  db.Distribution
+// @Failure      400      {object}  common.ErrorResponse
+// @Failure      401      {object}  common.ErrorResponse
+// @Failure      403      {object}  common.ErrorResponse
+// @Failure      404      {object}  common.ErrorResponse
+// @Failure      500      {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id} [put]
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -305,6 +351,19 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 }
 
 // HandleDeletionPreview returns a preview of what will be deleted when a distribution is removed
+// @Summary      Preview distribution deletion
+// @Description  Returns a preview of what will be deleted when a distribution is removed
+// @Tags         Distributions
+// @Produce      json
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      200  {object}  DeletionPreviewResponse
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/deletion-preview [get]
 func (h *Handler) HandleDeletionPreview(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -418,6 +477,19 @@ func (h *Handler) HandleDeletionPreview(c *gin.Context) {
 
 // HandleDelete deletes a distribution by ID (owner or admin only)
 // This performs a cascading delete of all related resources
+// @Summary      Delete a distribution
+// @Description  Deletes a distribution and all related resources (cascading delete)
+// @Tags         Distributions
+// @Produce      json
+// @Param        id   path      string  true  "Distribution ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  common.ErrorResponse
+// @Failure      401  {object}  common.ErrorResponse
+// @Failure      403  {object}  common.ErrorResponse
+// @Failure      404  {object}  common.ErrorResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -509,6 +581,17 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 }
 
 // HandleGetLogs returns logs for a distribution if the user has access
+// @Summary      Get distribution logs
+// @Description  Returns logs for a distribution if the user has access
+// @Tags         Distributions
+// @Produce      json
+// @Param        id     path      string  true   "Distribution ID"
+// @Param        limit  query     int     false  "Maximum number of logs to return"
+// @Success      200    {array}   db.DistributionLog
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Router       /v1/distributions/{id}/logs [get]
 func (h *Handler) HandleGetLogs(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -571,6 +654,13 @@ func (h *Handler) HandleGetLogs(c *gin.Context) {
 }
 
 // HandleGetStats returns statistics about distributions grouped by status
+// @Summary      Get distribution statistics
+// @Description  Returns statistics about distributions grouped by status
+// @Tags         Distributions
+// @Produce      json
+// @Success      200  {object}  DistributionStatsResponse
+// @Failure      500  {object}  common.ErrorResponse
+// @Router       /v1/distributions/stats [get]
 func (h *Handler) HandleGetStats(c *gin.Context) {
 	stats, err := h.distRepo.GetStats()
 	if err != nil {

@@ -21,6 +21,12 @@ func NewHandler() *Handler {
 }
 
 // HandleRoot returns API discovery information
+// @Summary      Get API discovery information
+// @Description  Returns API endpoints and general server information
+// @Tags         Base
+// @Produce      json
+// @Success      200  {object}  APIInfo
+// @Router       / [get]
 func (h *Handler) HandleRoot(c *gin.Context) {
 	info := APIInfo{
 		Name:        "ldfd",
@@ -45,6 +51,12 @@ func (h *Handler) HandleRoot(c *gin.Context) {
 }
 
 // HandleHealth returns the current health status of the server
+// @Summary      Get health status
+// @Description  Returns the current health status of the server
+// @Tags         Base
+// @Produce      json
+// @Success      200  {object}  HealthResponse
+// @Router       /v1/health [get]
 func (h *Handler) HandleHealth(c *gin.Context) {
 	response := HealthResponse{
 		Status:    "healthy",
@@ -55,6 +67,12 @@ func (h *Handler) HandleHealth(c *gin.Context) {
 }
 
 // HandleVersion returns version and build information for the server
+// @Summary      Get version information
+// @Description  Returns version and build information for the server
+// @Tags         Base
+// @Produce      json
+// @Success      200  {object}  VersionResponse
+// @Router       /v1/version [get]
 func (h *Handler) HandleVersion(c *gin.Context) {
 	response := VersionResponse{
 		Version:        VersionInfo.Version,

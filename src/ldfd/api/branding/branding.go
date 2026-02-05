@@ -67,6 +67,18 @@ func (h *Handler) findBrandingAsset(ctx context.Context, asset string) (string, 
 }
 
 // HandleGetAsset retrieves a branding asset (logo or favicon)
+//
+// @Summary      Get branding asset
+// @Description  Retrieves a branding asset image (logo or favicon) with appropriate content type
+// @Tags         Branding
+// @Produce      image/png,image/jpeg,image/svg+xml,image/x-icon,image/webp
+// @Param        asset  path      string  true  "Asset type"  Enums(logo, favicon)
+// @Success      200    {file}    binary
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Failure      503    {object}  common.ErrorResponse
+// @Router       /v1/branding/{asset} [get]
 func (h *Handler) HandleGetAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
@@ -127,6 +139,17 @@ func (h *Handler) HandleGetAsset(c *gin.Context) {
 }
 
 // HandleGetAssetInfo returns metadata about a branding asset
+//
+// @Summary      Get branding asset info
+// @Description  Returns metadata about a branding asset including URL, content type, and size
+// @Tags         Branding
+// @Produce      json
+// @Param        asset  path      string  true  "Asset type"  Enums(logo, favicon)
+// @Success      200    {object}  BrandingAssetInfo
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Failure      503    {object}  common.ErrorResponse
+// @Router       /v1/branding/{asset}/info [get]
 func (h *Handler) HandleGetAssetInfo(c *gin.Context) {
 	asset := c.Param("asset")
 
@@ -175,6 +198,22 @@ func (h *Handler) HandleGetAssetInfo(c *gin.Context) {
 }
 
 // HandleUploadAsset uploads a branding asset (logo or favicon)
+//
+// @Summary      Upload branding asset
+// @Description  Uploads a branding asset image. Replaces existing asset if one exists. Accepts PNG, JPEG, WebP, SVG, and ICO formats.
+// @Tags         Branding
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        asset  path      string  true   "Asset type"  Enums(logo, favicon)
+// @Param        file   formData  file    true   "Image file to upload"
+// @Success      200    {object}  object
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      401    {object}  common.ErrorResponse
+// @Failure      403    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Failure      503    {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/branding/{asset} [post]
 func (h *Handler) HandleUploadAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
@@ -282,6 +321,21 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 }
 
 // HandleDeleteAsset deletes a branding asset
+//
+// @Summary      Delete branding asset
+// @Description  Deletes a branding asset (logo or favicon)
+// @Tags         Branding
+// @Produce      json
+// @Param        asset  path      string  true  "Asset type"  Enums(logo, favicon)
+// @Success      200    {object}  object
+// @Failure      400    {object}  common.ErrorResponse
+// @Failure      401    {object}  common.ErrorResponse
+// @Failure      403    {object}  common.ErrorResponse
+// @Failure      404    {object}  common.ErrorResponse
+// @Failure      500    {object}  common.ErrorResponse
+// @Failure      503    {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/branding/{asset} [delete]
 func (h *Handler) HandleDeleteAsset(c *gin.Context) {
 	asset := c.Param("asset")
 
