@@ -1,0 +1,1 @@
+export { BuildDetail } from "./BuildDetail";

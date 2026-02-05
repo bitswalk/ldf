@@ -1,0 +1,69 @@
+{
+  "startDialog": {
+    "title": "Build starten",
+    "distribution": "Distribution",
+    "architecture": "Zielarchitektur",
+    "format": "Image-Format",
+    "formatDesc": {
+      "raw": "Rohes Disk-Image, geeignet fur direktes Schreiben auf Disk oder Verwendung mit QEMU",
+      "qcow2": "QEMU Copy-On-Write Format, effiziente Speicherung mit Snapshot-Unterstutzung",
+      "iso": "Bootfahiges ISO-Image fur CD/DVD oder USB-Installation"
+    },
+    "start": "Build starten",
+    "starting": "Wird gestartet...",
+    "success": "Build erfolgreich gestartet"
+  },
+  "list": {
+    "title": "Aktuelle Builds",
+    "empty": "Noch keine Builds"
+  },
+  "detail": {
+    "title": "Build-Details",
+    "info": {
+      "title": "Build-Informationen",
+      "status": "Status",
+      "architecture": "Architektur",
+      "format": "Format",
+      "progress": "Fortschritt",
+      "created": "Erstellt",
+      "started": "Gestartet",
+      "completed": "Abgeschlossen",
+      "duration": "Dauer",
+      "artifactSize": "Artefaktgrosse",
+      "error": "Fehler"
+    },
+    "stages": {
+      "title": "Build-Phasen",
+      "empty": "Keine Phaseninformationen verfugbar"
+    },
+    "logs": {
+      "title": "Build-Logs",
+      "empty": "Keine Logs verfugbar",
+      "streaming": "Live",
+      "clearFilter": "Alle anzeigen"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "retry": "Wiederholen"
+    }
+  },
+  "status": {
+    "pending": "Ausstehend",
+    "resolving": "Auflosung",
+    "preparing": "Vorbereitung",
+    "compiling": "Kompilierung",
+    "assembling": "Zusammenbau",
+    "packaging": "Verpackung",
+    "completed": "Abgeschlossen",
+    "failed": "Fehlgeschlagen",
+    "cancelled": "Abgebrochen"
+  },
+  "stage": {
+    "resolve": "Auflosung",
+    "download": "Download",
+    "prepare": "Vorbereitung",
+    "compile": "Kompilierung",
+    "assemble": "Zusammenbau",
+    "package": "Verpackung"
+  }
+}

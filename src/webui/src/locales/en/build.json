@@ -1,0 +1,69 @@
+{
+  "startDialog": {
+    "title": "Start Build",
+    "distribution": "Distribution",
+    "architecture": "Target Architecture",
+    "format": "Image Format",
+    "formatDesc": {
+      "raw": "Raw disk image, suitable for direct writing to disk or use with QEMU",
+      "qcow2": "QEMU Copy-On-Write format, efficient storage with snapshots support",
+      "iso": "Bootable ISO image for CD/DVD or USB installation"
+    },
+    "start": "Start Build",
+    "starting": "Starting...",
+    "success": "Build started successfully"
+  },
+  "list": {
+    "title": "Recent Builds",
+    "empty": "No builds yet"
+  },
+  "detail": {
+    "title": "Build Details",
+    "info": {
+      "title": "Build Information",
+      "status": "Status",
+      "architecture": "Architecture",
+      "format": "Format",
+      "progress": "Progress",
+      "created": "Created",
+      "started": "Started",
+      "completed": "Completed",
+      "duration": "Duration",
+      "artifactSize": "Artifact Size",
+      "error": "Error"
+    },
+    "stages": {
+      "title": "Build Stages",
+      "empty": "No stage information available"
+    },
+    "logs": {
+      "title": "Build Logs",
+      "empty": "No logs available",
+      "streaming": "Live",
+      "clearFilter": "Show all"
+    },
+    "actions": {
+      "cancel": "Cancel Build",
+      "retry": "Retry Build"
+    }
+  },
+  "status": {
+    "pending": "Pending",
+    "resolving": "Resolving",
+    "preparing": "Preparing",
+    "compiling": "Compiling",
+    "assembling": "Assembling",
+    "packaging": "Packaging",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "stage": {
+    "resolve": "Resolve",
+    "download": "Download",
+    "prepare": "Prepare",
+    "compile": "Compile",
+    "assemble": "Assemble",
+    "package": "Package"
+  }
+}

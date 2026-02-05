@@ -1,0 +1,69 @@
+{
+  "startDialog": {
+    "title": "Demarrer la construction",
+    "distribution": "Distribution",
+    "architecture": "Architecture cible",
+    "format": "Format d'image",
+    "formatDesc": {
+      "raw": "Image disque brute, adaptee a l'ecriture directe sur disque ou a l'utilisation avec QEMU",
+      "qcow2": "Format QEMU Copy-On-Write, stockage efficace avec support des snapshots",
+      "iso": "Image ISO bootable pour installation CD/DVD ou USB"
+    },
+    "start": "Demarrer",
+    "starting": "Demarrage...",
+    "success": "Construction demarree avec succes"
+  },
+  "list": {
+    "title": "Constructions recentes",
+    "empty": "Aucune construction"
+  },
+  "detail": {
+    "title": "Details de la construction",
+    "info": {
+      "title": "Informations",
+      "status": "Statut",
+      "architecture": "Architecture",
+      "format": "Format",
+      "progress": "Progression",
+      "created": "Cree le",
+      "started": "Demarre le",
+      "completed": "Termine le",
+      "duration": "Duree",
+      "artifactSize": "Taille de l'artefact",
+      "error": "Erreur"
+    },
+    "stages": {
+      "title": "Etapes de construction",
+      "empty": "Aucune information sur les etapes"
+    },
+    "logs": {
+      "title": "Journaux de construction",
+      "empty": "Aucun journal disponible",
+      "streaming": "En direct",
+      "clearFilter": "Afficher tout"
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "retry": "Reessayer"
+    }
+  },
+  "status": {
+    "pending": "En attente",
+    "resolving": "Resolution",
+    "preparing": "Preparation",
+    "compiling": "Compilation",
+    "assembling": "Assemblage",
+    "packaging": "Empaquetage",
+    "completed": "Termine",
+    "failed": "Echoue",
+    "cancelled": "Annule"
+  },
+  "stage": {
+    "resolve": "Resolution",
+    "download": "Telechargement",
+    "prepare": "Preparation",
+    "compile": "Compilation",
+    "assemble": "Assemblage",
+    "package": "Empaquetage"
+  }
+}
