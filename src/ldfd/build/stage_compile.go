@@ -1,0 +1,419 @@
+package build
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/bitswalk/ldf/src/ldfd/db"
+)
+
+// CompileStage compiles the kernel inside a container
+type CompileStage struct {
+	executor *ContainerExecutor
+}
+
+// NewCompileStage creates a new compile stage
+func NewCompileStage(executor *ContainerExecutor) *CompileStage {
+	return &CompileStage{executor: executor}
+}
+
+// Name returns the stage name
+func (s *CompileStage) Name() db.BuildStageName {
+	return db.StageCompile
+}
+
+// Validate checks whether this stage can run
+func (s *CompileStage) Validate(ctx context.Context, sc *StageContext) error {
+	if len(sc.Components) == 0 {
+		return fmt.Errorf("no components resolved")
+	}
+
+	// Find kernel component
+	kernel := s.findKernelComponent(sc.Components)
+	if kernel == nil {
+		return fmt.Errorf("kernel component not found")
+	}
+	if kernel.LocalPath == "" {
+		return fmt.Errorf("kernel source path not set - prepare stage must run first")
+	}
+
+	// Check config file exists
+	configPath := filepath.Join(sc.ConfigDir, ".config")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return fmt.Errorf("kernel config not found at %s - prepare stage must run first", configPath)
+	}
+
+	return nil
+}
+
+// Execute compiles the kernel
+func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+	progress(0, "Starting kernel compilation")
+
+	kernel := s.findKernelComponent(sc.Components)
+	if kernel == nil {
+		return fmt.Errorf("kernel component not found")
+	}
+
+	configPath := filepath.Join(sc.ConfigDir, ".config")
+	outputDir := filepath.Join(sc.WorkspacePath, "kernel-output")
+
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create kernel output directory: %w", err)
+	}
+
+	// Parse the config file to determine the mode
+	configMode, err := s.parseConfigMode(configPath)
+	if err != nil {
+		log.Warn("Could not parse config mode, assuming defconfig", "error", err)
+		configMode = string(db.KernelConfigModeDefconfig)
+	}
+
+	// Determine cross-compile prefix
+	crossCompile := s.getCrossCompilePrefix(sc.TargetArch)
+	makeArch := s.getMakeArch(sc.TargetArch)
+
+	progress(5, fmt.Sprintf("Config mode: %s, arch: %s", configMode, sc.TargetArch))
+
+	// Check if we're using containers or direct execution
+	if s.executor != nil && s.executor.IsAvailable() {
+		return s.executeInContainer(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
+	}
+
+	// Fall back to direct execution (with warning)
+	log.Warn("Podman not available, falling back to direct execution")
+	return s.executeDirect(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
+}
+
+// executeInContainer runs compilation inside a Podman container
+func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+	progress(10, "Preparing container build environment")
+
+	// Generate the build script based on config mode
+	buildScript := s.generateBuildScript(configMode, makeArch, crossCompile)
+	buildScriptPath := filepath.Join(sc.WorkspacePath, "scripts", "compile-kernel.sh")
+	if err := os.WriteFile(buildScriptPath, []byte(buildScript), 0755); err != nil {
+		return fmt.Errorf("failed to write build script: %w", err)
+	}
+
+	// Setup container mounts
+	mounts := []Mount{
+		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+		{Source: configPath, Target: "/config/.config", ReadOnly: true},
+		{Source: outputDir, Target: "/output", ReadOnly: false},
+		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
+	}
+
+	// Create a log file for build output
+	logPath := filepath.Join(sc.WorkspacePath, "logs", "kernel-compile.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+	defer logFile.Close()
+
+	// Create a progress-tracking writer
+	progressWriter := &buildProgressWriter{
+		progress:    progress,
+		basePercent: 10,
+		maxPercent:  95,
+		logFile:     logFile,
+		logWriter:   sc.LogWriter,
+	}
+
+	progress(15, "Running kernel compilation in container")
+
+	opts := ContainerRunOpts{
+		Image:   s.executor.defaultImage,
+		Mounts:  mounts,
+		WorkDir: "/src/kernel",
+		Env: map[string]string{
+			"ARCH":          makeArch,
+			"CROSS_COMPILE": crossCompile,
+			"NPROC":         "0", // 0 means auto-detect
+		},
+		Command: []string{"/bin/bash", "/scripts/compile-kernel.sh"},
+		Stdout:  progressWriter,
+		Stderr:  progressWriter,
+	}
+
+	if err := s.executor.Run(ctx, opts); err != nil {
+		return fmt.Errorf("kernel compilation failed: %w", err)
+	}
+
+	progress(95, "Verifying build outputs")
+
+	// Verify kernel image was built
+	kernelImage := filepath.Join(outputDir, "boot", "vmlinuz")
+	if _, err := os.Stat(kernelImage); os.IsNotExist(err) {
+		return fmt.Errorf("kernel image not found at %s", kernelImage)
+	}
+
+	progress(100, "Kernel compilation complete")
+	return nil
+}
+
+// executeDirect runs compilation directly on the host (fallback)
+func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+	// For direct execution, we'll just log a warning for now
+	// Full direct execution would require running make commands directly
+	return fmt.Errorf("direct kernel compilation not implemented - please install Podman")
+}
+
+// generateBuildScript creates the kernel build script for container execution
+func (s *CompileStage) generateBuildScript(configMode, makeArch, crossCompile string) string {
+	script := `#!/bin/bash
+set -e
+
+echo "=== LDF Kernel Build ==="
+echo "Architecture: ${ARCH:-x86}"
+echo "Cross-compile: ${CROSS_COMPILE:-none}"
+echo "Config mode: ` + configMode + `"
+echo ""
+
+cd /src/kernel
+
+# Determine number of parallel jobs
+if [ "${NPROC}" = "0" ] || [ -z "${NPROC}" ]; then
+    NPROC=$(nproc)
+fi
+echo "Using ${NPROC} parallel jobs"
+
+`
+
+	// Add config handling based on mode
+	switch configMode {
+	case string(db.KernelConfigModeDefconfig):
+		script += `
+# Generate default config for architecture
+echo "Generating defconfig for ${ARCH}..."
+if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
+    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" x86_64_defconfig
+else
+    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" defconfig
+fi
+
+# Apply recommended options from LDF config if present
+if grep -q "^# Recommended options" /config/.config 2>/dev/null; then
+    echo "Applying recommended options..."
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^#[[:space:]]*(CONFIG_[A-Z0-9_]+)=(.*)$ ]]; then
+            KEY="${BASH_REMATCH[1]}"
+            VALUE="${BASH_REMATCH[2]}"
+            ./scripts/config --set-val "$KEY" "$VALUE" || true
+        fi
+    done < /config/.config
+fi
+`
+
+	case string(db.KernelConfigModeOptions):
+		script += `
+# Generate default config first
+echo "Generating defconfig for ${ARCH}..."
+if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
+    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" x86_64_defconfig
+else
+    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" defconfig
+fi
+
+# Apply custom options from config file
+echo "Applying custom options..."
+while IFS= read -r line; do
+    # Skip comments and empty lines
+    [[ "$line" =~ ^# ]] && continue
+    [[ -z "$line" ]] && continue
+
+    # Skip LDF metadata
+    [[ "$line" =~ ^LDF_ ]] && continue
+
+    if [[ "$line" =~ ^(CONFIG_[A-Z0-9_]+)=(.*)$ ]]; then
+        KEY="${BASH_REMATCH[1]}"
+        VALUE="${BASH_REMATCH[2]}"
+        # Remove quotes if present
+        VALUE="${VALUE%\"}"
+        VALUE="${VALUE#\"}"
+
+        case "$VALUE" in
+            y) ./scripts/config --enable "$KEY" ;;
+            m) ./scripts/config --module "$KEY" ;;
+            n) ./scripts/config --disable "$KEY" ;;
+            *) ./scripts/config --set-str "$KEY" "$VALUE" ;;
+        esac
+    elif [[ "$line" =~ ^"# "(CONFIG_[A-Z0-9_]+)" is not set"$ ]]; then
+        KEY="${BASH_REMATCH[1]}"
+        ./scripts/config --disable "$KEY"
+    fi
+done < /config/.config
+`
+
+	case string(db.KernelConfigModeCustom):
+		script += `
+# Copy user-provided config (skip header comments)
+echo "Using custom kernel config..."
+grep -v "^# LDF" /config/.config | grep -v "^LDF_" > .config || true
+`
+	}
+
+	// Common build steps
+	script += `
+# Update config to resolve dependencies
+echo "Resolving config dependencies..."
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" olddefconfig
+
+echo ""
+echo "=== Starting kernel build ==="
+echo ""
+
+# Build kernel image
+if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
+    echo "Building bzImage..."
+    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} bzImage
+else
+    echo "Building Image..."
+    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} Image
+fi
+
+# Build modules
+echo ""
+echo "Building modules..."
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} modules
+
+# Install modules
+echo ""
+echo "Installing modules..."
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" INSTALL_MOD_PATH=/output/modules modules_install
+
+# Copy kernel image
+echo ""
+echo "Copying kernel image..."
+mkdir -p /output/boot
+if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
+    cp arch/x86/boot/bzImage /output/boot/vmlinuz
+else
+    cp arch/${ARCH}/boot/Image /output/boot/vmlinuz
+fi
+
+# Copy System.map and config
+cp System.map /output/boot/
+cp .config /output/boot/config
+
+echo ""
+echo "=== Kernel build complete ==="
+ls -la /output/boot/
+`
+
+	return script
+}
+
+// parseConfigMode reads the LDF_CONFIG_MODE from the config file
+func (s *CompileStage) parseConfigMode(configPath string) (string, error) {
+	file, err := os.Open(configPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "LDF_CONFIG_MODE=") {
+			return strings.TrimPrefix(line, "LDF_CONFIG_MODE="), nil
+		}
+	}
+
+	return "", fmt.Errorf("LDF_CONFIG_MODE not found in config")
+}
+
+// getCrossCompilePrefix returns the cross-compile prefix for target architecture
+func (s *CompileStage) getCrossCompilePrefix(arch db.TargetArch) string {
+	// TODO: This should be configurable based on host arch vs target arch
+	// For now, we assume host is x86_64
+	switch arch {
+	case db.ArchAARCH64:
+		return "aarch64-linux-gnu-"
+	default:
+		return "" // Native compilation
+	}
+}
+
+// getMakeArch returns the ARCH value for make
+func (s *CompileStage) getMakeArch(arch db.TargetArch) string {
+	switch arch {
+	case db.ArchX86_64:
+		return "x86"
+	case db.ArchAARCH64:
+		return "arm64"
+	default:
+		return "x86"
+	}
+}
+
+// findKernelComponent finds the kernel component in the resolved list
+func (s *CompileStage) findKernelComponent(components []ResolvedComponent) *ResolvedComponent {
+	for i := range components {
+		if strings.Contains(strings.ToLower(components[i].Component.Name), "kernel") {
+			return &components[i]
+		}
+	}
+	return nil
+}
+
+// buildProgressWriter parses build output and updates progress
+type buildProgressWriter struct {
+	progress    ProgressFunc
+	basePercent int
+	maxPercent  int
+	logFile     *os.File
+	logWriter   io.Writer
+	lastPercent int
+}
+
+func (w *buildProgressWriter) Write(p []byte) (n int, err error) {
+	// Write to log file
+	if w.logFile != nil {
+		w.logFile.Write(p)
+	}
+
+	// Write to log writer if available
+	if w.logWriter != nil {
+		w.logWriter.Write(p)
+	}
+
+	// Parse output for progress indicators
+	text := string(p)
+	lines := strings.Split(text, "\n")
+
+	for _, line := range lines {
+		// Look for make progress indicators like [  1%], [ 10%], [100%]
+		re := regexp.MustCompile(`\[\s*(\d+)%\]`)
+		matches := re.FindStringSubmatch(line)
+		if len(matches) >= 2 {
+			if pct, err := strconv.Atoi(matches[1]); err == nil {
+				// Scale to our progress range
+				scaledPct := w.basePercent + (pct * (w.maxPercent - w.basePercent) / 100)
+				if scaledPct > w.lastPercent {
+					w.lastPercent = scaledPct
+					w.progress(scaledPct, fmt.Sprintf("Compiling kernel... %d%%", pct))
+				}
+			}
+		}
+
+		// Also look for stage markers
+		if strings.Contains(line, "Building bzImage") || strings.Contains(line, "Building Image") {
+			w.progress(w.basePercent+20, "Building kernel image...")
+		} else if strings.Contains(line, "Building modules") {
+			w.progress(w.basePercent+60, "Building modules...")
+		} else if strings.Contains(line, "Installing modules") {
+			w.progress(w.basePercent+80, "Installing modules...")
+		}
+	}
+
+	return len(p), nil
+}

@@ -13,11 +13,13 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the build package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // Config holds configuration for the build manager
@@ -103,6 +105,22 @@ func NewManager(database *db.Database, storageBackend storage.Backend,
 // RegisterStages sets up the ordered build pipeline
 func (m *Manager) RegisterStages(stages []Stage) {
 	m.stages = stages
+}
+
+// RegisterDefaultStages sets up the default build pipeline stages
+func (m *Manager) RegisterDefaultStages() {
+	executor := NewContainerExecutor(m.config.ContainerImage, nil)
+
+	m.stages = []Stage{
+		NewResolveStage(m.componentRepo, m.downloadJobRepo),
+		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
+		NewPrepareStage(m.storage),
+		NewCompileStage(executor),
+	}
+
+	log.Info("Registered default build stages",
+		"count", len(m.stages),
+		"stages", []string{"resolve", "download", "prepare", "compile"})
 }
 
 // Start begins processing build jobs
