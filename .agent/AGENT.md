@@ -23,7 +23,7 @@ Monorepo with three main components:
 
 ## Branch Workflow
 
-- **Naming**: `feature/m<milestone>_<task>-<sequential>` (e.g., `feature/m1_1-1`, `feature/m1_1-2`, `feature/m1_1-3`). The last number is sequential within the milestone, not per-task.
+- **Naming**: `feature/m<milestone>_<subtask>` where `<subtask>` is the roadmap sub-task number (e.g., M3.1 → `feature/m3_1`, M3.2 → `feature/m3_2`). When a branch combines multiple sub-tasks, use the first sub-task number.
 - **Before starting work**: Create a feature branch from `main`.
 - **After completing work**: Merge back to `main` with `--no-ff`, then delete the feature branch.
 - **Never** switch to a new feature branch without merging the current one back to `main` first.
@@ -31,12 +31,12 @@ Monorepo with three main components:
 ```bash
 # Create
 git checkout main
-git checkout -b feature/m1_1-3
+git checkout -b feature/m3_1
 
 # Merge back
 git checkout main
-git merge --no-ff feature/m1_1-3 -m "Merge feature/m1_1-3: <description>"
-git branch -d feature/m1_1-3
+git merge --no-ff feature/m3_1 -m "Merge feature/m3_1: <description>"
+git branch -d feature/m3_1
 ```
 
 ## Environment Notes

@@ -16,10 +16,12 @@ vars:
     sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
   # Full version string: Phoenix (2025.12) - v1.0.0-4f9f297
   VERSION_STRING: "{{.RELEASE_NAME}} ({{.RELEASE_DATE}}) - v{{.RELEASE_VERSION}}-{{.GIT_COMMIT}}"
-  # Production ldflags (stripped, optimized)
-  LDFLAGS_PROD: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfd/core.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfd/core.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseVersion={{.RELEASE_VERSION}}"
-  # Development ldflags (with debug info, version=dev)
-  LDFLAGS_DEV: -ldflags "-X 'github.com/bitswalk/ldf/src/ldfd/core.Version=dev' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate=unknown"
+  # Server ldflags
+  LDFLAGS_SRV_PROD: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfd/core.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfd/core.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfd/core.ReleaseVersion={{.RELEASE_VERSION}}"
+  LDFLAGS_SRV_DEV: -ldflags "-X 'github.com/bitswalk/ldf/src/ldfd/core.Version=dev' -X github.com/bitswalk/ldf/src/ldfd/core.BuildDate=unknown"
+  # CLI ldflags
+  LDFLAGS_CLI_PROD: -ldflags "-s -w -X 'github.com/bitswalk/ldf/src/ldfctl/internal/cmd.Version={{.VERSION_STRING}}' -X github.com/bitswalk/ldf/src/ldfctl/internal/cmd.BuildDate={{.BUILD_DATE}} -X github.com/bitswalk/ldf/src/ldfctl/internal/cmd.GitCommit={{.GIT_COMMIT}} -X github.com/bitswalk/ldf/src/ldfctl/internal/cmd.ReleaseName={{.RELEASE_NAME}} -X github.com/bitswalk/ldf/src/ldfctl/internal/cmd.ReleaseVersion={{.RELEASE_VERSION}}"
+  LDFLAGS_CLI_DEV: -ldflags "-X 'github.com/bitswalk/ldf/src/ldfctl/internal/cmd.Version=dev' -X github.com/bitswalk/ldf/src/ldfctl/internal/cmd.BuildDate=unknown"
 
 tasks:
   default:
@@ -39,25 +41,25 @@ tasks:
     desc: Build CLI binary (production)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
+      - go build {{.LDFLAGS_CLI_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
 
   build:cli:dev:
     desc: Build CLI binary (development)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
+      - go build {{.LDFLAGS_CLI_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.CLI_BINARY}} ./src/ldfctl
 
   build:srv:
     desc: Build server binary (production)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
+      - go build {{.LDFLAGS_SRV_PROD}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
 
   build:srv:dev:
     desc: Build server binary (development)
     cmds:
       - mkdir -p {{.BINARY_BUILD_DIR}}
-      - go build {{.LDFLAGS_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
+      - go build {{.LDFLAGS_SRV_DEV}} -o {{.BINARY_BUILD_DIR}}/{{.SRV_BINARY}} ./src/ldfd
 
   build:webui:
     desc: Build WebUI
