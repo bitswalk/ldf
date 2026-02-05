@@ -24,7 +24,7 @@ bin/
 # Build directories
 build/
 dist/
-output/
+/output/
 .cache/
 
 # IDE specific files

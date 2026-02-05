@@ -18,6 +18,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/ulikunitz/xz v0.5.15
 	golang.org/x/crypto v0.45.0
+	golang.org/x/term v0.37.0
 )
 
 require (
