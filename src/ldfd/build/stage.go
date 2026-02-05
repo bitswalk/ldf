@@ -38,6 +38,11 @@ type StageContext struct {
 	ConfigDir      string // Generated configs (kernel .config, fstab, etc.)
 	LogWriter      io.Writer
 	Components     []ResolvedComponent // Populated by resolve stage
+
+	// Artifact info populated by package stage
+	ArtifactPath     string // Storage key of final artifact
+	ArtifactChecksum string // SHA256 checksum
+	ArtifactSize     int64  // Size in bytes
 }
 
 // ResolvedComponent holds a resolved component with its source artifact
