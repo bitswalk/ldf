@@ -43,15 +43,15 @@ func (r *BuildJobRepository) Create(job *BuildJob) error {
 			target_arch, image_format, progress_percent, workspace_path,
 			artifact_path, artifact_checksum, artifact_size,
 			error_message, error_stage, retry_count, max_retries,
-			config_snapshot, created_at, started_at, completed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			clear_cache, config_snapshot, created_at, started_at, completed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
 		job.ID, job.DistributionID, job.OwnerID, job.Status, job.CurrentStage,
 		job.TargetArch, job.ImageFormat, job.ProgressPercent, job.WorkspacePath,
 		job.ArtifactPath, job.ArtifactChecksum, job.ArtifactSize,
 		job.ErrorMessage, job.ErrorStage, job.RetryCount, job.MaxRetries,
-		job.ConfigSnapshot, job.CreatedAt, job.StartedAt, job.CompletedAt,
+		job.ClearCache, job.ConfigSnapshot, job.CreatedAt, job.StartedAt, job.CompletedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create build job: %w", err)
@@ -66,7 +66,7 @@ const selectBuildJobsQuery = `
 		target_arch, image_format, progress_percent, workspace_path,
 		artifact_path, artifact_checksum, artifact_size,
 		error_message, error_stage, retry_count, max_retries,
-		config_snapshot, created_at, started_at, completed_at
+		clear_cache, config_snapshot, created_at, started_at, completed_at
 	FROM build_jobs
 `
 
@@ -488,7 +488,7 @@ func (r *BuildJobRepository) scanJob(row *sql.Row) (*BuildJob, error) {
 		&job.TargetArch, &job.ImageFormat, &job.ProgressPercent, &workspacePath,
 		&artifactPath, &artifactChecksum, &job.ArtifactSize,
 		&errorMsg, &errorStage, &job.RetryCount, &job.MaxRetries,
-		&configSnapshot, &job.CreatedAt, &startedAt, &completedAt,
+		&job.ClearCache, &configSnapshot, &job.CreatedAt, &startedAt, &completedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -529,7 +529,7 @@ func (r *BuildJobRepository) scanJobs(rows *sql.Rows) ([]BuildJob, error) {
 			&job.TargetArch, &job.ImageFormat, &job.ProgressPercent, &workspacePath,
 			&artifactPath, &artifactChecksum, &job.ArtifactSize,
 			&errorMsg, &errorStage, &job.RetryCount, &job.MaxRetries,
-			&configSnapshot, &job.CreatedAt, &startedAt, &completedAt,
+			&job.ClearCache, &configSnapshot, &job.CreatedAt, &startedAt, &completedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan build job: %w", err)
 		}

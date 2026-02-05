@@ -9,6 +9,10 @@
       "qcow2": "QEMU Copy-On-Write format, efficient storage with snapshots support",
       "iso": "Bootable ISO image for CD/DVD or USB installation"
     },
+    "clearCache": {
+      "title": "Clear local cache after build",
+      "description": "Delete the local build workspace after the artifact is uploaded to storage. Recommended when using S3 storage to save disk space."
+    },
     "start": "Start Build",
     "starting": "Starting...",
     "success": "Build started successfully"

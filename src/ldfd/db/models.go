@@ -345,6 +345,7 @@ type BuildJob struct {
 	ErrorStage       string         `json:"error_stage,omitempty"`
 	RetryCount       int            `json:"retry_count"`
 	MaxRetries       int            `json:"max_retries"`
+	ClearCache       bool           `json:"clear_cache"`
 	ConfigSnapshot   string         `json:"config_snapshot,omitempty"`
 	CreatedAt        time.Time      `json:"created_at"`
 	StartedAt        *time.Time     `json:"started_at,omitempty"`

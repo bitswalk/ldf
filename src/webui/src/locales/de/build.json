@@ -9,6 +9,10 @@
       "qcow2": "QEMU Copy-On-Write Format, effiziente Speicherung mit Snapshot-Unterstutzung",
       "iso": "Bootfahiges ISO-Image fur CD/DVD oder USB-Installation"
     },
+    "clearCache": {
+      "title": "Lokalen Cache nach Build loschen",
+      "description": "Loscht den lokalen Build-Arbeitsbereich nachdem das Artefakt zum Speicher hochgeladen wurde. Empfohlen bei Verwendung von S3-Speicher um Festplattenplatz zu sparen."
+    },
     "start": "Build starten",
     "starting": "Wird gestartet...",
     "success": "Build erfolgreich gestartet"

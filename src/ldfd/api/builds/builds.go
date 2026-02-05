@@ -121,7 +121,7 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		}
 	}
 
-	job, err := h.buildManager.SubmitBuild(dist, claims.UserID, arch, format)
+	job, err := h.buildManager.SubmitBuild(dist, claims.UserID, arch, format, req.ClearCache)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",

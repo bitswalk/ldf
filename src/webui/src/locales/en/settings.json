@@ -204,6 +204,18 @@
         "label": "Cache Duration (minutes)",
         "description": "Minimum time between automatic version syncs for a source (0 to disable caching)"
       }
+    },
+    "build": {
+      "label": "Build Engine",
+      "description": "Distribution build pipeline settings",
+      "workspace": {
+        "label": "Workspace Directory",
+        "description": "Base directory for build workspaces (supports ~ for home directory)"
+      },
+      "workers": {
+        "label": "Workers",
+        "description": "Number of concurrent build workers"
+      }
     }
   },
   "server": {

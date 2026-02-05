@@ -35,7 +35,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Workers:        1,
-		WorkspaceBase:  "/var/lib/ldfd/builds",
+		WorkspaceBase:  "~/.ldfd/cache/builds",
 		ContainerImage: "ldf-builder:latest",
 		RetryDelay:     30 * time.Second,
 		MaxRetries:     1,
@@ -222,7 +222,7 @@ func (m *Manager) dispatchPendingJobs() {
 }
 
 // SubmitBuild creates a build job for a distribution
-func (m *Manager) SubmitBuild(dist *db.Distribution, userID string, arch db.TargetArch, format db.ImageFormat) (*db.BuildJob, error) {
+func (m *Manager) SubmitBuild(dist *db.Distribution, userID string, arch db.TargetArch, format db.ImageFormat, clearCache bool) (*db.BuildJob, error) {
 	if dist.Config == nil {
 		return nil, fmt.Errorf("distribution has no configuration")
 	}
@@ -240,6 +240,7 @@ func (m *Manager) SubmitBuild(dist *db.Distribution, userID string, arch db.Targ
 		ImageFormat:    format,
 		Status:         db.BuildStatusPending,
 		MaxRetries:     m.config.MaxRetries,
+		ClearCache:     clearCache,
 		ConfigSnapshot: string(configJSON),
 	}
 

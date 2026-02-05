@@ -74,6 +74,7 @@ export interface BuildLog {
 export interface StartBuildRequest {
   arch: TargetArch;
   format: ImageFormat;
+  clear_cache?: boolean;
 }
 
 export type StartResult =
@@ -171,7 +172,8 @@ function getAuthHeaders(): Record<string, string> {
 export async function startBuild(
   distributionId: string,
   arch: TargetArch,
-  format: ImageFormat
+  format: ImageFormat,
+  clearCache: boolean = false,
 ): Promise<StartResult> {
   const url = getApiUrl(`/distributions/${distributionId}/build`);
 
@@ -184,7 +186,7 @@ export async function startBuild(
   }
 
   try {
-    const body: StartBuildRequest = { arch, format };
+    const body: StartBuildRequest = { arch, format, clear_cache: clearCache };
 
     const response = await fetch(url, {
       method: "POST",
@@ -311,7 +313,7 @@ export async function getBuild(buildId: string): Promise<GetResult> {
 export async function listDistributionBuilds(
   distributionId: string,
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<ListResult> {
   let path = `/distributions/${distributionId}/builds`;
   const params = new URLSearchParams();
@@ -388,7 +390,7 @@ export async function getBuildLogs(
   buildId: string,
   stage?: string,
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<LogsResult> {
   let path = `/builds/${buildId}/logs`;
   const params = new URLSearchParams();
@@ -466,7 +468,7 @@ export function streamBuildLogs(
   buildId: string,
   onLog: (log: BuildLog) => void,
   onError?: (error: Error) => void,
-  onComplete?: () => void
+  onComplete?: () => void,
 ): () => void {
   const serverUrl = getServerUrl();
   if (!serverUrl) {
@@ -716,7 +718,7 @@ export function getStatusDisplayText(status: BuildJobStatus): string {
 
 // Get status color
 export function getStatusColor(
-  status: BuildJobStatus
+  status: BuildJobStatus,
 ): "default" | "primary" | "success" | "warning" | "danger" {
   const colors: Record<
     BuildJobStatus,

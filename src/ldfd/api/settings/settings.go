@@ -60,6 +60,10 @@ var settingsRegistry = []SettingMeta{
 
 	// Sync settings
 	{"sync.cache_duration", "int", "Minimum minutes between automatic version syncs for a source (0 to disable caching)", false, "sync", false},
+
+	// Build settings
+	{"build.workspace", "string", "Base directory for build workspaces (supports ~ for home directory)", true, "build", false},
+	{"build.workers", "int", "Number of concurrent build workers", true, "build", false},
 }
 
 // GetSettingsRegistry returns the settings registry for use by core/config.go

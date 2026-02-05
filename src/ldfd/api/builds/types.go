@@ -19,8 +19,9 @@ type Config struct {
 
 // StartBuildRequest represents the request to start a build
 type StartBuildRequest struct {
-	Arch   string `json:"arch,omitempty"`
-	Format string `json:"format,omitempty"`
+	Arch       string `json:"arch,omitempty"`
+	Format     string `json:"format,omitempty"`
+	ClearCache bool   `json:"clear_cache,omitempty"`
 }
 
 // BuildJobResponse represents a build job with stages

@@ -82,6 +82,10 @@ func init() {
 	rootCmd.Flags().String("storage-type", "local", "Storage backend type: 'local' or 's3'")
 	rootCmd.Flags().String("storage-path", "~/.ldfd/artifacts", "Local storage path (for local backend)")
 
+	// Build flags
+	rootCmd.Flags().String("build-workspace", "~/.ldfd/cache/builds", "Base directory for build workspaces")
+	rootCmd.Flags().Int("build-workers", 1, "Number of concurrent build workers")
+
 	// S3 Storage flags
 	rootCmd.Flags().String("s3-endpoint", "", "S3-compatible storage endpoint URL")
 	rootCmd.Flags().String("s3-region", "us-east-1", "S3 region")
@@ -102,6 +106,8 @@ func init() {
 	viper.BindPFlag("storage.s3.access_key", rootCmd.Flags().Lookup("s3-access-key"))
 	viper.BindPFlag("storage.s3.secret_key", rootCmd.Flags().Lookup("s3-secret-key"))
 	viper.BindPFlag("storage.s3.path_style", rootCmd.Flags().Lookup("s3-path-style"))
+	viper.BindPFlag("build.workspace", rootCmd.Flags().Lookup("build-workspace"))
+	viper.BindPFlag("build.workers", rootCmd.Flags().Lookup("build-workers"))
 
 	// Set defaults
 	viper.SetDefault("server.port", 8443)
@@ -112,6 +118,8 @@ func init() {
 	viper.SetDefault("storage.s3.region", "us-east-1")
 	viper.SetDefault("storage.s3.bucket", "ldf-distributions")
 	viper.SetDefault("storage.s3.path_style", true)
+	viper.SetDefault("build.workspace", "~/.ldfd/cache/builds")
+	viper.SetDefault("build.workers", 1)
 	viper.SetDefault("sync.cache_duration", 60) // 60 minutes default
 }
 

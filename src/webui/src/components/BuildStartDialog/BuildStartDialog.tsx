@@ -23,6 +23,7 @@ interface BuildStartDialogProps {
 export const BuildStartDialog: Component<BuildStartDialogProps> = (props) => {
   const [arch, setArch] = createSignal<TargetArch>("x86_64");
   const [format, setFormat] = createSignal<ImageFormat>("raw");
+  const [clearCache, setClearCache] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -34,7 +35,12 @@ export const BuildStartDialog: Component<BuildStartDialogProps> = (props) => {
     setIsSubmitting(true);
     setError(null);
 
-    const result = await startBuild(props.distributionId, arch(), format());
+    const result = await startBuild(
+      props.distributionId,
+      arch(),
+      format(),
+      clearCache(),
+    );
 
     setIsSubmitting(false);
 
@@ -135,6 +141,26 @@ export const BuildStartDialog: Component<BuildStartDialogProps> = (props) => {
           </div>
         </div>
 
+        {/* Clear cache option */}
+        <div class="space-y-2">
+          <label class="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors">
+            <input
+              type="checkbox"
+              checked={clearCache()}
+              onChange={(e) => setClearCache(e.currentTarget.checked)}
+              class="mt-0.5 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <div class="flex-1">
+              <div class="font-medium text-sm">
+                {t("build.startDialog.clearCache.title")}
+              </div>
+              <div class="text-xs text-muted-foreground">
+                {t("build.startDialog.clearCache.description")}
+              </div>
+            </div>
+          </label>
+        </div>
+
         {/* Error message */}
         <Show when={error()}>
           <div class="p-3 bg-destructive/10 border border-destructive rounded-lg text-destructive text-sm">
@@ -157,7 +183,10 @@ export const BuildStartDialog: Component<BuildStartDialogProps> = (props) => {
             class="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             disabled={isSubmitting()}
           >
-            <Show when={isSubmitting()} fallback={<Icon name="hammer" size="sm" />}>
+            <Show
+              when={isSubmitting()}
+              fallback={<Icon name="hammer" size="sm" />}
+            >
               <Spinner size="sm" />
             </Show>
             {isSubmitting()

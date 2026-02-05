@@ -175,6 +175,18 @@
         "label": "Cache-Dauer (Minuten)",
         "description": "Mindestzeit zwischen automatischen Versionssynchronisationen fur eine Quelle (0 zum Deaktivieren des Caches)"
       }
+    },
+    "build": {
+      "label": "Build-Engine",
+      "description": "Einstellungen der Distributions-Build-Pipeline",
+      "workspace": {
+        "label": "Arbeitsverzeichnis",
+        "description": "Basisverzeichnis fur Build-Arbeitsbereiche (unterstutzt ~ fur Home-Verzeichnis)"
+      },
+      "workers": {
+        "label": "Worker",
+        "description": "Anzahl gleichzeitiger Build-Worker"
+      }
     }
   },
   "server": {

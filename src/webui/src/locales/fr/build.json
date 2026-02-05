@@ -9,6 +9,10 @@
       "qcow2": "Format QEMU Copy-On-Write, stockage efficace avec support des snapshots",
       "iso": "Image ISO bootable pour installation CD/DVD ou USB"
     },
+    "clearCache": {
+      "title": "Vider le cache local apres la construction",
+      "description": "Supprimer l'espace de travail de construction local une fois l'artefact televerse vers le stockage. Recommande lors de l'utilisation du stockage S3 pour economiser de l'espace disque."
+    },
     "start": "Demarrer",
     "starting": "Demarrage...",
     "success": "Construction demarree avec succes"

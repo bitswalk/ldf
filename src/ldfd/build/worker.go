@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/bitswalk/ldf/src/common/paths"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -78,8 +79,9 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		}
 	}
 
-	// Set up workspace
-	workspacePath := filepath.Join(w.manager.config.WorkspaceBase, job.ID)
+	// Set up workspace (expand ~ to home directory)
+	workspaceBase := paths.Expand(w.manager.config.WorkspaceBase)
+	workspacePath := filepath.Join(workspaceBase, job.ID)
 	sourcesDir := filepath.Join(workspacePath, "sources")
 	rootfsDir := filepath.Join(workspacePath, "rootfs")
 	outputDir := filepath.Join(workspacePath, "output")
@@ -207,8 +209,13 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 	w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
 		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize))
 
-	// Cleanup workspace
-	w.cleanup(workspacePath)
+	// Cleanup workspace only if clear_cache is enabled
+	if job.ClearCache {
+		w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Clearing local build cache as requested")
+		w.cleanup(workspacePath)
+	} else {
+		log.Debug("Keeping local build cache", "build_id", job.ID, "workspace", workspacePath)
+	}
 }
 
 // handleFailure marks a build job as failed

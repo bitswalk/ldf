@@ -74,6 +74,12 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	// Initialize build manager
 	build.SetLogger(log)
 	buildCfg := build.DefaultConfig()
+	if workspace := viper.GetString("build.workspace"); workspace != "" {
+		buildCfg.WorkspaceBase = workspace
+	}
+	if workers := viper.GetInt("build.workers"); workers > 0 {
+		buildCfg.Workers = workers
+	}
 	buildManager := build.NewManager(database, storageBackend, downloadManager, buildCfg)
 	buildManager.RegisterDefaultStages()
 

@@ -58,6 +58,7 @@ func (r *Runner) registerAll() {
 		migration010DownloadJobSourceDedup(),
 		migration011SourceDefaultVersion(),
 		migration012BuildJobs(),
+		migration013BuildClearCache(),
 	}
 
 	// Sort by version to ensure correct order
