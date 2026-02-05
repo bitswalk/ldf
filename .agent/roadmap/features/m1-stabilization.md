@@ -29,11 +29,11 @@ Harden existing features, fix known issues, bring everything to production quali
 - **Files**: `src/webui/src/locales/`, `src/webui/src/services/i18n.ts`, all views and components
 
 ### 1.3 WebUI Testing
-- [ ] Set up test runner (Bun test or Vitest)
-- [ ] Add unit tests for service layer (`src/webui/src/services/*.ts`)
+- [x] Set up test runner (Bun test or Vitest)
+- [x] Add unit tests for service layer (`src/webui/src/services/*.ts`)
 - [ ] Add component tests for critical views (Login, Distribution, Components)
 - [ ] Add integration tests for auth flow
-- [ ] Add `test:webui` task to `Taskfile.yml`
+- [x] Add `test:webui` task to `Taskfile.yml`
 - **Files**: `src/webui/`, `Taskfile.yml`
 
 ### 1.4 CI/CD Hardening
