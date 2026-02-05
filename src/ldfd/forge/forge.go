@@ -10,11 +10,13 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the forge package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // ForgeType represents the type of git forge

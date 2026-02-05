@@ -205,5 +205,39 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 		{
 			downloadsAdmin.GET("/active", a.Downloads.HandleListActiveDownloads)
 		}
+
+		// Build routes - read (auth required)
+		distBuildsRead := v1.Group("/distributions/:id/builds")
+		distBuildsRead.Use(a.authRequired())
+		{
+			distBuildsRead.GET("", a.Builds.HandleListDistributionBuilds)
+		}
+
+		// Build trigger - write access (registered alongside distribution write routes)
+		distributionsWrite.POST("/:id/build", a.Builds.HandleStartBuild)
+
+		// Build job routes - read (auth required)
+		buildsRead := v1.Group("/builds")
+		buildsRead.Use(a.authRequired())
+		{
+			buildsRead.GET("/:buildId", a.Builds.HandleGetBuild)
+			buildsRead.GET("/:buildId/logs", a.Builds.HandleGetBuildLogs)
+			buildsRead.GET("/:buildId/logs/stream", a.Builds.HandleStreamBuildLogs)
+		}
+
+		// Build job routes - write (write access)
+		buildsWrite := v1.Group("/builds")
+		buildsWrite.Use(a.writeAccessRequired())
+		{
+			buildsWrite.POST("/:buildId/cancel", a.Builds.HandleCancelBuild)
+			buildsWrite.POST("/:buildId/retry", a.Builds.HandleRetryBuild)
+		}
+
+		// Active builds - admin only
+		buildsAdmin := v1.Group("/builds")
+		buildsAdmin.Use(a.adminAccessRequired())
+		{
+			buildsAdmin.GET("/active", a.Builds.HandleListActiveBuilds)
+		}
 	}
 }

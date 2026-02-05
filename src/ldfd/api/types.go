@@ -5,6 +5,7 @@ import (
 	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
 	"github.com/bitswalk/ldf/src/ldfd/api/base"
 	"github.com/bitswalk/ldf/src/ldfd/api/branding"
+	"github.com/bitswalk/ldf/src/ldfd/api/builds"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/api/components"
 	"github.com/bitswalk/ldf/src/ldfd/api/distributions"
@@ -14,6 +15,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
@@ -32,6 +34,7 @@ type API struct {
 	Components    *components.Handler
 	Sources       *sources.Handler
 	Downloads     *downloads.Handler
+	Builds        *builds.Handler
 	Artifacts     *artifacts.Handler
 	Branding      *branding.Handler
 	LangPacks     *langpacks.Handler
@@ -57,6 +60,7 @@ type Config struct {
 	UserManager       *auth.UserManager
 	JWTService        *auth.JWTService
 	DownloadManager   *download.Manager
+	BuildManager      *build.Manager
 	VersionDiscovery  *download.VersionDiscovery
 	ForgeRegistry     *forge.Registry
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/ldfd/api"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	_ "github.com/bitswalk/ldf/src/ldfd/docs"
@@ -30,6 +31,7 @@ type Server struct {
 	database        *db.Database
 	storage         storage.Backend
 	downloadManager *download.Manager
+	buildManager    *build.Manager
 	api             *api.API
 }
 
@@ -69,6 +71,11 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	sourceRepo := db.NewSourceRepository(database)
 	versionDiscovery := download.NewVersionDiscovery(sourceVersionRepo, componentRepo, sourceRepo)
 
+	// Initialize build manager
+	build.SetLogger(log)
+	buildCfg := build.DefaultConfig()
+	buildManager := build.NewManager(database, storageBackend, downloadManager, buildCfg)
+
 	// Initialize forge registry for source detection and defaults
 	forge.SetLogger(log)
 	forgeRegistry := forge.NewRegistry()
@@ -88,6 +95,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		UserManager:       userManager,
 		JWTService:        jwtService,
 		DownloadManager:   downloadManager,
+		BuildManager:      buildManager,
 		VersionDiscovery:  versionDiscovery,
 		ForgeRegistry:     forgeRegistry,
 	})
@@ -103,6 +111,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		database:        database,
 		storage:         storageBackend,
 		downloadManager: downloadManager,
+		buildManager:    buildManager,
 		api:             apiInstance,
 	}
 
@@ -110,6 +119,13 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	go func() {
 		if err := downloadManager.Start(context.Background()); err != nil {
 			log.Error("Failed to start download manager", "error", err)
+		}
+	}()
+
+	// Start build manager
+	go func() {
+		if err := buildManager.Start(context.Background()); err != nil {
+			log.Error("Failed to start build manager", "error", err)
 		}
 	}()
 
@@ -183,6 +199,14 @@ func (s *Server) Run() error {
 func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Stop build manager
+	if s.buildManager != nil {
+		log.Info("Stopping build manager")
+		if err := s.buildManager.Stop(); err != nil {
+			log.Error("Build manager shutdown error", "error", err)
+		}
+	}
 
 	// Stop download manager
 	if s.downloadManager != nil {
