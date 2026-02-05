@@ -75,6 +75,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	build.SetLogger(log)
 	buildCfg := build.DefaultConfig()
 	buildManager := build.NewManager(database, storageBackend, downloadManager, buildCfg)
+	buildManager.RegisterDefaultStages()
 
 	// Initialize forge registry for source detection and defaults
 	forge.SetLogger(log)

@@ -19,9 +19,29 @@ type CoreConfig struct {
 	Partitioning      PartitioningConfig `json:"partitioning"`
 }
 
+// KernelConfigMode represents the kernel configuration mode
+type KernelConfigMode string
+
+const (
+	// KernelConfigModeDefconfig uses architecture default config (make defconfig)
+	KernelConfigModeDefconfig KernelConfigMode = "defconfig"
+	// KernelConfigModeOptions uses defconfig with additional options applied
+	KernelConfigModeOptions KernelConfigMode = "options"
+	// KernelConfigModeCustom uses a user-provided complete .config file
+	KernelConfigModeCustom KernelConfigMode = "custom"
+)
+
 // KernelConfig contains kernel configuration
 type KernelConfig struct {
 	Version string `json:"version"`
+	// ConfigMode determines how the kernel .config is generated
+	// "defconfig" - use arch default, "options" - defconfig + custom options, "custom" - user-provided file
+	ConfigMode KernelConfigMode `json:"config_mode,omitempty"`
+	// ConfigOptions are key-value pairs applied on top of defconfig (when ConfigMode is "options")
+	// Example: {"CONFIG_EXT4_FS": "y", "CONFIG_BTRFS_FS": "m", "CONFIG_DEBUG_INFO": "n"}
+	ConfigOptions map[string]string `json:"config_options,omitempty"`
+	// CustomConfigPath is the storage path to a user-uploaded .config file (when ConfigMode is "custom")
+	CustomConfigPath string `json:"custom_config_path,omitempty"`
 }
 
 // PartitioningConfig contains partitioning configuration

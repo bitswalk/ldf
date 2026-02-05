@@ -11,15 +11,15 @@ import (
 
 // ContainerExecutor wraps Podman operations for build isolation
 type ContainerExecutor struct {
-	image  string
-	logger io.Writer
+	defaultImage string
+	logger       io.Writer
 }
 
 // NewContainerExecutor creates a new container executor
-func NewContainerExecutor(image string, logger io.Writer) *ContainerExecutor {
+func NewContainerExecutor(defaultImage string, logger io.Writer) *ContainerExecutor {
 	return &ContainerExecutor{
-		image:  image,
-		logger: logger,
+		defaultImage: defaultImage,
+		logger:       logger,
 	}
 }
 
@@ -32,11 +32,14 @@ type Mount struct {
 
 // ContainerRunOpts holds options for running a container
 type ContainerRunOpts struct {
+	Image      string // Container image (uses defaultImage if empty)
 	Mounts     []Mount
 	Env        map[string]string
 	Command    []string
 	WorkDir    string
 	Privileged bool
+	Stdout     io.Writer
+	Stderr     io.Writer
 }
 
 // Run executes a command inside a container with the given options
@@ -66,16 +69,31 @@ func (e *ContainerExecutor) Run(ctx context.Context, opts ContainerRunOpts) erro
 		args = append(args, "-w", opts.WorkDir)
 	}
 
+	// Determine image to use
+	image := opts.Image
+	if image == "" {
+		image = e.defaultImage
+	}
+
 	// Add image and command
-	args = append(args, e.image)
+	args = append(args, image)
 	args = append(args, opts.Command...)
 
 	cmd := exec.CommandContext(ctx, "podman", args...)
 
-	// Capture output
+	// Set up output streams
 	var stderr bytes.Buffer
-	if e.logger != nil {
+
+	// Use provided stdout/stderr or fall back to logger
+	if opts.Stdout != nil {
+		cmd.Stdout = opts.Stdout
+	} else if e.logger != nil {
 		cmd.Stdout = e.logger
+	}
+
+	if opts.Stderr != nil {
+		cmd.Stderr = io.MultiWriter(&stderr, opts.Stderr)
+	} else if e.logger != nil {
 		cmd.Stderr = io.MultiWriter(&stderr, e.logger)
 	} else {
 		cmd.Stderr = &stderr
@@ -96,6 +114,11 @@ func (e *ContainerExecutor) IsAvailable() bool {
 
 // BuilderImageExists checks if the builder image exists locally
 func (e *ContainerExecutor) BuilderImageExists(ctx context.Context) bool {
-	cmd := exec.CommandContext(ctx, "podman", "image", "exists", e.image)
+	cmd := exec.CommandContext(ctx, "podman", "image", "exists", e.defaultImage)
 	return cmd.Run() == nil
+}
+
+// DefaultImage returns the default container image
+func (e *ContainerExecutor) DefaultImage() string {
+	return e.defaultImage
 }
