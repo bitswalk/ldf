@@ -10,11 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the distributions package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // NewHandler creates a new distributions handler

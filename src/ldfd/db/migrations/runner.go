@@ -11,11 +11,13 @@ import (
 )
 
 // package-level logger, can be set via SetLogger
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the migrations package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // Migration represents a single database migration
@@ -55,6 +57,7 @@ func (r *Runner) registerAll() {
 		migration009ForgeTypeVersionFilter(),
 		migration010DownloadJobSourceDedup(),
 		migration011SourceDefaultVersion(),
+		migration012BuildJobs(),
 	}
 
 	// Sort by version to ensure correct order

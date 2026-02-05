@@ -14,11 +14,13 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the download package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // Config holds configuration for the download manager

@@ -1,0 +1,233 @@
+package build
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/bitswalk/ldf/src/ldfd/db"
+)
+
+// Worker processes build jobs from the queue
+type Worker struct {
+	id      int
+	manager *Manager
+	jobChan <-chan *db.BuildJob
+}
+
+// newWorker creates a new build worker
+func newWorker(id int, manager *Manager, jobChan <-chan *db.BuildJob) *Worker {
+	return &Worker{
+		id:      id,
+		manager: manager,
+		jobChan: jobChan,
+	}
+}
+
+// Run starts the worker loop
+func (w *Worker) Run(ctx context.Context) {
+	log.Debug("Build worker started", "worker_id", w.id)
+	defer log.Debug("Build worker stopped", "worker_id", w.id)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case job, ok := <-w.jobChan:
+			if !ok {
+				return
+			}
+			w.processJob(ctx, job)
+		}
+	}
+}
+
+// processJob handles a single build job through all pipeline stages
+func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
+	log.Info("Processing build job",
+		"worker_id", w.id,
+		"build_id", job.ID,
+		"distribution_id", job.DistributionID,
+		"arch", job.TargetArch,
+		"format", job.ImageFormat,
+	)
+
+	// Create job-specific context with cancellation
+	jobCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Register cancel function with manager
+	w.manager.registerCancel(job.ID, cancel)
+	defer w.manager.unregisterCancel(job.ID)
+
+	// Mark job as started
+	if err := w.manager.buildJobRepo.MarkStarted(job.ID); err != nil {
+		log.Error("Failed to mark build started", "build_id", job.ID, "error", err)
+		return
+	}
+
+	// Parse the config snapshot
+	var config db.DistributionConfig
+	if job.ConfigSnapshot != "" {
+		if err := json.Unmarshal([]byte(job.ConfigSnapshot), &config); err != nil {
+			w.handleFailure(job, fmt.Sprintf("Failed to parse config snapshot: %v", err), "")
+			return
+		}
+	}
+
+	// Set up workspace
+	workspacePath := filepath.Join(w.manager.config.WorkspaceBase, job.ID)
+	sourcesDir := filepath.Join(workspacePath, "sources")
+	rootfsDir := filepath.Join(workspacePath, "rootfs")
+	outputDir := filepath.Join(workspacePath, "output")
+	configDir := filepath.Join(workspacePath, "config")
+
+	dirs := []string{workspacePath, sourcesDir, rootfsDir, outputDir, configDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			w.handleFailure(job, fmt.Sprintf("Failed to create workspace directory: %v", err), "")
+			return
+		}
+	}
+
+	// Create stage context
+	sc := &StageContext{
+		BuildID:        job.ID,
+		DistributionID: job.DistributionID,
+		OwnerID:        job.OwnerID,
+		Config:         &config,
+		TargetArch:     job.TargetArch,
+		ImageFormat:    job.ImageFormat,
+		WorkspacePath:  workspacePath,
+		SourcesDir:     sourcesDir,
+		RootfsDir:      rootfsDir,
+		OutputDir:      outputDir,
+		ConfigDir:      configDir,
+	}
+
+	// Create stage records in database
+	for _, stage := range w.manager.stages {
+		stageRecord := &db.BuildStage{
+			BuildID: job.ID,
+			Name:    stage.Name(),
+			Status:  "pending",
+		}
+		if err := w.manager.buildJobRepo.CreateStage(stageRecord); err != nil {
+			log.Warn("Failed to create stage record", "build_id", job.ID, "stage", stage.Name(), "error", err)
+		}
+	}
+
+	// Run each stage sequentially
+	for i, stage := range w.manager.stages {
+		stageName := stage.Name()
+
+		// Check for cancellation
+		select {
+		case <-jobCtx.Done():
+			w.handleFailure(job, "Build cancelled", string(stageName))
+			w.cleanup(workspacePath)
+			return
+		default:
+		}
+
+		// Update DB with current stage
+		stageProgress := (i * 100) / len(w.manager.stages)
+		if err := w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), stageProgress); err != nil {
+			log.Warn("Failed to update build stage", "build_id", job.ID, "error", err)
+		}
+
+		// Mark stage as running
+		if err := w.manager.buildJobRepo.UpdateStageStatus(job.ID, stageName, "running"); err != nil {
+			log.Warn("Failed to update stage status", "build_id", job.ID, "stage", stageName, "error", err)
+		}
+
+		w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+			fmt.Sprintf("Starting stage: %s", stageName))
+
+		stageStart := time.Now()
+
+		// Validate stage
+		if err := stage.Validate(jobCtx, sc); err != nil {
+			w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+				fmt.Sprintf("Stage validation failed: %v", err))
+			w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
+			w.handleFailure(job, fmt.Sprintf("Stage %s validation failed: %v", stageName, err), string(stageName))
+			w.cleanup(workspacePath)
+			return
+		}
+
+		// Execute stage with progress reporting
+		progressFunc := func(percent int, message string) {
+			// Calculate overall progress
+			overallPercent := (i*100 + percent) / len(w.manager.stages)
+			w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), overallPercent)
+
+			if message != "" {
+				w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info", message)
+			}
+		}
+
+		if err := stage.Execute(jobCtx, sc, progressFunc); err != nil {
+			durationMs := time.Since(stageStart).Milliseconds()
+			w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+				fmt.Sprintf("Stage execution failed: %v", err))
+			w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
+			_ = w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs)
+			w.handleFailure(job, fmt.Sprintf("Stage %s failed: %v", stageName, err), string(stageName))
+			w.cleanup(workspacePath)
+			return
+		}
+
+		// Mark stage as completed
+		durationMs := time.Since(stageStart).Milliseconds()
+		if err := w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs); err != nil {
+			log.Warn("Failed to mark stage completed", "build_id", job.ID, "stage", stageName, "error", err)
+		}
+
+		w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+			fmt.Sprintf("Stage completed in %dms", durationMs))
+	}
+
+	// Build completed successfully
+	log.Info("Build completed successfully",
+		"worker_id", w.id,
+		"build_id", job.ID,
+	)
+
+	// Mark job completed (artifact path and checksum will be set by package stage)
+	if err := w.manager.buildJobRepo.MarkCompleted(job.ID, "", "", 0); err != nil {
+		log.Error("Failed to mark build completed", "build_id", job.ID, "error", err)
+	}
+
+	w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Build completed successfully")
+
+	// Cleanup workspace
+	w.cleanup(workspacePath)
+}
+
+// handleFailure marks a build job as failed
+func (w *Worker) handleFailure(job *db.BuildJob, errorMsg, errorStage string) {
+	log.Error("Build job failed",
+		"worker_id", w.id,
+		"build_id", job.ID,
+		"error", errorMsg,
+		"stage", errorStage,
+	)
+
+	if err := w.manager.buildJobRepo.MarkFailed(job.ID, errorMsg, errorStage); err != nil {
+		log.Error("Failed to mark build as failed", "build_id", job.ID, "error", err)
+	}
+}
+
+// cleanup removes the build workspace directory
+func (w *Worker) cleanup(workspacePath string) {
+	if workspacePath == "" {
+		return
+	}
+	if err := os.RemoveAll(workspacePath); err != nil {
+		log.Warn("Failed to cleanup workspace", "path", workspacePath, "error", err)
+	}
+}

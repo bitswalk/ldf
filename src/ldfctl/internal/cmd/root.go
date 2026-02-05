@@ -95,6 +95,7 @@ func init() {
 	rootCmd.AddCommand(brandingCmd)
 	rootCmd.AddCommand(langpackCmd)
 	rootCmd.AddCommand(releaseCmd)
+	rootCmd.AddCommand(buildCmd)
 
 	registerCompletions()
 }
@@ -143,6 +144,10 @@ func registerCompletions() {
 	releaseConfigureCmd.ValidArgsFunction = completionDistributionIDs
 	releaseShowCmd.ValidArgsFunction = completionDistributionIDs
 	releaseCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+
+	// Build completions
+	buildStartCmd.ValidArgsFunction = completionDistributionIDs
+	buildListCmd.ValidArgsFunction = completionDistributionIDs
 }
 
 func initConfig() error {

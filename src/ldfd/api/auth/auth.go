@@ -11,11 +11,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var log *logs.Logger
+var log = logs.NewDefault()
 
 // SetLogger sets the logger for the auth api package
 func SetLogger(l *logs.Logger) {
-	log = l
+	if l != nil {
+		log = l
+	}
 }
 
 // NewHandler creates a new auth handler

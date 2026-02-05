@@ -22,7 +22,7 @@ go.work
 bin/
 
 # Build directories
-build/
+/build/
 dist/
 /output/
 .cache/

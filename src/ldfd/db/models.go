@@ -263,6 +263,98 @@ type VersionSyncJob struct {
 	CreatedAt     time.Time         `json:"created_at"`
 }
 
+// BuildJobStatus represents the status of a build job
+type BuildJobStatus string
+
+const (
+	BuildStatusPending    BuildJobStatus = "pending"
+	BuildStatusResolving  BuildJobStatus = "resolving"
+	BuildStatusPreparing  BuildJobStatus = "preparing"
+	BuildStatusCompiling  BuildJobStatus = "compiling"
+	BuildStatusAssembling BuildJobStatus = "assembling"
+	BuildStatusPackaging  BuildJobStatus = "packaging"
+	BuildStatusCompleted  BuildJobStatus = "completed"
+	BuildStatusFailed     BuildJobStatus = "failed"
+	BuildStatusCancelled  BuildJobStatus = "cancelled"
+)
+
+// BuildStageName defines the pipeline stages
+type BuildStageName string
+
+const (
+	StageResolve  BuildStageName = "resolve"
+	StageDownload BuildStageName = "download"
+	StagePrepare  BuildStageName = "prepare"
+	StageCompile  BuildStageName = "compile"
+	StageAssemble BuildStageName = "assemble"
+	StagePackage  BuildStageName = "package"
+)
+
+// TargetArch represents a supported target architecture
+type TargetArch string
+
+const (
+	ArchX86_64  TargetArch = "x86_64"
+	ArchAARCH64 TargetArch = "aarch64"
+)
+
+// ImageFormat represents the output image format
+type ImageFormat string
+
+const (
+	ImageFormatRaw   ImageFormat = "raw"
+	ImageFormatQCOW2 ImageFormat = "qcow2"
+	ImageFormatISO   ImageFormat = "iso"
+)
+
+// BuildJob represents a build task for a distribution
+type BuildJob struct {
+	ID               string         `json:"id"`
+	DistributionID   string         `json:"distribution_id"`
+	OwnerID          string         `json:"owner_id"`
+	Status           BuildJobStatus `json:"status"`
+	CurrentStage     string         `json:"current_stage"`
+	TargetArch       TargetArch     `json:"target_arch"`
+	ImageFormat      ImageFormat    `json:"image_format"`
+	ProgressPercent  int            `json:"progress_percent"`
+	WorkspacePath    string         `json:"workspace_path,omitempty"`
+	ArtifactPath     string         `json:"artifact_path,omitempty"`
+	ArtifactChecksum string         `json:"artifact_checksum,omitempty"`
+	ArtifactSize     int64          `json:"artifact_size"`
+	ErrorMessage     string         `json:"error_message,omitempty"`
+	ErrorStage       string         `json:"error_stage,omitempty"`
+	RetryCount       int            `json:"retry_count"`
+	MaxRetries       int            `json:"max_retries"`
+	ConfigSnapshot   string         `json:"config_snapshot,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	StartedAt        *time.Time     `json:"started_at,omitempty"`
+	CompletedAt      *time.Time     `json:"completed_at,omitempty"`
+}
+
+// BuildStage represents a single stage in the build pipeline
+type BuildStage struct {
+	ID              int64          `json:"id"`
+	BuildID         string         `json:"build_id"`
+	Name            BuildStageName `json:"name"`
+	Status          string         `json:"status"`
+	ProgressPercent int            `json:"progress_percent"`
+	StartedAt       *time.Time     `json:"started_at,omitempty"`
+	CompletedAt     *time.Time     `json:"completed_at,omitempty"`
+	DurationMs      int64          `json:"duration_ms"`
+	ErrorMessage    string         `json:"error_message,omitempty"`
+	LogPath         string         `json:"log_path,omitempty"`
+}
+
+// BuildLog represents a log entry for a build
+type BuildLog struct {
+	ID        int64     `json:"id"`
+	BuildID   string    `json:"build_id"`
+	Stage     string    `json:"stage"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // LanguagePack represents a custom language pack for i18n
 type LanguagePack struct {
 	Locale     string    `json:"locale"`
