@@ -84,7 +84,7 @@ tasks:
 
   test:
     desc: Run all tests
-    deps: [test:srv, test:webui]
+    deps: [test:srv, test:cli, test:webui]
 
   test:srv:
     desc: Run server tests
