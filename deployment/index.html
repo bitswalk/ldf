@@ -1,0 +1,1270 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ldf.bitswalk.com/deployment/">
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../sources/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Deployment - Linux Distribution Factory</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deployment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Linux Distribution Factory" class="md-header__button md-logo" aria-label="Linux Distribution Factory" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Linux Distribution Factory
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Deployment
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Deployment
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../sources/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Sources
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../blog/" class="md-tabs__link">
+          
+  
+  
+  Blog
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Linux Distribution Factory" class="md-nav__button md-logo" aria-label="Linux Distribution Factory" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Linux Distribution Factory
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bare-metal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bare Metal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bare Metal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-build-the-binaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Build the binaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-create-a-service-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Create a service user
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-create-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Create configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Systemd
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Systemd">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Install the service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-secrets-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configure secrets (optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-start-the-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Start the service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-view-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. View logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-file-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service file details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Docker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build-the-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build the image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with-custom-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With custom configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with-s3-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With S3 storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s3-compatible-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3-compatible storage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S3-compatible storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#garagehq" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GarageHQ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MinIO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-s3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS S3
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic-s3-compatible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic S3-compatible
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../blog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Archive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="deployment">Deployment</h1>
+<h2 id="bare-metal">Bare Metal</h2>
+<h3 id="1-build-the-binaries">1. Build the binaries</h3>
+<pre><code class="language-bash">git clone https://github.com/bitswalk/ldf.git
+cd ldf
+task build
+</code></pre>
+<p>This produces <code>build/bin/ldfd</code> and <code>build/bin/ldfctl</code>.</p>
+<h3 id="2-install">2. Install</h3>
+<pre><code class="language-bash">sudo cp build/bin/ldfd /usr/local/bin/
+sudo cp build/bin/ldfctl /usr/local/bin/
+</code></pre>
+<h3 id="3-create-a-service-user">3. Create a service user</h3>
+<pre><code class="language-bash">sudo useradd -r -s /usr/sbin/nologin -d /var/lib/ldfd ldfd
+sudo mkdir -p /var/lib/ldfd
+sudo chown ldfd:ldfd /var/lib/ldfd
+</code></pre>
+<h3 id="4-create-configuration">4. Create configuration</h3>
+<pre><code class="language-bash">sudo mkdir -p /etc/ldfd
+sudo cp docs/samples/ldfd.yml /etc/ldfd/ldfd.yml
+sudo chown ldfd:ldfd /etc/ldfd/ldfd.yml
+</code></pre>
+<p>Edit <code>/etc/ldfd/ldfd.yml</code> to set your desired configuration. See <a href="../configuration/">Configuration</a> for all options.</p>
+<h3 id="5-run">5. Run</h3>
+<pre><code class="language-bash">sudo -u ldfd ldfd --config /etc/ldfd/ldfd.yml
+</code></pre>
+<h2 id="systemd">Systemd</h2>
+<p>A sample systemd unit file is provided at <code>docs/samples/ldfd.service</code>.</p>
+<h3 id="1-install-the-service">1. Install the service</h3>
+<p>After building and installing the binary (see Bare Metal steps 1-4 above):</p>
+<pre><code class="language-bash">sudo cp docs/samples/ldfd.service /etc/systemd/system/ldfd.service
+sudo systemctl daemon-reload
+</code></pre>
+<h3 id="2-configure-secrets-optional">2. Configure secrets (optional)</h3>
+<p>For S3 storage credentials, create an environment file:</p>
+<pre><code class="language-bash">sudo touch /etc/ldfd/ldfd.env
+sudo chmod 600 /etc/ldfd/ldfd.env
+sudo chown ldfd:ldfd /etc/ldfd/ldfd.env
+</code></pre>
+<p>Add credentials to <code>/etc/ldfd/ldfd.env</code>:</p>
+<pre><code>LDFD_STORAGE_S3_ACCESS_KEY=your-access-key
+LDFD_STORAGE_S3_SECRET_KEY=your-secret-key
+</code></pre>
+<p>Then uncomment the <code>EnvironmentFile</code> line in the service file:</p>
+<pre><code class="language-ini">EnvironmentFile=-/etc/ldfd/ldfd.env
+</code></pre>
+<h3 id="3-start-the-service">3. Start the service</h3>
+<pre><code class="language-bash">sudo systemctl enable ldfd
+sudo systemctl start ldfd
+sudo systemctl status ldfd
+</code></pre>
+<h3 id="4-view-logs">4. View logs</h3>
+<pre><code class="language-bash">sudo journalctl -u ldfd -f
+</code></pre>
+<h3 id="service-file-details">Service file details</h3>
+<p>The provided unit file includes security hardening:</p>
+<ul>
+<li>Runs as a dedicated <code>ldfd</code> user (non-root)</li>
+<li><code>ProtectSystem=strict</code> -- Read-only filesystem except allowed paths</li>
+<li><code>ProtectHome=yes</code> -- No access to home directories</li>
+<li><code>PrivateTmp=yes</code> -- Isolated <code>/tmp</code></li>
+<li><code>NoNewPrivileges=yes</code> -- Cannot gain additional privileges</li>
+<li><code>ReadWritePaths=/var/lib/ldfd</code> -- Only writable path</li>
+<li><code>LimitNOFILE=65536</code> -- File descriptor limit</li>
+<li>Automatic restart on failure with 5-second delay</li>
+</ul>
+<h2 id="docker">Docker</h2>
+<p>A multi-stage Dockerfile is provided at <code>tools/docker/Dockerfile</code>.</p>
+<h3 id="build-the-image">Build the image</h3>
+<pre><code class="language-bash">docker build -f tools/docker/Dockerfile -t ldf:latest .
+</code></pre>
+<h3 id="run-the-container">Run the container</h3>
+<pre><code class="language-bash">docker run -d \
+  --name ldfd \
+  -p 8443:8443 \
+  -v ldfd-data:/var/lib/ldfd \
+  ldf:latest
+</code></pre>
+<h3 id="with-custom-configuration">With custom configuration</h3>
+<p>Mount a config file:</p>
+<pre><code class="language-bash">docker run -d \
+  --name ldfd \
+  -p 8443:8443 \
+  -v ldfd-data:/var/lib/ldfd \
+  -v /path/to/ldfd.yml:/opt/ldf/config/ldfd.yml:ro \
+  ldf:latest
+</code></pre>
+<h3 id="with-s3-storage">With S3 storage</h3>
+<p>Pass credentials via environment variables:</p>
+<pre><code class="language-bash">docker run -d \
+  --name ldfd \
+  -p 8443:8443 \
+  -v ldfd-data:/var/lib/ldfd \
+  -e LDFD_STORAGE_S3_ENDPOINT=s3.example.com \
+  -e LDFD_STORAGE_S3_PROVIDER=garage \
+  -e LDFD_STORAGE_S3_BUCKET=ldf-distributions \
+  -e LDFD_STORAGE_S3_ACCESS_KEY=your-key \
+  -e LDFD_STORAGE_S3_SECRET_KEY=your-secret \
+  ldf:latest
+</code></pre>
+<h3 id="container-details">Container details</h3>
+<p>The Docker image:</p>
+<ul>
+<li>Uses Alpine Linux as the runtime base</li>
+<li>Runs as a non-root <code>ldf</code> user (uid 1000)</li>
+<li>Includes build tools for kernel compilation (gcc, make, linux-headers)</li>
+<li>Copies <code>ldfd</code>, <code>ldfctl</code> binaries and WebUI assets</li>
+<li>Uses the sample config at <code>/opt/ldf/config/ldfd.yml</code></li>
+<li>Exposes port 8443</li>
+</ul>
+<h2 id="storage-setup">Storage Setup</h2>
+<h3 id="local-storage">Local storage</h3>
+<p>Local storage is the default. Artifacts are stored in a directory on the filesystem:</p>
+<pre><code class="language-yaml">storage:
+  type: local
+  local:
+    path: /var/lib/ldfd/artifacts
+</code></pre>
+<p>Ensure the ldfd user has write access to this directory.</p>
+<h3 id="s3-compatible-storage">S3-compatible storage</h3>
+<p>ldfd supports four S3 provider types, each with different URL construction:</p>
+<h4 id="garagehq">GarageHQ</h4>
+<pre><code class="language-yaml">storage:
+  type: s3
+  s3:
+    provider: garage
+    endpoint: s3.example.com
+    region: garage
+    bucket: ldf-distributions
+</code></pre>
+<p>Garage uses <code>api.{endpoint}</code> for the API and <code>{bucket}.{endpoint}</code> for web access.</p>
+<h4 id="minio">MinIO</h4>
+<pre><code class="language-yaml">storage:
+  type: s3
+  s3:
+    provider: minio
+    endpoint: minio.example.com:9000
+    region: us-east-1
+    bucket: ldf-distributions
+</code></pre>
+<p>MinIO uses the endpoint directly with path-style addressing.</p>
+<h4 id="aws-s3">AWS S3</h4>
+<pre><code class="language-yaml">storage:
+  type: s3
+  s3:
+    provider: aws
+    region: us-east-1
+    bucket: ldf-distributions
+</code></pre>
+<p>AWS uses <code>s3.{region}.amazonaws.com</code> automatically.</p>
+<h4 id="generic-s3-compatible">Generic S3-compatible</h4>
+<pre><code class="language-yaml">storage:
+  type: s3
+  s3:
+    provider: other
+    endpoint: s3.example.com
+    region: us-east-1
+    bucket: ldf-distributions
+</code></pre>
+<p>Generic provider uses path-style addressing with the endpoint directly.</p>
+<p>For all S3 providers, pass credentials via environment variables rather than config files:</p>
+<pre><code class="language-bash">export LDFD_STORAGE_S3_ACCESS_KEY=&quot;your-access-key&quot;
+export LDFD_STORAGE_S3_SECRET_KEY=&quot;your-secret-key&quot;
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Configuration
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../sources/" class="md-footer__link md-footer__link--next" aria-label="Next: Sources">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Sources
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025-2026 - Bitswalk, inc.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["announce.dismiss", "navigation.footer", "navigation.instant", "navigation.instant.progress", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

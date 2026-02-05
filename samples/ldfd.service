@@ -1,0 +1,53 @@
+[Unit]
+Description=Linux Distribution Factory Server (ldfd)
+Documentation=https://github.com/bitswalk/ldf
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ldfd
+Group=ldfd
+
+# Binary and configuration
+ExecStart=/usr/local/bin/ldfd --config /etc/ldfd/ldfd.yml
+
+# Working directory for relative paths
+WorkingDirectory=/var/lib/ldfd
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Environment variables (can also use EnvironmentFile)
+# Environment=LDFD_STORAGE_S3_ACCESS_KEY=your-access-key
+# Environment=LDFD_STORAGE_S3_SECRET_KEY=your-secret-key
+
+# For sensitive credentials, use a separate file:
+# EnvironmentFile=-/etc/ldfd/ldfd.env
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+
+# Allow write access to data directories
+ReadWritePaths=/var/lib/ldfd
+
+# Allow binding to privileged ports if needed (uncomment if using port < 1024)
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+# CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

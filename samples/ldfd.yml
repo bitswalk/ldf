@@ -1,0 +1,71 @@
+# ------------------------------------------------------------------------------
+# Server Settings
+# ------------------------------------------------------------------------------
+server:
+  # Port for HTTPS server to listen on
+  port: 8443
+
+  # Network address to bind to (0.0.0.0 = all interfaces)
+  bind: "0.0.0.0"
+
+# ------------------------------------------------------------------------------
+# Logging Settings
+# ------------------------------------------------------------------------------
+log:
+  # Log destination: stdout, journald, or auto
+  # auto: Uses journald if available, falls back to stdout
+  output: "auto"
+
+  # Minimum log level: debug, info, warn, error
+  level: "info"
+
+# ------------------------------------------------------------------------------
+# Database Settings
+# ------------------------------------------------------------------------------
+database:
+  # Path to persist in-memory SQLite database on shutdown
+  # Supports ~ for home directory and environment variables
+  path: "~/.ldfd/ldfd.db"
+
+# ------------------------------------------------------------------------------
+# Storage Settings
+# ------------------------------------------------------------------------------
+storage:
+  # Storage backend: local or s3
+  type: "local"
+
+  # Local filesystem storage configuration
+  local:
+    # Root directory for storing distribution artifacts
+    path: "~/.ldfd/artifacts"
+
+  # S3-compatible object storage configuration
+  # Uncomment and configure to use S3 instead of local storage
+  # s3:
+  #   # S3 provider type - determines URL construction for API and web access
+  #   # Supported providers:
+  #   #   garage: GarageHQ - API at api.{endpoint}, web at {bucket}.{endpoint}
+  #   #   minio:  MinIO - uses endpoint directly with path-style
+  #   #   aws:    Amazon S3 - uses s3.{region}.amazonaws.com
+  #   #   other:  Generic S3-compatible (path-style)
+  #   provider: "garage"
+  #
+  #   # Base S3 domain (without protocol or api/bucket prefix)
+  #   # Examples:
+  #   #   GarageHQ:         s3.example.com
+  #   #   MinIO:            minio.example.com:9000
+  #   #   DigitalOcean:     nyc3.digitaloceanspaces.com
+  #   endpoint: "s3.example.com"
+  #
+  #   # AWS/S3 region
+  #   region: "us-east-1"
+  #
+  #   # S3 bucket name for storing artifacts
+  #   bucket: "ldf-distributions"
+  #
+  #   # S3 credentials
+  #   # For security, prefer using environment variables:
+  #   #   LDFD_STORAGE_S3_ACCESS_KEY
+  #   #   LDFD_STORAGE_S3_SECRET_KEY
+  #   access_key: ""
+  #   secret_key: ""
