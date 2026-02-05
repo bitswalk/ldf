@@ -112,6 +112,7 @@ class I18nService {
         artifacts,
         auth,
         components,
+        build,
       ] = await Promise.all([
         import(`../locales/${locale}/common.json`),
         import(`../locales/${locale}/settings.json`),
@@ -120,6 +121,7 @@ class I18nService {
         import(`../locales/${locale}/artifacts.json`),
         import(`../locales/${locale}/auth.json`),
         import(`../locales/${locale}/components.json`),
+        import(`../locales/${locale}/build.json`),
       ]);
 
       // Merge all modules with namespace prefixes
@@ -131,6 +133,7 @@ class I18nService {
         artifacts: artifacts.default,
         auth: auth.default,
         components: components.default,
+        build: build.default,
       };
 
       // Flatten for fast lookups

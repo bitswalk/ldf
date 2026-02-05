@@ -6,6 +6,8 @@ import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { DownloadStatus } from "../../components/DownloadStatus";
 import { DistributionEditForm } from "../../components/DistributionEditForm";
+import { BuildStartDialog } from "../../components/BuildStartDialog";
+import { BuildsList } from "../../components/BuildsList";
 import {
   getDistribution,
   updateDistribution,
@@ -30,6 +32,7 @@ interface DistributionDetailProps {
   distributionId: string;
   onBack: () => void;
   onDeleted?: () => void;
+  onNavigateToBuild?: (buildId: string) => void;
   user?: UserInfo | null;
 }
 
@@ -122,6 +125,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const [deletionPreview, setDeletionPreview] =
     createSignal<DeletionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = createSignal(false);
+  const [buildDialogOpen, setBuildDialogOpen] = createSignal(false);
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -663,7 +667,10 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                 header={{ title: t("distribution.detail.quickActions.title") }}
               >
                 <div class="space-y-3">
-                  <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
+                  <button
+                    class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left"
+                    onClick={() => setBuildDialogOpen(true)}
+                  >
                     <Icon name="hammer" size="md" class="text-primary" />
                     <div>
                       <div class="font-medium">
@@ -691,6 +698,19 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     </div>
                   </button>
                 </div>
+              </Card>
+
+              {/* Recent Builds */}
+              <Card
+                header={{
+                  title: t("build.list.title"),
+                }}
+              >
+                <BuildsList
+                  distributionId={props.distributionId}
+                  onBuildClick={(buildId) => props.onNavigateToBuild?.(buildId)}
+                  limit={5}
+                />
               </Card>
 
               {/* Component Downloads */}
@@ -865,6 +885,18 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
           </nav>
         </section>
       </Modal>
+
+      {/* Build Start Dialog */}
+      <BuildStartDialog
+        isOpen={buildDialogOpen()}
+        onClose={() => setBuildDialogOpen(false)}
+        distributionId={props.distributionId}
+        distributionName={distribution()?.name || ""}
+        onBuildStarted={(buildId) => {
+          showNotification("success", t("build.startDialog.success"));
+          props.onNavigateToBuild?.(buildId);
+        }}
+      />
     </section>
   );
 };
