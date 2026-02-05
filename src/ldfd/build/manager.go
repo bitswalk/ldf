@@ -117,11 +117,12 @@ func (m *Manager) RegisterDefaultStages() {
 		NewPrepareStage(m.storage),
 		NewCompileStage(executor),
 		NewAssembleStage(),
+		NewPackageStage(executor, m.storage, 4), // 4GB default image size
 	}
 
 	log.Info("Registered default build stages",
 		"count", len(m.stages),
-		"stages", []string{"resolve", "download", "prepare", "compile", "assemble"})
+		"stages", []string{"resolve", "download", "prepare", "compile", "assemble", "package"})
 }
 
 // Start begins processing build jobs

@@ -195,14 +195,17 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 	log.Info("Build completed successfully",
 		"worker_id", w.id,
 		"build_id", job.ID,
+		"artifact_path", sc.ArtifactPath,
+		"artifact_size", sc.ArtifactSize,
 	)
 
-	// Mark job completed (artifact path and checksum will be set by package stage)
-	if err := w.manager.buildJobRepo.MarkCompleted(job.ID, "", "", 0); err != nil {
+	// Mark job completed with artifact info from package stage
+	if err := w.manager.buildJobRepo.MarkCompleted(job.ID, sc.ArtifactPath, sc.ArtifactChecksum, sc.ArtifactSize); err != nil {
 		log.Error("Failed to mark build completed", "build_id", job.ID, "error", err)
 	}
 
-	w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Build completed successfully")
+	w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
+		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize))
 
 	// Cleanup workspace
 	w.cleanup(workspacePath)
