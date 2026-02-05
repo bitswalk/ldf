@@ -49,12 +49,19 @@ var downloadRetryCmd = &cobra.Command{
 	RunE:  runDownloadRetry,
 }
 
+var downloadActiveCmd = &cobra.Command{
+	Use:   "active",
+	Short: "List all active downloads",
+	RunE:  runDownloadActive,
+}
+
 func init() {
 	downloadCmd.AddCommand(downloadListCmd)
 	downloadCmd.AddCommand(downloadGetCmd)
 	downloadCmd.AddCommand(downloadStartCmd)
 	downloadCmd.AddCommand(downloadCancelCmd)
 	downloadCmd.AddCommand(downloadRetryCmd)
+	downloadCmd.AddCommand(downloadActiveCmd)
 }
 
 func runDownloadList(cmd *cobra.Command, args []string) error {
@@ -161,5 +168,31 @@ func runDownloadRetry(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintMessage(fmt.Sprintf("Download %s retry started.", args[0]))
+	return nil
+}
+
+func runDownloadActive(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.ListActiveDownloads(ctx)
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	if resp.Count == 0 {
+		output.PrintMessage("No active downloads.")
+		return nil
+	}
+
+	rows := make([][]string, len(resp.Jobs))
+	for i, j := range resp.Jobs {
+		rows[i] = []string{j.ID, j.DistributionID, j.Status, fmt.Sprintf("%d%%", j.Progress), j.SourceURL}
+	}
+	output.PrintTable([]string{"ID", "DISTRIBUTION", "STATUS", "PROGRESS", "SOURCE"}, rows)
 	return nil
 }

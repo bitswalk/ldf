@@ -34,10 +34,19 @@ var settingSetCmd = &cobra.Command{
 	RunE:  runSettingSet,
 }
 
+var settingResetDBCmd = &cobra.Command{
+	Use:   "reset-db",
+	Short: "Reset the database (requires confirmation)",
+	RunE:  runSettingResetDB,
+}
+
 func init() {
 	settingCmd.AddCommand(settingListCmd)
 	settingCmd.AddCommand(settingGetCmd)
 	settingCmd.AddCommand(settingSetCmd)
+	settingCmd.AddCommand(settingResetDBCmd)
+
+	settingResetDBCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
 }
 
 func runSettingList(cmd *cobra.Command, args []string) error {
@@ -118,5 +127,32 @@ func runSettingSet(cmd *cobra.Command, args []string) error {
 	}
 
 	output.PrintMessage(fmt.Sprintf("Setting %q updated to %v.", key, resp.Value))
+	return nil
+}
+
+func runSettingResetDB(cmd *cobra.Command, args []string) error {
+	yes, _ := cmd.Flags().GetBool("yes")
+	if !yes {
+		fmt.Print("WARNING: This will reset the entire database. All data will be lost.\nType 'yes' to confirm: ")
+		var confirm string
+		fmt.Scanln(&confirm)
+		if confirm != "yes" {
+			output.PrintMessage("Database reset cancelled.")
+			return nil
+		}
+	}
+
+	c := getClient()
+	ctx := context.Background()
+
+	if err := c.ResetDatabase(ctx); err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(map[string]string{"message": "Database reset successfully"})
+	}
+
+	output.PrintMessage("Database reset successfully.")
 	return nil
 }

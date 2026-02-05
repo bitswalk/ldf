@@ -48,12 +48,35 @@ var distributionDeleteCmd = &cobra.Command{
 	RunE:  runDistributionDelete,
 }
 
+var distributionLogsCmd = &cobra.Command{
+	Use:   "logs <id>",
+	Short: "Get logs for a distribution",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runDistributionLogs,
+}
+
+var distributionStatsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "Get distribution statistics",
+	RunE:  runDistributionStats,
+}
+
+var distributionDeletionPreviewCmd = &cobra.Command{
+	Use:   "deletion-preview <id>",
+	Short: "Preview what will be deleted",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runDistributionDeletionPreview,
+}
+
 func init() {
 	distributionCmd.AddCommand(distributionListCmd)
 	distributionCmd.AddCommand(distributionGetCmd)
 	distributionCmd.AddCommand(distributionCreateCmd)
 	distributionCmd.AddCommand(distributionUpdateCmd)
 	distributionCmd.AddCommand(distributionDeleteCmd)
+	distributionCmd.AddCommand(distributionLogsCmd)
+	distributionCmd.AddCommand(distributionStatsCmd)
+	distributionCmd.AddCommand(distributionDeletionPreviewCmd)
 
 	// Create flags
 	distributionCreateCmd.Flags().String("name", "", "Distribution name (required)")
@@ -215,4 +238,52 @@ func runDistributionDelete(cmd *cobra.Command, args []string) error {
 
 	output.PrintMessage(fmt.Sprintf("Distribution %s deleted.", args[0]))
 	return nil
+}
+
+func runDistributionLogs(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.GetDistributionLogs(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	return output.PrintJSON(resp)
+}
+
+func runDistributionStats(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.GetDistributionStats(ctx)
+	if err != nil {
+		return err
+	}
+
+	if getOutputFormat() == "json" {
+		return output.PrintJSON(resp)
+	}
+
+	output.PrintMessage(fmt.Sprintf("Total distributions: %d", resp.Total))
+	if len(resp.Stats) > 0 {
+		rows := make([][]string, 0, len(resp.Stats))
+		for status, count := range resp.Stats {
+			rows = append(rows, []string{status, fmt.Sprintf("%d", count)})
+		}
+		output.PrintTable([]string{"STATUS", "COUNT"}, rows)
+	}
+	return nil
+}
+
+func runDistributionDeletionPreview(cmd *cobra.Command, args []string) error {
+	c := getClient()
+	ctx := context.Background()
+
+	resp, err := c.GetDeletionPreview(ctx, args[0])
+	if err != nil {
+		return err
+	}
+
+	return output.PrintJSON(resp)
 }
