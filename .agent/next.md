@@ -14,18 +14,18 @@
 - ~~**CLI Foundation** (M3.1)~~ -- Done on `feature/m3_1`. Cobra root command, HTTP API client, token storage, auth commands (login/logout/whoami), version command, resource commands (distribution, component, source, download, artifact, setting), table/JSON output formatting. 20 new files, 2553 lines. Separate CLI ldflags in Taskfile.yml. Fixed .gitignore `output/` rule. Updated AGENT.md branch naming convention.
 - ~~**Core CLI Commands** (M3.2)~~ -- Done on `feature/m3_2`. Complete CLI coverage for all 71 ldfd API endpoints. Added 4 new resource groups: role (list/get/create/update/delete), forge (detect/preview-filter/types/filters), branding (get/info/upload/delete), langpack (list/get/upload/delete). Added health command. Extended existing resources: distribution (+logs/stats/deletion-preview), component (+categories/versions/resolve-version/--category), source (+versions/sync-status/clear-versions), download (+active), artifact (+url/storage-status/list-all), setting (+reset-db). 9 new files, 1537 lines added.
 - ~~**CLI Advanced Features** (M3.3)~~ -- Done on `feature/m3_3`. YAML output support (goccy/go-yaml, all 61 handlers). Query parameter flags: --limit/--offset on list commands, --status on distribution list, --version-type on component/source versions. Composite release commands: create, configure (22 config flags for kernel/init/fs/security/runtime/target), show. Shell completion: ValidArgsFunction for distribution/component/source/role IDs, flag completions for --output/--status/--visibility/--category. Improved APIError with hints for 401/403/404/409. 3 new files, 1158 lines added.
+- ~~**CLI Testing** (M3.4)~~ -- Done on `feature/m3_4`. 88 unit tests across 4 packages: client (21 tests: ListOptions, APIError, HTTP methods with httptest mock server), output (11 tests: PrintJSON/YAML/Table/Message/Error), config (5 tests: token save/load/clear, JSON serialization), cmd (51 tests: command registration, aliases, arg validation, flags, mock server execution, error handling, output formats). Coverage: output 89.7%, config 36.4%, cmd 22.8%, client 16.0%. Added test-cli job to CI pipeline (gated on by build job). Added test:cli to Taskfile.yml main test task. 4 new test files, 1490 lines added.
 
 ## Next tasks
 
-**M3.4: CLI Testing**:
-- Unit tests for command parsing
-- Integration tests against test server
-- Add to CI pipeline via `test:cli` Taskfile task
+**M3 is complete.** All subtasks (M3.1-M3.4) are done and merged to main.
+
+Next milestone per roadmap: **M4 -- Hardening & Polish**.
 
 ## Context for next session
 
 - M1 and M2 are fully complete and merged to main.
-- M3.1 (CLI Foundation), M3.2 (Core CLI Commands), and M3.3 (CLI Advanced Features) are complete and merged to main.
+- M3 (CLI Client) is fully complete: M3.1 Foundation, M3.2 Core Commands, M3.3 Advanced Features, M3.4 Testing. All merged to main.
 - Main is ahead of origin (unpushed).
 - Branch naming convention updated: `feature/m<milestone>_<subtask>` (e.g., M3.2 -> `feature/m3_2`).
 - CLI binary builds with `task build:cli` or `task build:cli:dev`.
