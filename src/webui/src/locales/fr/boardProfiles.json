@@ -1,0 +1,65 @@
+{
+  "title": "Profils de carte",
+  "description": "Gerer les profils de carte materielle pour les builds de distribution",
+  "create": "Creer un profil de carte",
+  "edit": "Modifier le profil de carte",
+  "empty": "Aucun profil de carte trouve",
+  "emptyDescription": "Creez un profil de carte pour definir les configurations de build specifiques au materiel.",
+  "filter": {
+    "allArchitectures": "Toutes les architectures"
+  },
+  "columns": {
+    "name": "Nom",
+    "displayName": "Nom d'affichage",
+    "arch": "Architecture",
+    "defconfig": "Defconfig noyau",
+    "system": "Systeme",
+    "owner": "Proprietaire",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Nom",
+      "description": "Identifiant unique (ex: rpi4, jetson-orin)",
+      "placeholder": "ma-carte"
+    },
+    "displayName": {
+      "label": "Nom d'affichage",
+      "description": "Nom lisible pour le profil",
+      "placeholder": "Ma carte personnalisee"
+    },
+    "description": {
+      "label": "Description",
+      "description": "Description optionnelle du profil de carte",
+      "placeholder": "Description de la carte et de sa configuration"
+    },
+    "arch": {
+      "label": "Architecture",
+      "description": "Architecture CPU cible"
+    },
+    "kernelDefconfig": {
+      "label": "Defconfig noyau",
+      "description": "Nom du defconfig noyau specifique a la carte (optionnel)",
+      "placeholder": "bcm2711_defconfig"
+    },
+    "kernelCmdline": {
+      "label": "Ligne de commande noyau",
+      "description": "Parametres personnalises de ligne de commande noyau (optionnel)",
+      "placeholder": "console=ttyS0,115200 root=/dev/mmcblk0p2"
+    }
+  },
+  "delete": {
+    "title": "Supprimer le profil de carte",
+    "confirm": "Etes-vous sur de vouloir supprimer le profil de carte \"{{ name }}\" ? Cette action est irreversible.",
+    "systemError": "Les profils de carte systeme ne peuvent pas etre supprimes."
+  },
+  "badges": {
+    "system": "Systeme"
+  },
+  "errors": {
+    "loadFailed": "Echec du chargement des profils de carte",
+    "createFailed": "Echec de la creation du profil de carte",
+    "updateFailed": "Echec de la mise a jour du profil de carte",
+    "deleteFailed": "Echec de la suppression du profil de carte"
+  }
+}

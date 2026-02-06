@@ -1,0 +1,65 @@
+{
+  "title": "Board-Profile",
+  "description": "Hardware-Board-Profile fur Distributions-Builds verwalten",
+  "create": "Board-Profil erstellen",
+  "edit": "Board-Profil bearbeiten",
+  "empty": "Keine Board-Profile gefunden",
+  "emptyDescription": "Erstellen Sie ein Board-Profil, um hardwarespezifische Build-Konfigurationen zu definieren.",
+  "filter": {
+    "allArchitectures": "Alle Architekturen"
+  },
+  "columns": {
+    "name": "Name",
+    "displayName": "Anzeigename",
+    "arch": "Architektur",
+    "defconfig": "Kernel-Defconfig",
+    "system": "System",
+    "owner": "Besitzer",
+    "actions": "Aktionen"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "description": "Eindeutiger Bezeichner (z.B. rpi4, jetson-orin)",
+      "placeholder": "mein-board"
+    },
+    "displayName": {
+      "label": "Anzeigename",
+      "description": "Lesbarer Name fur das Profil",
+      "placeholder": "Mein benutzerdefiniertes Board"
+    },
+    "description": {
+      "label": "Beschreibung",
+      "description": "Optionale Beschreibung des Board-Profils",
+      "placeholder": "Beschreibung des Boards und seiner Konfiguration"
+    },
+    "arch": {
+      "label": "Architektur",
+      "description": "Ziel-CPU-Architektur"
+    },
+    "kernelDefconfig": {
+      "label": "Kernel-Defconfig",
+      "description": "Board-spezifischer Kernel-Defconfig-Name (optional)",
+      "placeholder": "bcm2711_defconfig"
+    },
+    "kernelCmdline": {
+      "label": "Kernel-Befehlszeile",
+      "description": "Benutzerdefinierte Kernel-Befehlszeilenparameter (optional)",
+      "placeholder": "console=ttyS0,115200 root=/dev/mmcblk0p2"
+    }
+  },
+  "delete": {
+    "title": "Board-Profil loschen",
+    "confirm": "Sind Sie sicher, dass Sie das Board-Profil \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "systemError": "System-Board-Profile konnen nicht geloscht werden."
+  },
+  "badges": {
+    "system": "System"
+  },
+  "errors": {
+    "loadFailed": "Fehler beim Laden der Board-Profile",
+    "createFailed": "Fehler beim Erstellen des Board-Profils",
+    "updateFailed": "Fehler beim Aktualisieren des Board-Profils",
+    "deleteFailed": "Fehler beim Loschen des Board-Profils"
+  }
+}
