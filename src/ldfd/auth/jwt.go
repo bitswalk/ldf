@@ -37,7 +37,7 @@ func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsSto
 	if err != nil || secretKey == "" {
 		// Generate new secret key and persist it
 		secretKey = generateSecretKey()
-		settings.SetSetting("jwt_secret", secretKey)
+		_ = settings.SetSetting("jwt_secret", secretKey)
 	}
 
 	return &JWTService{
@@ -121,7 +121,7 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User,
 	}
 
 	// Update last used timestamp
-	s.userManager.UpdateRefreshTokenLastUsed(rt.ID)
+	_ = s.userManager.UpdateRefreshTokenLastUsed(rt.ID)
 
 	// Get the user
 	user, err := s.userManager.GetUserByID(rt.UserID)

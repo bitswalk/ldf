@@ -62,7 +62,7 @@ func init() {
 	roleCreateCmd.Flags().Bool("can-write", false, "Write permission")
 	roleCreateCmd.Flags().Bool("can-delete", false, "Delete permission")
 	roleCreateCmd.Flags().Bool("can-admin", false, "Admin permission")
-	roleCreateCmd.MarkFlagRequired("name")
+	_ = roleCreateCmd.MarkFlagRequired("name")
 
 	roleUpdateCmd.Flags().String("name", "", "Role name")
 	roleUpdateCmd.Flags().String("description", "", "Role description")

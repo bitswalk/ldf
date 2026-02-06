@@ -378,12 +378,12 @@ type buildProgressWriter struct {
 func (w *buildProgressWriter) Write(p []byte) (n int, err error) {
 	// Write to log file
 	if w.logFile != nil {
-		w.logFile.Write(p)
+		_, _ = w.logFile.Write(p)
 	}
 
 	// Write to log writer if available
 	if w.logWriter != nil {
-		w.logWriter.Write(p)
+		_, _ = w.logWriter.Write(p)
 	}
 
 	// Parse output for progress indicators

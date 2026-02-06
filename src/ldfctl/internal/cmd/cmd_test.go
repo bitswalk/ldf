@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/bitswalk/ldf/src/ldfctl/internal/client"
-	"github.com/spf13/cobra"
 )
 
 // =============================================================================
@@ -29,16 +28,6 @@ func setupTestClient(t *testing.T, mux *http.ServeMux) *httptest.Server {
 func resetGlobals() {
 	apiClient = nil
 	outputFormat = "table"
-}
-
-// executeCommand runs a cobra command with the given args and returns stdout/stderr
-func executeCommand(root *cobra.Command, args ...string) (string, error) {
-	buf := new(bytes.Buffer)
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs(args)
-	err := root.Execute()
-	return buf.String(), err
 }
 
 // =============================================================================
@@ -375,7 +364,7 @@ func TestDistributionList_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count": 2,
 			"distributions": []map[string]string{
 				{"id": "d1", "name": "alpine", "version": "3.19", "status": "ready", "visibility": "public"},
@@ -398,7 +387,7 @@ func TestDistributionGet_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions/d1", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"id": "d1", "name": "alpine", "version": "3.19", "status": "ready",
 		})
 	})
@@ -439,7 +428,7 @@ func TestDistributionList_WithQueryParams(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions", func(w http.ResponseWriter, r *http.Request) {
 		capturedQuery = r.URL.RawQuery
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count":         0,
 			"distributions": []interface{}{},
 		})
@@ -448,13 +437,13 @@ func TestDistributionList_WithQueryParams(t *testing.T) {
 	defer srv.Close()
 
 	outputFormat = "table"
-	distributionListCmd.Flags().Set("limit", "10")
-	distributionListCmd.Flags().Set("offset", "5")
-	distributionListCmd.Flags().Set("status", "ready")
+	_ = distributionListCmd.Flags().Set("limit", "10")
+	_ = distributionListCmd.Flags().Set("offset", "5")
+	_ = distributionListCmd.Flags().Set("status", "ready")
 	defer func() {
-		distributionListCmd.Flags().Set("limit", "0")
-		distributionListCmd.Flags().Set("offset", "0")
-		distributionListCmd.Flags().Set("status", "")
+		_ = distributionListCmd.Flags().Set("limit", "0")
+		_ = distributionListCmd.Flags().Set("offset", "0")
+		_ = distributionListCmd.Flags().Set("status", "")
 	}()
 
 	err := runDistributionList(distributionListCmd, []string{})
@@ -494,7 +483,7 @@ func TestComponentList_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/components", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count":      1,
 			"components": []map[string]string{{"id": "c1", "name": "linux", "category": "kernel"}},
 		})
@@ -514,7 +503,7 @@ func TestSourceList_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/sources", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count":   1,
 			"sources": []map[string]string{{"id": "s1", "name": "kernel.org", "url": "https://kernel.org"}},
 		})
@@ -534,7 +523,7 @@ func TestHealthCommand_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 	})
 	srv := setupTestClient(t, mux)
 	defer srv.Close()
@@ -551,7 +540,7 @@ func TestDistributionStats_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions/stats", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"total": 5,
 			"stats": map[string]int{"ready": 3, "pending": 2},
 		})
@@ -571,7 +560,7 @@ func TestDownloadActive_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/downloads/active", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count": 0,
 			"jobs":  []interface{}{},
 		})
@@ -591,7 +580,7 @@ func TestStorageStatus_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/storage/status", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"type": "local", "available": true, "path": "/data",
 		})
 	})
@@ -610,7 +599,7 @@ func TestRoleList_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/roles", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"roles": []map[string]interface{}{
 				{"id": "r1", "name": "admin", "description": "Admin role",
 					"permissions": map[string]bool{"can_read": true, "can_write": true, "can_delete": true, "can_admin": true}},
@@ -637,7 +626,7 @@ func TestDistributionGet_ServerError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions/bad-id", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "not_found", "message": "distribution not found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "not_found", "message": "distribution not found"})
 	})
 	srv := setupTestClient(t, mux)
 	defer srv.Close()
@@ -654,7 +643,7 @@ func TestComponentGet_ServerError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/components/bad-id", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "internal", "message": "database error"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "internal", "message": "database error"})
 	})
 	srv := setupTestClient(t, mux)
 	defer srv.Close()
@@ -738,7 +727,7 @@ func TestForgeTypes_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/forge/types", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"types": []string{"github", "gitlab", "tarball"},
 		})
 	})
@@ -757,7 +746,7 @@ func TestForgeFilters_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/forge/common-filters", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"filters": map[string]string{"stable": "^[0-9]+\\.[0-9]+$", "lts": "^[0-9]+\\..*-lts$"},
 		})
 	})
@@ -780,7 +769,7 @@ func TestSettingList_MockServer(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/settings", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"settings": map[string]interface{}{
 				"max_downloads": map[string]interface{}{"key": "max_downloads", "value": 5, "type": "int"},
 			},
@@ -805,7 +794,7 @@ func TestDistributionList_EmptyResult(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/distributions", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"count":         0,
 			"distributions": []interface{}{},
 		})

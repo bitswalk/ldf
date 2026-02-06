@@ -5,20 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
 	"github.com/gin-gonic/gin"
 )
-
-var log = logs.NewDefault()
-
-// SetLogger sets the logger for the forge API package
-func SetLogger(l *logs.Logger) {
-	if l != nil {
-		log = l
-	}
-}
 
 // NewHandler creates a new forge handler
 func NewHandler(cfg Config) *Handler {

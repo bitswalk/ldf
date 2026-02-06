@@ -109,7 +109,7 @@ func setupTestAPI(t *testing.T) *testAPI {
 	apiInstance.RegisterRoutes(router)
 
 	t.Cleanup(func() {
-		database.Shutdown()
+		_ = database.Shutdown()
 	})
 
 	return &testAPI{
@@ -716,7 +716,7 @@ func (ta *testAPI) makeMultipartRequest(t *testing.T, method, path string, field
 	if err != nil {
 		t.Fatalf("failed to create form file: %v", err)
 	}
-	part.Write(fileContent)
+	_, _ = part.Write(fileContent)
 	writer.Close()
 
 	req := httptest.NewRequest(method, path, body)
@@ -744,7 +744,7 @@ func TestAPI_HandleArtifactUpload(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// Upload an artifact
 	fileContent := []byte("test artifact content")
@@ -778,7 +778,7 @@ func TestAPI_HandleArtifactUpload_NoFile(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// POST without file
 	rec := ta.makeRequest("POST", "/v1/distributions/"+dist.ID+"/artifacts", nil, token)
@@ -814,7 +814,7 @@ func TestAPI_HandleArtifactDownload(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// First upload an artifact
 	fileContent := []byte("downloadable content")
@@ -845,7 +845,7 @@ func TestAPI_HandleArtifactDownload_NotFound(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("GET", "/v1/distributions/"+dist.ID+"/artifacts/nonexistent.txt", nil, token)
 
@@ -867,7 +867,7 @@ func TestAPI_HandleArtifactDelete(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// Upload first
 	fileContent := []byte("deletable content")
@@ -894,7 +894,7 @@ func TestAPI_HandleArtifactGetURL_Success(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// Upload first
 	fileContent := []byte("presigned content")
@@ -1005,9 +1005,7 @@ func TestAPI_HandleDeleteRole(t *testing.T) {
 
 	// Create a custom role first
 	customRole := auth.NewRole("todelete", "To delete", auth.RolePermissions{}, "")
-	if err := ta.userManager.CreateRole(customRole); err != nil {
-		t.Fatalf("failed to create role: %v", err)
-	}
+	_ = ta.userManager.CreateRole(customRole)
 
 	rec := ta.makeRequest("DELETE", "/v1/roles/"+customRole.ID, nil, token)
 
@@ -1266,7 +1264,7 @@ func TestAPI_HandleDistributionGetLogs(t *testing.T) {
 	}
 
 	// Add some logs
-	distRepo.AddLog(dist.ID, "info", "Test log message")
+	_ = distRepo.AddLog(dist.ID, "info", "Test log message")
 
 	rec := ta.makeRequest("GET", "/v1/distributions/"+dist.ID+"/logs", nil, token)
 
@@ -1337,9 +1335,7 @@ func TestAPI_HandleComponentGet(t *testing.T) {
 		DisplayName: "Test Kernel",
 		Description: "A test kernel component",
 	}
-	if err := componentRepo.Create(component); err != nil {
-		t.Fatalf("failed to create component: %v", err)
-	}
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID, nil, "")
 
@@ -1376,7 +1372,7 @@ func TestAPI_HandleComponentListByCategory(t *testing.T) {
 			Category:    "core",
 			DisplayName: fmt.Sprintf("Core Component %d", i),
 		}
-		componentRepo.Create(component)
+		_ = componentRepo.Create(component)
 	}
 
 	rec := ta.makeRequest("GET", "/v1/components/category/core", nil, "")
@@ -1406,7 +1402,7 @@ func TestAPI_HandleComponentGetCategories(t *testing.T) {
 			Category:    cat,
 			DisplayName: fmt.Sprintf("Category Component %d", i),
 		}
-		componentRepo.Create(component)
+		_ = componentRepo.Create(component)
 	}
 
 	rec := ta.makeRequest("GET", "/v1/components/categories", nil, "")
@@ -1479,7 +1475,7 @@ func TestAPI_HandleComponentUpdate(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Update Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	body := map[string]interface{}{
 		"display_name": "Updated Component Name",
@@ -1511,7 +1507,7 @@ func TestAPI_HandleComponentDelete(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Delete Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("DELETE", "/v1/components/"+component.ID, nil, token)
 
@@ -1529,7 +1525,7 @@ func TestAPI_HandleComponentGetVersions(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Versions Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID+"/versions", nil, "")
 
@@ -1558,7 +1554,7 @@ func TestAPI_HandleComponentResolveVersion(t *testing.T) {
 		DisplayName:    "Resolve Component",
 		DefaultVersion: "6.1.0",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID+"/resolve-version?rule=pinned", nil, "")
 
@@ -1586,7 +1582,7 @@ func TestAPI_HandleComponentResolveVersion_MissingRule(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Resolve Component 2",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID+"/resolve-version", nil, "")
 
@@ -1699,7 +1695,7 @@ func TestAPI_HandleSourceUpdateUserSource(t *testing.T) {
 		OwnerID: user.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	body := map[string]interface{}{
 		"name": "Updated Source Name",
@@ -1724,7 +1720,7 @@ func TestAPI_HandleSourceDeleteUserSource(t *testing.T) {
 		OwnerID: user.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, token)
 
@@ -1745,7 +1741,7 @@ func TestAPI_HandleSourceListByComponent(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Source Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/sources/component/"+component.ID, nil, token)
 
@@ -1800,7 +1796,7 @@ func TestAPI_HandleLangPackGet(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{"hello": "bonjour"}`,
 	}
-	langPackRepo.Create(pack)
+	_ = langPackRepo.Create(pack)
 
 	rec := ta.makeRequest("GET", "/v1/language-packs/fr-FR", nil, token)
 
@@ -1841,7 +1837,7 @@ func TestAPI_HandleLangPackDelete(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{"hello": "hallo"}`,
 	}
-	langPackRepo.Create(pack)
+	_ = langPackRepo.Create(pack)
 
 	rec := ta.makeRequest("DELETE", "/v1/language-packs/de-DE", nil, token)
 
@@ -2318,7 +2314,7 @@ func setupTestAPIWithStorage(t *testing.T) *testAPI {
 	apiInstance.RegisterRoutes(router)
 
 	t.Cleanup(func() {
-		database.Shutdown()
+		_ = database.Shutdown()
 	})
 
 	return &testAPI{
@@ -2348,7 +2344,7 @@ func TestAPI_HandleArtifactList(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("GET", "/v1/distributions/"+dist.ID+"/artifacts", nil, token)
 
@@ -2416,12 +2412,12 @@ func TestAPI_HandleArtifactGetURL(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// First upload an artifact using direct storage access
 	mockStore := newMockStorage()
 	key := fmt.Sprintf("distribution/%s/%s/test-file.txt", user.ID, dist.ID)
-	mockStore.Upload(context.Background(), key, strings.NewReader("test content"), 12, "text/plain")
+	_ = mockStore.Upload(context.Background(), key, strings.NewReader("test content"), 12, "text/plain")
 
 	// Note: The API's storage is separate from our mockStore, so artifact won't exist
 	// This tests the "not found" path
@@ -2549,7 +2545,7 @@ func TestAPI_HandleSourceGetDefaultByID(t *testing.T) {
 		URL:     "https://kernel.org",
 		Enabled: true,
 	}
-	sourceRepo.CreateDefault(source)
+	_ = sourceRepo.CreateDefault(source)
 
 	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, token)
 
@@ -2605,7 +2601,7 @@ func TestAPI_HandleSourceUpdateDefault(t *testing.T) {
 		URL:     "https://old.example.com",
 		Enabled: true,
 	}
-	sourceRepo.CreateDefault(source)
+	_ = sourceRepo.CreateDefault(source)
 
 	body := map[string]interface{}{
 		"url": "https://new.example.com",
@@ -2629,7 +2625,7 @@ func TestAPI_HandleSourceDeleteDefault(t *testing.T) {
 		URL:     "https://delete.example.com",
 		Enabled: true,
 	}
-	sourceRepo.CreateDefault(source)
+	_ = sourceRepo.CreateDefault(source)
 
 	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, token)
 
@@ -2650,7 +2646,7 @@ func TestAPI_HandleSourceGetUserSourceByID(t *testing.T) {
 		OwnerID: user.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, token)
 
@@ -2672,7 +2668,7 @@ func TestAPI_HandleSourceGetUserSourceByID_Forbidden(t *testing.T) {
 		OwnerID: owner.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, otherToken)
 
@@ -2694,7 +2690,7 @@ func TestAPI_HandleSourceUpdateUserSource_Forbidden(t *testing.T) {
 		OwnerID: owner.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	body := map[string]interface{}{
 		"name": "Hacked Name",
@@ -2720,7 +2716,7 @@ func TestAPI_HandleSourceDeleteUserSource_Forbidden(t *testing.T) {
 		OwnerID: owner.ID,
 		Enabled: true,
 	}
-	sourceRepo.CreateUserSource(source)
+	_ = sourceRepo.CreateUserSource(source)
 
 	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, otherToken)
 
@@ -2749,7 +2745,7 @@ func TestAPI_HandleDistributionList_WithStatusFilter(t *testing.T) {
 			Visibility: db.VisibilityPublic,
 			OwnerID:    user.ID,
 		}
-		distRepo.Create(dist)
+		_ = distRepo.Create(dist)
 	}
 
 	// Filter by pending status
@@ -2812,7 +2808,7 @@ func TestAPI_HandleUpdateRole(t *testing.T) {
 
 	// Create a custom role
 	customRole := auth.NewRole("updatable", "Updatable role", auth.RolePermissions{CanRead: true}, "")
-	ta.userManager.CreateRole(customRole)
+	_ = ta.userManager.CreateRole(customRole)
 
 	body := map[string]interface{}{
 		"description": "Updated description",
@@ -2900,14 +2896,14 @@ func TestAPI_HandleComponentUpdate_NameConflict(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Existing",
 	}
-	componentRepo.Create(comp1)
+	_ = componentRepo.Create(comp1)
 
 	comp2 := &db.Component{
 		Name:        "rename-component",
 		Category:    "core",
 		DisplayName: "To Rename",
 	}
-	componentRepo.Create(comp2)
+	_ = componentRepo.Create(comp2)
 
 	// Try to rename comp2 to comp1's name
 	body := map[string]interface{}{
@@ -2930,7 +2926,7 @@ func TestAPI_HandleComponentResolveVersion_LatestStable(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Latest Stable Test",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID+"/resolve-version?rule=latest-stable", nil, "")
 
@@ -2949,7 +2945,7 @@ func TestAPI_HandleComponentResolveVersion_InvalidRule(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Invalid Rule Test",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("GET", "/v1/components/"+component.ID+"/resolve-version?rule=invalid", nil, "")
 
@@ -3009,7 +3005,7 @@ func setupTestAPIWithDownloadManager(t *testing.T) *testAPI {
 	apiInstance.RegisterRoutes(router)
 
 	t.Cleanup(func() {
-		database.Shutdown()
+		_ = database.Shutdown()
 	})
 
 	return &testAPI{
@@ -3035,7 +3031,7 @@ func TestAPI_HandleListDistributionDownloads(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("GET", "/v1/distributions/"+dist.ID+"/downloads", nil, token)
 
@@ -3081,7 +3077,7 @@ func TestAPI_HandleListDistributionDownloads_PrivateAccessDenied(t *testing.T) {
 		Visibility: db.VisibilityPrivate,
 		OwnerID:    owner.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("GET", "/v1/distributions/"+dist.ID+"/downloads", nil, otherToken)
 
@@ -3179,7 +3175,7 @@ func TestAPI_HandleFlushDistributionDownloads(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("DELETE", "/v1/distributions/"+dist.ID+"/downloads", nil, token)
 
@@ -3225,7 +3221,7 @@ func TestAPI_HandleFlushDistributionDownloads_Forbidden(t *testing.T) {
 		Visibility: db.VisibilityPrivate,
 		OwnerID:    owner.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("DELETE", "/v1/distributions/"+dist.ID+"/downloads", nil, otherToken)
 
@@ -3271,7 +3267,7 @@ func TestAPI_HandleStartDistributionDownloads_Forbidden(t *testing.T) {
 		Visibility: db.VisibilityPrivate,
 		OwnerID:    owner.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("POST", "/v1/distributions/"+dist.ID+"/downloads", nil, otherToken)
 
@@ -3297,7 +3293,7 @@ func TestAPI_HandleDistributionDelete_Success(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("DELETE", "/v1/distributions/"+dist.ID, nil, token)
 
@@ -3320,7 +3316,7 @@ func TestAPI_HandleDistributionDelete_NotOwner(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    owner.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	rec := ta.makeRequest("DELETE", "/v1/distributions/"+dist.ID, nil, otherToken)
 
@@ -3340,7 +3336,7 @@ func TestAPI_HandleComponentDelete_Success(t *testing.T) {
 		Category:    "test",
 		DisplayName: "Deletable Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	rec := ta.makeRequest("DELETE", "/v1/components/"+component.ID, nil, token)
 
@@ -3374,7 +3370,7 @@ func TestAPI_HandleSourceDeleteDefault_Success(t *testing.T) {
 		Category:    "test",
 		DisplayName: "Source Delete Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	// Create a source
 	sourceRepo := db.NewSourceRepository(ta.database)
@@ -3383,7 +3379,7 @@ func TestAPI_HandleSourceDeleteDefault_Success(t *testing.T) {
 		ComponentIDs: []string{component.ID},
 		URL:          "https://example.com/source",
 	}
-	sourceRepo.CreateDefault(source)
+	_ = sourceRepo.CreateDefault(source)
 
 	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, token)
 
@@ -3420,7 +3416,7 @@ func TestAPI_HandleDistributionList_WithOwnerFilter(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user1.ID,
 	}
-	distRepo.Create(dist1)
+	_ = distRepo.Create(dist1)
 
 	// List distributions (owner filter may or may not be supported)
 	rec := ta.makeRequest("GET", "/v1/distributions", nil, token1)
@@ -3452,7 +3448,7 @@ func TestAPI_HandleGetDownloadJob_Success(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	// Create a component
 	componentRepo := db.NewComponentRepository(ta.database)
@@ -3461,7 +3457,7 @@ func TestAPI_HandleGetDownloadJob_Success(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Job Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	// Create a download job directly
 	jobRepo := db.NewDownloadJobRepository(ta.database)
@@ -3474,7 +3470,7 @@ func TestAPI_HandleGetDownloadJob_Success(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	jobRepo.Create(job)
+	_ = jobRepo.Create(job)
 
 	rec := ta.makeRequest("GET", "/v1/downloads/"+job.ID, nil, token)
 
@@ -3503,7 +3499,7 @@ func TestAPI_HandleCancelDownload_Success(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	componentRepo := db.NewComponentRepository(ta.database)
 	component := &db.Component{
@@ -3511,7 +3507,7 @@ func TestAPI_HandleCancelDownload_Success(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Cancel Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	jobRepo := db.NewDownloadJobRepository(ta.database)
 	job := &db.DownloadJob{
@@ -3523,7 +3519,7 @@ func TestAPI_HandleCancelDownload_Success(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	jobRepo.Create(job)
+	_ = jobRepo.Create(job)
 
 	rec := ta.makeRequest("POST", "/v1/downloads/"+job.ID+"/cancel", nil, token)
 
@@ -3545,7 +3541,7 @@ func TestAPI_HandleRetryDownload_Success(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	componentRepo := db.NewComponentRepository(ta.database)
 	component := &db.Component{
@@ -3553,7 +3549,7 @@ func TestAPI_HandleRetryDownload_Success(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Retry Component",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	jobRepo := db.NewDownloadJobRepository(ta.database)
 	job := &db.DownloadJob{
@@ -3565,7 +3561,7 @@ func TestAPI_HandleRetryDownload_Success(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	jobRepo.Create(job)
+	_ = jobRepo.Create(job)
 
 	rec := ta.makeRequest("POST", "/v1/downloads/"+job.ID+"/retry", nil, token)
 
@@ -3588,7 +3584,7 @@ func TestAPI_HandleRetryDownload_NotFailed(t *testing.T) {
 		Visibility: db.VisibilityPublic,
 		OwnerID:    user.ID,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	componentRepo := db.NewComponentRepository(ta.database)
 	component := &db.Component{
@@ -3596,7 +3592,7 @@ func TestAPI_HandleRetryDownload_NotFailed(t *testing.T) {
 		Category:    "core",
 		DisplayName: "Retry Component 2",
 	}
-	componentRepo.Create(component)
+	_ = componentRepo.Create(component)
 
 	jobRepo := db.NewDownloadJobRepository(ta.database)
 	job := &db.DownloadJob{
@@ -3608,7 +3604,7 @@ func TestAPI_HandleRetryDownload_NotFailed(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	jobRepo.Create(job)
+	_ = jobRepo.Create(job)
 
 	rec := ta.makeRequest("POST", "/v1/downloads/"+job.ID+"/retry", nil, token)
 

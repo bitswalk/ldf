@@ -62,7 +62,7 @@ func TestMigrationRunner_Run_Idempotent(t *testing.T) {
 
 	// Should still have same number of migrations
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count)
 	if count < 2 {
 		t.Fatalf("expected at least 2 migrations, got %d", count)
 	}
@@ -84,7 +84,7 @@ func TestMigrationRunner_CurrentVersion(t *testing.T) {
 	}
 
 	// Run migrations
-	runner.Run()
+	_ = runner.Run()
 
 	// After running, version should be > 0
 	version, err = runner.CurrentVersion()
@@ -112,7 +112,7 @@ func TestMigrationRunner_PendingCount(t *testing.T) {
 	}
 
 	// Run migrations
-	runner.Run()
+	_ = runner.Run()
 
 	// After running, should have 0 pending
 	pending, err = runner.PendingCount()
@@ -133,7 +133,7 @@ func TestMigration001_CreatesAllTables(t *testing.T) {
 	defer db.Close()
 
 	runner := migrations.NewRunner(db)
-	runner.Run()
+	_ = runner.Run()
 
 	tables := []string{
 		"roles",
@@ -161,7 +161,7 @@ func TestMigration001_CreatesIndexes(t *testing.T) {
 	defer db.Close()
 
 	runner := migrations.NewRunner(db)
-	runner.Run()
+	_ = runner.Run()
 
 	indexes := []string{
 		"idx_distributions_status",
@@ -194,7 +194,7 @@ func TestMigration002_SeedsDefaultRoles(t *testing.T) {
 	defer db.Close()
 
 	runner := migrations.NewRunner(db)
-	runner.Run()
+	_ = runner.Run()
 
 	// Verify all default roles exist
 	expectedRoles := migrations.DefaultRoles()
@@ -224,7 +224,7 @@ func TestMigration002_RolePermissions(t *testing.T) {
 	defer db.Close()
 
 	runner := migrations.NewRunner(db)
-	runner.Run()
+	_ = runner.Run()
 
 	// Check root role has all permissions
 	var canRead, canWrite, canDelete, canAdmin bool

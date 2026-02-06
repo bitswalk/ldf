@@ -93,61 +93,6 @@ func New(cfg Config) (*Database, error) {
 	return database, nil
 }
 
-// loadSchemaMigrations loads only the schema_migrations table from disk
-// This must be called BEFORE running migrations to prevent re-seeding
-func (d *Database) loadSchemaMigrations() error {
-	if d.persistPath == "" {
-		return nil
-	}
-
-	// Open the disk database
-	diskDB, err := sql.Open("sqlite3", d.persistPath)
-	if err != nil {
-		return fmt.Errorf("failed to open disk database: %w", err)
-	}
-	defer diskDB.Close()
-
-	// Check if schema_migrations table exists in disk DB
-	var tableName string
-	err = diskDB.QueryRow(`
-		SELECT name FROM sqlite_master
-		WHERE type='table' AND name='schema_migrations'
-	`).Scan(&tableName)
-	if err != nil {
-		// Table doesn't exist - this is a fresh database
-		return nil
-	}
-
-	// Create schema_migrations table in memory if it doesn't exist
-	_, err = d.db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version INTEGER PRIMARY KEY,
-			description TEXT NOT NULL,
-			applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to create schema_migrations table: %w", err)
-	}
-
-	// Copy schema_migrations from disk to memory
-	attachQuery := fmt.Sprintf("ATTACH DATABASE '%s' AS disk_db", d.persistPath)
-	if _, err := d.db.Exec(attachQuery); err != nil {
-		return fmt.Errorf("failed to attach disk database: %w", err)
-	}
-	defer d.db.Exec("DETACH DATABASE disk_db")
-
-	_, err = d.db.Exec(`
-		INSERT OR REPLACE INTO schema_migrations
-		SELECT * FROM disk_db.schema_migrations
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to copy schema_migrations: %w", err)
-	}
-
-	return nil
-}
-
 // DB returns the underlying sql.DB for direct queries
 func (d *Database) DB() *sql.DB {
 	return d.db
@@ -251,7 +196,7 @@ func (d *Database) LoadFromDisk() error {
 	if _, err := d.db.Exec(attachQuery); err != nil {
 		return fmt.Errorf("failed to attach disk database: %w", err)
 	}
-	defer d.db.Exec("DETACH DATABASE disk_db")
+	defer func() { _, _ = d.db.Exec("DETACH DATABASE disk_db") }()
 
 	var loadedTables []string
 	var loadErrors []string
@@ -345,14 +290,14 @@ func (d *Database) LoadFromDisk() error {
 		// Check if the disk schema is compatible by looking for the 'is_optional' column
 		// (this is a key column in the current components schema)
 		var hasIsOptionalCol int
-		d.db.QueryRow(`
+		_ = d.db.QueryRow(`
 			SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_optional'
 		`).Scan(&hasIsOptionalCol)
 
 		if hasIsOptionalCol > 0 {
 			// Check if disk has the new build type columns
 			var hasKernelModuleCol int
-			d.db.QueryRow(`
+			_ = d.db.QueryRow(`
 				SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_kernel_module'
 			`).Scan(&hasKernelModuleCol)
 
@@ -674,7 +619,7 @@ func (d *Database) ResetToDefaults() error {
 	for _, table := range tables {
 		if _, err := d.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)); err != nil {
 			// Re-enable foreign keys before returning
-			d.db.Exec("PRAGMA foreign_keys = ON")
+			_, _ = d.db.Exec("PRAGMA foreign_keys = ON")
 			return fmt.Errorf("failed to drop table %s: %w", table, err)
 		}
 	}
@@ -697,14 +642,14 @@ func (d *Database) ResetToDefaults() error {
 // This is called after loading from disk to handle older databases that may have incorrect defaults.
 func (d *Database) applyComponentBuildTypeDefaults() {
 	// Kernel is kernel-only, not userspace
-	d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`)
+	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`)
 
 	// Filesystem components have both kernel drivers and userspace tools
-	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`)
+	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`)
 
 	// Security components have kernel LSM modules and userspace tools
-	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`)
+	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`)
 
 	// Virtualization components that require KVM kernel module
-	d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`)
+	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`)
 }

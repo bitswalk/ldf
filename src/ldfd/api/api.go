@@ -25,7 +25,6 @@ func SetLogger(l *logs.Logger) {
 	sources.SetLogger(l)
 	settings.SetLogger(l)
 	apiauth.SetLogger(l)
-	apiforge.SetLogger(l)
 }
 
 // SetVersionInfo sets the version info for the api package and subpackages

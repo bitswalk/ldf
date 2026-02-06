@@ -75,7 +75,7 @@ func init() {
 
 	cli.RegisterLogFlags(rootCmd)
 
-	viper.BindPFlag("server.url", rootCmd.PersistentFlags().Lookup("server"))
+	_ = viper.BindPFlag("server.url", rootCmd.PersistentFlags().Lookup("server"))
 
 	viper.SetDefault("server.url", "http://localhost:8443")
 
@@ -102,7 +102,7 @@ func init() {
 
 func registerCompletions() {
 	// Global flag completions
-	rootCmd.RegisterFlagCompletionFunc("output", completionOutputFormat)
+	_ = rootCmd.RegisterFlagCompletionFunc("output", completionOutputFormat)
 
 	// Distribution ID completions
 	distributionGetCmd.ValidArgsFunction = completionDistributionIDs
@@ -112,9 +112,9 @@ func registerCompletions() {
 	distributionDeletionPreviewCmd.ValidArgsFunction = completionDistributionIDs
 
 	// Distribution flag completions
-	distributionListCmd.RegisterFlagCompletionFunc("status", completionDistributionStatus)
-	distributionCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
-	distributionUpdateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+	_ = distributionListCmd.RegisterFlagCompletionFunc("status", completionDistributionStatus)
+	_ = distributionCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+	_ = distributionUpdateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
 
 	// Component ID completions
 	componentGetCmd.ValidArgsFunction = completionComponentIDs
@@ -124,7 +124,7 @@ func registerCompletions() {
 	componentResolveVersionCmd.ValidArgsFunction = completionComponentIDs
 
 	// Component flag completions
-	componentListCmd.RegisterFlagCompletionFunc("category", completionCategories)
+	_ = componentListCmd.RegisterFlagCompletionFunc("category", completionCategories)
 
 	// Source ID completions
 	sourceGetCmd.ValidArgsFunction = completionSourceIDs
@@ -143,7 +143,7 @@ func registerCompletions() {
 	// Release completions
 	releaseConfigureCmd.ValidArgsFunction = completionDistributionIDs
 	releaseShowCmd.ValidArgsFunction = completionDistributionIDs
-	releaseCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
+	_ = releaseCreateCmd.RegisterFlagCompletionFunc("visibility", completionVisibility)
 
 	// Build completions
 	buildStartCmd.ValidArgsFunction = completionDistributionIDs

@@ -166,7 +166,7 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 		return
 	}
 
-	h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size))
+	_ = h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size))
 
 	c.JSON(http.StatusCreated, ArtifactUploadResponse{
 		Key:     key,
@@ -301,7 +301,7 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 	c.Header("ETag", info.ETag)
 
 	c.Status(http.StatusOK)
-	io.Copy(c.Writer, reader)
+	_, _ = io.Copy(c.Writer, reader)
 }
 
 // HandleDelete deletes an artifact from a distribution
@@ -363,7 +363,7 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		return
 	}
 
-	h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath))
+	_ = h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath))
 
 	c.Status(http.StatusNoContent)
 }

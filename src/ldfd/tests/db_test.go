@@ -22,7 +22,7 @@ func TestDatabase_New(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	if database.DB() == nil {
 		t.Fatal("expected DB() to return non-nil connection")
@@ -39,7 +39,7 @@ func TestDatabase_Settings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	// Set a setting
 	if err := database.SetSetting("test_key", "test_value"); err != nil {
@@ -79,12 +79,12 @@ func TestDatabase_GetAllSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	// Set multiple settings
-	database.SetSetting("key1", "value1")
-	database.SetSetting("key2", "value2")
-	database.SetSetting("key3", "value3")
+	_ = database.SetSetting("key1", "value1")
+	_ = database.SetSetting("key2", "value2")
+	_ = database.SetSetting("key3", "value3")
 
 	settings, err := database.GetAllSettings()
 	if err != nil {
@@ -110,7 +110,7 @@ func TestDatabase_GetSetting_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	_, err = database.GetSetting("nonexistent")
 	if err == nil {
@@ -132,7 +132,7 @@ func TestDistributionRepository_Create(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -162,7 +162,7 @@ func TestDistributionRepository_GetByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -172,7 +172,7 @@ func TestDistributionRepository_GetByID(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPublic,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	found, err := repo.GetByID(dist.ID)
 	if err != nil {
@@ -205,7 +205,7 @@ func TestDistributionRepository_GetByName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -215,7 +215,7 @@ func TestDistributionRepository_GetByName(t *testing.T) {
 		Status:     db.StatusReady,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	found, err := repo.GetByName("unique-name")
 	if err != nil {
@@ -236,7 +236,7 @@ func TestDistributionRepository_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -248,7 +248,7 @@ func TestDistributionRepository_List(t *testing.T) {
 			Status:     db.StatusPending,
 			Visibility: db.VisibilityPrivate,
 		}
-		repo.Create(dist)
+		_ = repo.Create(dist)
 	}
 
 	// List all
@@ -281,7 +281,7 @@ func TestDistributionRepository_ListAccessible(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	// Create a real user to be the owner
 	authRepo := auth.NewUserManager(database.DB())
@@ -365,7 +365,7 @@ func TestDistributionRepository_CanUserAccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	// Create a real user to be the owner
 	authRepo := auth.NewUserManager(database.DB())
@@ -456,7 +456,7 @@ func TestDistributionRepository_UpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -466,7 +466,7 @@ func TestDistributionRepository_UpdateStatus(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	// Update to downloading
 	if err := repo.UpdateStatus(dist.ID, db.StatusDownloading, ""); err != nil {
@@ -505,7 +505,7 @@ func TestDistributionRepository_Update(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -515,7 +515,7 @@ func TestDistributionRepository_Update(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	dist.Version = "2.0.0"
 	dist.Visibility = db.VisibilityPublic
@@ -543,7 +543,7 @@ func TestDistributionRepository_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -553,7 +553,7 @@ func TestDistributionRepository_Delete(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	if err := repo.Delete(dist.ID); err != nil {
 		t.Fatalf("failed to delete distribution: %v", err)
@@ -581,7 +581,7 @@ func TestDistributionRepository_Logs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -591,12 +591,12 @@ func TestDistributionRepository_Logs(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	// Add logs
-	repo.AddLog(dist.ID, "info", "Starting download")
-	repo.AddLog(dist.ID, "info", "Download complete")
-	repo.AddLog(dist.ID, "error", "Validation failed")
+	_ = repo.AddLog(dist.ID, "info", "Starting download")
+	_ = repo.AddLog(dist.ID, "info", "Download complete")
+	_ = repo.AddLog(dist.ID, "error", "Validation failed")
 
 	logs, err := repo.GetLogs(dist.ID, 10)
 	if err != nil {
@@ -641,7 +641,7 @@ func TestDistributionRepository_GetStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -660,7 +660,7 @@ func TestDistributionRepository_GetStats(t *testing.T) {
 			Status:     status,
 			Visibility: db.VisibilityPrivate,
 		}
-		repo.Create(dist)
+		_ = repo.Create(dist)
 	}
 
 	stats, err := repo.GetStats()
@@ -689,7 +689,7 @@ func TestDistributionRepository_WithConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -713,7 +713,7 @@ func TestDistributionRepository_WithConfig(t *testing.T) {
 		Visibility: db.VisibilityPrivate,
 		Config:     config,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	found, err := repo.GetByID(dist.ID)
 	if err != nil {
@@ -770,7 +770,7 @@ func TestDistribution_Timestamps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	repo := db.NewDistributionRepository(database)
 
@@ -782,7 +782,7 @@ func TestDistribution_Timestamps(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	repo.Create(dist)
+	_ = repo.Create(dist)
 
 	after := time.Now().Add(time.Second)
 
@@ -811,7 +811,7 @@ func setupComponentTestDB(t *testing.T) (*db.Database, func()) {
 		t.Fatalf("failed to create database: %v", err)
 	}
 
-	return database, func() { database.Shutdown() }
+	return database, func() { _ = database.Shutdown() }
 }
 
 func TestComponentRepository_Create(t *testing.T) {
@@ -860,7 +860,7 @@ func TestComponentRepository_GetByID(t *testing.T) {
 		IsOptional:  true,
 		IsSystem:    false,
 	}
-	repo.Create(component)
+	_ = repo.Create(component)
 
 	// Get existing component
 	found, err := repo.GetByID(component.ID)
@@ -902,7 +902,7 @@ func TestComponentRepository_GetByName(t *testing.T) {
 		DisplayName: "Unique Component",
 		IsSystem:    true,
 	}
-	repo.Create(component)
+	_ = repo.Create(component)
 
 	found, err := repo.GetByName("unique-component-name")
 	if err != nil {
@@ -980,7 +980,7 @@ func TestComponentRepository_ListByOwner(t *testing.T) {
 		IsSystem:    false,
 		OwnerID:     user.ID,
 	}
-	repo.Create(ownedComp)
+	_ = repo.Create(ownedComp)
 
 	systemComp := &db.Component{
 		Name:        "system-component",
@@ -988,7 +988,7 @@ func TestComponentRepository_ListByOwner(t *testing.T) {
 		DisplayName: "System Component",
 		IsSystem:    true,
 	}
-	repo.Create(systemComp)
+	_ = repo.Create(systemComp)
 
 	// List by owner
 	ownerList, err := repo.ListByOwner(user.ID)
@@ -1021,7 +1021,7 @@ func TestComponentRepository_ListSystem(t *testing.T) {
 		DisplayName: "New System Component",
 		IsSystem:    true,
 	}
-	repo.Create(systemComp)
+	_ = repo.Create(systemComp)
 
 	userComp := &db.Component{
 		Name:        "user-comp",
@@ -1029,7 +1029,7 @@ func TestComponentRepository_ListSystem(t *testing.T) {
 		DisplayName: "User Component",
 		IsSystem:    false,
 	}
-	repo.Create(userComp)
+	_ = repo.Create(userComp)
 
 	systemList, err := repo.ListSystem()
 	if err != nil {
@@ -1062,7 +1062,7 @@ func TestComponentRepository_GetByCategory(t *testing.T) {
 		DisplayName: "Filesystem 1",
 		IsSystem:    true,
 	}
-	repo.Create(comp1)
+	_ = repo.Create(comp1)
 
 	comp2 := &db.Component{
 		Name:        "filesystem-comp-2",
@@ -1070,7 +1070,7 @@ func TestComponentRepository_GetByCategory(t *testing.T) {
 		DisplayName: "Filesystem 2",
 		IsSystem:    true,
 	}
-	repo.Create(comp2)
+	_ = repo.Create(comp2)
 
 	comp3 := &db.Component{
 		Name:        "network-comp",
@@ -1078,7 +1078,7 @@ func TestComponentRepository_GetByCategory(t *testing.T) {
 		DisplayName: "Network Component",
 		IsSystem:    true,
 	}
-	repo.Create(comp3)
+	_ = repo.Create(comp3)
 
 	// Get by category
 	filesystemComps, err := repo.GetByCategory("filesystem")
@@ -1121,7 +1121,7 @@ func TestComponentRepository_GetByCategoryAndNameContains(t *testing.T) {
 		DisplayName: "systemd-boot",
 		IsSystem:    true,
 	}
-	repo.Create(comp)
+	_ = repo.Create(comp)
 
 	// Find by category and name contains
 	found, err := repo.GetByCategoryAndNameContains("bootloader", "systemd")
@@ -1160,7 +1160,7 @@ func TestComponentRepository_Update(t *testing.T) {
 		IsOptional:  false,
 		IsSystem:    true,
 	}
-	repo.Create(component)
+	_ = repo.Create(component)
 
 	originalUpdatedAt := component.UpdatedAt
 
@@ -1221,7 +1221,7 @@ func TestComponentRepository_Delete(t *testing.T) {
 		DisplayName: "Delete Test",
 		IsSystem:    true,
 	}
-	repo.Create(component)
+	_ = repo.Create(component)
 
 	// Delete
 	if err := repo.Delete(component.ID); err != nil {
@@ -1263,7 +1263,7 @@ func TestComponentRepository_GetCategories(t *testing.T) {
 			IsSystem:    true,
 		}
 		_ = i
-		repo.Create(comp)
+		_ = repo.Create(comp)
 	}
 
 	// Get all categories
@@ -1298,7 +1298,7 @@ func TestComponentRepository_DefaultVersionRule(t *testing.T) {
 		DisplayName: "Version Rule Test",
 		IsSystem:    true,
 	}
-	repo.Create(comp)
+	_ = repo.Create(comp)
 
 	found, _ := repo.GetByID(comp.ID)
 	if found.DefaultVersionRule != db.VersionRuleLatestStable {
@@ -1313,7 +1313,7 @@ func TestComponentRepository_DefaultVersionRule(t *testing.T) {
 		IsSystem:           true,
 		DefaultVersionRule: db.VersionRuleLatestLTS,
 	}
-	repo.Create(comp2)
+	_ = repo.Create(comp2)
 
 	found2, _ := repo.GetByID(comp2.ID)
 	if found2.DefaultVersionRule != db.VersionRuleLatestLTS {
@@ -1337,7 +1337,7 @@ func setupSourceTestDB(t *testing.T) (*db.Database, func()) {
 		t.Fatalf("failed to create database: %v", err)
 	}
 
-	return database, func() { database.Shutdown() }
+	return database, func() { _ = database.Shutdown() }
 }
 
 func TestSourceRepository_Create(t *testing.T) {
@@ -1375,7 +1375,7 @@ func TestSourceRepository_GetByID(t *testing.T) {
 	// Create a user for the owner
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("srcgetowner", "srcgetowner@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1390,7 +1390,7 @@ func TestSourceRepository_GetByID(t *testing.T) {
 		IsSystem:        false,
 		OwnerID:         user.ID,
 	}
-	repo.Create(source)
+	_ = repo.Create(source)
 
 	found, err := repo.GetByID(source.ID)
 	if err != nil {
@@ -1439,7 +1439,7 @@ func TestSourceRepository_List(t *testing.T) {
 			Enabled:         true,
 			IsSystem:        true,
 		}
-		repo.Create(source)
+		_ = repo.Create(source)
 	}
 
 	list, err := repo.List()
@@ -1467,7 +1467,7 @@ func TestSourceRepository_ListDefaults(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(systemSource)
+	_ = repo.CreateDefault(systemSource)
 
 	// Create user source
 	userSource := &db.UpstreamSource{
@@ -1479,7 +1479,7 @@ func TestSourceRepository_ListDefaults(t *testing.T) {
 		IsSystem:        false,
 		OwnerID:         "user-123",
 	}
-	repo.CreateUserSource(userSource)
+	_ = repo.CreateUserSource(userSource)
 
 	defaults, err := repo.ListDefaults()
 	if err != nil {
@@ -1520,7 +1520,7 @@ func TestSourceRepository_ListDefaultsByComponent(t *testing.T) {
 		DisplayName: "Test Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(comp)
+	_ = compRepo.Create(comp)
 
 	// Create sources for this component
 	source1 := &db.UpstreamSource{
@@ -1532,7 +1532,7 @@ func TestSourceRepository_ListDefaultsByComponent(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source1)
+	_ = repo.CreateDefault(source1)
 
 	// Create source for different component
 	source2 := &db.UpstreamSource{
@@ -1544,7 +1544,7 @@ func TestSourceRepository_ListDefaultsByComponent(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source2)
+	_ = repo.CreateDefault(source2)
 
 	sources, err := repo.ListDefaultsByComponent(comp.ID)
 	if err != nil {
@@ -1573,7 +1573,7 @@ func TestSourceRepository_GetDefaultByID(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source)
+	_ = repo.CreateDefault(source)
 
 	// Create user source
 	userSource := &db.UpstreamSource{
@@ -1584,7 +1584,7 @@ func TestSourceRepository_GetDefaultByID(t *testing.T) {
 		IsSystem:        false,
 		OwnerID:         "user-123",
 	}
-	repo.CreateUserSource(userSource)
+	_ = repo.CreateUserSource(userSource)
 
 	// GetDefaultByID should only return system sources
 	found, err := repo.GetDefaultByID(source.ID)
@@ -1619,7 +1619,7 @@ func TestSourceRepository_UpdateDefault(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source)
+	_ = repo.CreateDefault(source)
 
 	// Update
 	source.URL = "https://example.com/updated"
@@ -1651,7 +1651,7 @@ func TestSourceRepository_DeleteDefault(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source)
+	_ = repo.CreateDefault(source)
 
 	if err := repo.DeleteDefault(source.ID); err != nil {
 		t.Fatalf("failed to delete default source: %v", err)
@@ -1682,7 +1682,7 @@ func TestSourceRepository_ListUserSources(t *testing.T) {
 	// Create user
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("sourceowner", "sourceowner@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1696,7 +1696,7 @@ func TestSourceRepository_ListUserSources(t *testing.T) {
 			Enabled:         true,
 			OwnerID:         user.ID,
 		}
-		repo.CreateUserSource(source)
+		_ = repo.CreateUserSource(source)
 	}
 
 	// Create source for different user
@@ -1707,7 +1707,7 @@ func TestSourceRepository_ListUserSources(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         "other-user-id",
 	}
-	repo.CreateUserSource(otherSource)
+	_ = repo.CreateUserSource(otherSource)
 
 	sources, err := repo.ListUserSources(user.ID)
 	if err != nil {
@@ -1731,7 +1731,7 @@ func TestSourceRepository_ListUserSourcesByComponent(t *testing.T) {
 
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("srccompowner", "srccompowner@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	compRepo := db.NewComponentRepository(database)
 	comp := &db.Component{
@@ -1740,7 +1740,7 @@ func TestSourceRepository_ListUserSourcesByComponent(t *testing.T) {
 		DisplayName: "User Source Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(comp)
+	_ = compRepo.Create(comp)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1753,7 +1753,7 @@ func TestSourceRepository_ListUserSourcesByComponent(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(source)
+	_ = repo.CreateUserSource(source)
 
 	sources, err := repo.ListUserSourcesByComponent(user.ID, comp.ID)
 	if err != nil {
@@ -1772,7 +1772,7 @@ func TestSourceRepository_GetUserSourceByID(t *testing.T) {
 	// Create a user for the owner
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("getusersrc", "getusersrc@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1783,7 +1783,7 @@ func TestSourceRepository_GetUserSourceByID(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(source)
+	_ = repo.CreateUserSource(source)
 
 	found, err := repo.GetUserSourceByID(source.ID)
 	if err != nil {
@@ -1804,7 +1804,7 @@ func TestSourceRepository_UpdateUserSource(t *testing.T) {
 	// Create a user for the owner
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("updateusersrc", "updateusersrc@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1815,7 +1815,7 @@ func TestSourceRepository_UpdateUserSource(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(source)
+	_ = repo.CreateUserSource(source)
 
 	source.URL = "https://example.com/updated"
 	source.Enabled = false
@@ -1840,7 +1840,7 @@ func TestSourceRepository_DeleteUserSource(t *testing.T) {
 	// Create a user for the owner
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("deleteusersrc", "deleteusersrc@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1851,7 +1851,7 @@ func TestSourceRepository_DeleteUserSource(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(source)
+	_ = repo.CreateUserSource(source)
 
 	if err := repo.DeleteUserSource(source.ID); err != nil {
 		t.Fatalf("failed to delete user source: %v", err)
@@ -1881,7 +1881,7 @@ func TestSourceRepository_GetMergedSources(t *testing.T) {
 
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("mergeuser", "mergeuser@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1894,7 +1894,7 @@ func TestSourceRepository_GetMergedSources(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(systemSource)
+	_ = repo.CreateDefault(systemSource)
 
 	// Create user source
 	userSource := &db.UpstreamSource{
@@ -1905,7 +1905,7 @@ func TestSourceRepository_GetMergedSources(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(userSource)
+	_ = repo.CreateUserSource(userSource)
 
 	// Get merged sources
 	merged, err := repo.GetMergedSources(user.ID)
@@ -1946,7 +1946,7 @@ func TestSourceRepository_GetMergedSourcesByComponent(t *testing.T) {
 
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("mergecompuser", "mergecompuser@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	compRepo := db.NewComponentRepository(database)
 	comp := &db.Component{
@@ -1955,7 +1955,7 @@ func TestSourceRepository_GetMergedSourcesByComponent(t *testing.T) {
 		DisplayName: "Merge Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(comp)
+	_ = compRepo.Create(comp)
 
 	repo := db.NewSourceRepository(database)
 
@@ -1969,7 +1969,7 @@ func TestSourceRepository_GetMergedSourcesByComponent(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(systemSource)
+	_ = repo.CreateDefault(systemSource)
 
 	userSource := &db.UpstreamSource{
 		Name:            "merge-comp-user",
@@ -1980,7 +1980,7 @@ func TestSourceRepository_GetMergedSourcesByComponent(t *testing.T) {
 		Enabled:         true,
 		OwnerID:         user.ID,
 	}
-	repo.CreateUserSource(userSource)
+	_ = repo.CreateUserSource(userSource)
 
 	merged, err := repo.GetMergedSourcesByComponent(user.ID, comp.ID)
 	if err != nil {
@@ -1998,7 +1998,7 @@ func TestSourceRepository_GetEffectiveSource(t *testing.T) {
 
 	authRepo := auth.NewUserManager(database.DB())
 	user := auth.NewUser("effectiveuser", "effectiveuser@example.com", "hash", auth.RoleIDDeveloper)
-	authRepo.CreateUser(user)
+	_ = authRepo.CreateUser(user)
 
 	compRepo := db.NewComponentRepository(database)
 	comp := &db.Component{
@@ -2007,7 +2007,7 @@ func TestSourceRepository_GetEffectiveSource(t *testing.T) {
 		DisplayName: "Effective Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(comp)
+	_ = compRepo.Create(comp)
 
 	repo := db.NewSourceRepository(database)
 
@@ -2021,7 +2021,7 @@ func TestSourceRepository_GetEffectiveSource(t *testing.T) {
 		Enabled:         false, // Disabled
 		IsSystem:        true,
 	}
-	repo.CreateDefault(disabledSource)
+	_ = repo.CreateDefault(disabledSource)
 
 	// Create enabled higher priority source
 	enabledSource := &db.UpstreamSource{
@@ -2033,7 +2033,7 @@ func TestSourceRepository_GetEffectiveSource(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(enabledSource)
+	_ = repo.CreateDefault(enabledSource)
 
 	effective, err := repo.GetEffectiveSource(comp.ID, user.ID)
 	if err != nil {
@@ -2061,7 +2061,7 @@ func TestSourceRepository_GetEffectiveSource_NoEnabled(t *testing.T) {
 		DisplayName: "No Enabled Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(comp)
+	_ = compRepo.Create(comp)
 
 	repo := db.NewSourceRepository(database)
 
@@ -2075,7 +2075,7 @@ func TestSourceRepository_GetEffectiveSource_NoEnabled(t *testing.T) {
 		Enabled:         false,
 		IsSystem:        true,
 	}
-	repo.CreateDefault(source)
+	_ = repo.CreateDefault(source)
 
 	effective, err := repo.GetEffectiveSource(comp.ID, "")
 	if err != nil {
@@ -2100,7 +2100,7 @@ func TestSourceRepository_Delete(t *testing.T) {
 		Enabled:         true,
 		IsSystem:        true,
 	}
-	repo.Create(source)
+	_ = repo.Create(source)
 
 	if err := repo.Delete(source.ID); err != nil {
 		t.Fatalf("failed to delete source: %v", err)
@@ -2140,7 +2140,7 @@ func setupSourceVersionTestDB(t *testing.T) (*db.Database, func()) {
 		t.Fatalf("failed to create database: %v", err)
 	}
 
-	return database, func() { database.Shutdown() }
+	return database, func() { _ = database.Shutdown() }
 }
 
 func TestSourceVersionRepository_Create(t *testing.T) {
@@ -2189,7 +2189,7 @@ func TestSourceVersionRepository_GetByID(t *testing.T) {
 		DownloadURL: "https://example.com/v2.0.0.tar.gz",
 		IsStable:    true,
 	}
-	repo.Create(version)
+	_ = repo.Create(version)
 
 	found, err := repo.GetByID(version.ID)
 	if err != nil {
@@ -2227,7 +2227,7 @@ func TestSourceVersionRepository_GetByVersion(t *testing.T) {
 		Version:    "3.0.0",
 		IsStable:   true,
 	}
-	repo.Create(version)
+	_ = repo.Create(version)
 
 	found, err := repo.GetByVersion("source-1", "default", "3.0.0")
 	if err != nil {
@@ -2264,7 +2264,7 @@ func TestSourceVersionRepository_ListBySource(t *testing.T) {
 			Version:    v,
 			IsStable:   true,
 		}
-		repo.Create(version)
+		_ = repo.Create(version)
 	}
 
 	// Create version for different source
@@ -2274,7 +2274,7 @@ func TestSourceVersionRepository_ListBySource(t *testing.T) {
 		Version:    "2.0.0",
 		IsStable:   true,
 	}
-	repo.Create(otherVersion)
+	_ = repo.Create(otherVersion)
 
 	versions, err := repo.ListBySource("source-1", "default")
 	if err != nil {
@@ -2306,7 +2306,7 @@ func TestSourceVersionRepository_ListBySourceStable(t *testing.T) {
 			Version:    v,
 			IsStable:   true,
 		}
-		repo.Create(version)
+		_ = repo.Create(version)
 	}
 
 	// Create unstable version
@@ -2316,7 +2316,7 @@ func TestSourceVersionRepository_ListBySourceStable(t *testing.T) {
 		Version:    "2.0.0-rc1",
 		IsStable:   false,
 	}
-	repo.Create(unstable)
+	_ = repo.Create(unstable)
 
 	stable, err := repo.ListBySourceStable("source-stable", "default")
 	if err != nil {
@@ -2348,7 +2348,7 @@ func TestSourceVersionRepository_ListBySourcePaginated(t *testing.T) {
 			Version:    "1." + string(rune('0'+i)) + ".0",
 			IsStable:   true,
 		}
-		repo.Create(version)
+		_ = repo.Create(version)
 	}
 
 	// Get first page
@@ -2389,7 +2389,7 @@ func TestSourceVersionRepository_ListBySourcePaginated_WithFilter(t *testing.T) 
 		VersionType: db.VersionTypeStable,
 		IsStable:    true,
 	}
-	repo.Create(stableV)
+	_ = repo.Create(stableV)
 
 	longtermV := &db.SourceVersion{
 		SourceID:    "source-filter",
@@ -2398,7 +2398,7 @@ func TestSourceVersionRepository_ListBySourcePaginated_WithFilter(t *testing.T) 
 		VersionType: db.VersionTypeLongterm,
 		IsStable:    true,
 	}
-	repo.Create(longtermV)
+	_ = repo.Create(longtermV)
 
 	mainlineV := &db.SourceVersion{
 		SourceID:    "source-filter",
@@ -2407,7 +2407,7 @@ func TestSourceVersionRepository_ListBySourcePaginated_WithFilter(t *testing.T) 
 		VersionType: db.VersionTypeMainline,
 		IsStable:    false,
 	}
-	repo.Create(mainlineV)
+	_ = repo.Create(mainlineV)
 
 	// Filter by stable type
 	stable, total, err := repo.ListBySourcePaginated("source-filter", "default", 10, 0, string(db.VersionTypeStable))
@@ -2439,7 +2439,7 @@ func TestSourceVersionRepository_GetLatestStable(t *testing.T) {
 		Version:    "1.0.0",
 		IsStable:   true,
 	}
-	repo.Create(v1)
+	_ = repo.Create(v1)
 
 	time.Sleep(10 * time.Millisecond) // Ensure different timestamps
 
@@ -2449,7 +2449,7 @@ func TestSourceVersionRepository_GetLatestStable(t *testing.T) {
 		Version:    "2.0.0",
 		IsStable:   true,
 	}
-	repo.Create(v2)
+	_ = repo.Create(v2)
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -2460,7 +2460,7 @@ func TestSourceVersionRepository_GetLatestStable(t *testing.T) {
 		Version:    "3.0.0-rc1",
 		IsStable:   false,
 	}
-	repo.Create(v3)
+	_ = repo.Create(v3)
 
 	latest, err := repo.GetLatestStable("source-latest", "default")
 	if err != nil {
@@ -2488,7 +2488,7 @@ func TestSourceVersionRepository_BulkUpsert(t *testing.T) {
 		Version:    "1.0.0",
 		IsStable:   true,
 	}
-	repo.Create(initial)
+	_ = repo.Create(initial)
 
 	// Bulk upsert with mix of new and existing
 	versions := []db.SourceVersion{
@@ -2548,7 +2548,7 @@ func TestSourceVersionRepository_DeleteBySource(t *testing.T) {
 			Version:    "1." + string(rune('0'+i)) + ".0",
 			IsStable:   true,
 		}
-		repo.Create(v)
+		_ = repo.Create(v)
 	}
 
 	if err := repo.DeleteBySource("source-delete", "default"); err != nil {
@@ -2574,7 +2574,7 @@ func TestSourceVersionRepository_CountBySource(t *testing.T) {
 			Version:    "1." + string(rune('0'+i)) + ".0",
 			IsStable:   true,
 		}
-		repo.Create(v)
+		_ = repo.Create(v)
 	}
 
 	count, err := repo.CountBySource("source-count", "default")
@@ -2626,7 +2626,7 @@ func TestSourceVersionRepository_GetSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	repo.CreateSyncJob(job)
+	_ = repo.CreateSyncJob(job)
 
 	found, err := repo.GetSyncJob(job.ID)
 	if err != nil {
@@ -2661,7 +2661,7 @@ func TestSourceVersionRepository_GetLatestSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusCompleted,
 	}
-	repo.CreateSyncJob(oldJob)
+	_ = repo.CreateSyncJob(oldJob)
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -2671,7 +2671,7 @@ func TestSourceVersionRepository_GetLatestSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	repo.CreateSyncJob(newJob)
+	_ = repo.CreateSyncJob(newJob)
 
 	latest, err := repo.GetLatestSyncJob("source-latest-job", "default")
 	if err != nil {
@@ -2698,7 +2698,7 @@ func TestSourceVersionRepository_GetRunningSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusCompleted,
 	}
-	repo.CreateSyncJob(completedJob)
+	_ = repo.CreateSyncJob(completedJob)
 
 	// Create running job
 	runningJob := &db.VersionSyncJob{
@@ -2706,7 +2706,7 @@ func TestSourceVersionRepository_GetRunningSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusRunning,
 	}
-	repo.CreateSyncJob(runningJob)
+	_ = repo.CreateSyncJob(runningJob)
 
 	running, err := repo.GetRunningSyncJob("source-running", "default")
 	if err != nil {
@@ -2733,7 +2733,7 @@ func TestSourceVersionRepository_GetRunningSyncJob_None(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusCompleted,
 	}
-	repo.CreateSyncJob(completedJob)
+	_ = repo.CreateSyncJob(completedJob)
 
 	running, err := repo.GetRunningSyncJob("source-no-running", "default")
 	if err != nil {
@@ -2755,7 +2755,7 @@ func TestSourceVersionRepository_UpdateSyncJob(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	repo.CreateSyncJob(job)
+	_ = repo.CreateSyncJob(job)
 
 	// Update
 	now := time.Now()
@@ -2791,7 +2791,7 @@ func TestSourceVersionRepository_MarkSyncJobRunning(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	repo.CreateSyncJob(job)
+	_ = repo.CreateSyncJob(job)
 
 	if err := repo.MarkSyncJobRunning(job.ID); err != nil {
 		t.Fatalf("failed to mark running: %v", err)
@@ -2817,7 +2817,7 @@ func TestSourceVersionRepository_MarkSyncJobCompleted(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusRunning,
 	}
-	repo.CreateSyncJob(job)
+	_ = repo.CreateSyncJob(job)
 
 	if err := repo.MarkSyncJobCompleted(job.ID, 15, 8); err != nil {
 		t.Fatalf("failed to mark completed: %v", err)
@@ -2849,7 +2849,7 @@ func TestSourceVersionRepository_MarkSyncJobFailed(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusRunning,
 	}
-	repo.CreateSyncJob(job)
+	_ = repo.CreateSyncJob(job)
 
 	if err := repo.MarkSyncJobFailed(job.ID, "Connection timeout"); err != nil {
 		t.Fatalf("failed to mark failed: %v", err)
@@ -2880,7 +2880,7 @@ func TestSourceVersionRepository_ListSyncJobsBySource(t *testing.T) {
 			SourceType: "default",
 			Status:     db.SyncStatusCompleted,
 		}
-		repo.CreateSyncJob(job)
+		_ = repo.CreateSyncJob(job)
 		time.Sleep(5 * time.Millisecond)
 	}
 
@@ -2910,7 +2910,7 @@ func setupLanguagePackTestDB(t *testing.T) (*db.Database, func()) {
 		t.Fatalf("failed to create database: %v", err)
 	}
 
-	return database, func() { database.Shutdown() }
+	return database, func() { _ = database.Shutdown() }
 }
 
 func TestLanguagePackRepository_Create(t *testing.T) {
@@ -2951,7 +2951,7 @@ func TestLanguagePackRepository_Create_Duplicate(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	// Try to create duplicate
 	duplicate := &db.LanguagePack{
@@ -2979,7 +2979,7 @@ func TestLanguagePackRepository_Get(t *testing.T) {
 		Author:     "Test Author",
 		Dictionary: `{"hello": "hola"}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	found, err := repo.Get("es-ES")
 	if err != nil {
@@ -3028,7 +3028,7 @@ func TestLanguagePackRepository_List(t *testing.T) {
 	}
 
 	for i := range packs {
-		repo.Create(&packs[i])
+		_ = repo.Create(&packs[i])
 	}
 
 	list, err := repo.List()
@@ -3063,7 +3063,7 @@ func TestLanguagePackRepository_Update(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{"hello": "ciao"}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	originalUpdatedAt := pack.UpdatedAt
 
@@ -3121,7 +3121,7 @@ func TestLanguagePackRepository_Delete(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	if err := repo.Delete("pt-BR"); err != nil {
 		t.Fatalf("failed to delete language pack: %v", err)
@@ -3157,7 +3157,7 @@ func TestLanguagePackRepository_Exists(t *testing.T) {
 		Version:    "1.0.0",
 		Dictionary: `{}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	// Check existing
 	exists, err := repo.Exists("ko-KR")
@@ -3192,7 +3192,7 @@ func TestLanguagePackRepository_WithNullAuthor(t *testing.T) {
 		Author:     "", // Empty author
 		Dictionary: `{}`,
 	}
-	repo.Create(pack)
+	_ = repo.Create(pack)
 
 	found, err := repo.Get("zh-CN")
 	if err != nil {

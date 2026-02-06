@@ -82,8 +82,8 @@ func RegisterLogFlags(cmd *cobra.Command) {
 	cmd.Flags().String("log-output", "auto", "Log output destination (auto, stdout, journald)")
 	cmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 
-	viper.BindPFlag("log.output", cmd.Flags().Lookup("log-output"))
-	viper.BindPFlag("log.level", cmd.Flags().Lookup("log-level"))
+	_ = viper.BindPFlag("log.output", cmd.Flags().Lookup("log-output"))
+	_ = viper.BindPFlag("log.level", cmd.Flags().Lookup("log-level"))
 
 	viper.SetDefault("log.output", "auto")
 	viper.SetDefault("log.level", "info")

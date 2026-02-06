@@ -57,8 +57,8 @@ func init() {
 	releaseCreateCmd.Flags().String("name", "", "Distribution name (required)")
 	releaseCreateCmd.Flags().String("version", "", "Distribution version (required)")
 	releaseCreateCmd.Flags().String("visibility", "private", "Visibility (public, private)")
-	releaseCreateCmd.MarkFlagRequired("name")
-	releaseCreateCmd.MarkFlagRequired("version")
+	_ = releaseCreateCmd.MarkFlagRequired("name")
+	_ = releaseCreateCmd.MarkFlagRequired("version")
 
 	// Configure flags -- core
 	releaseConfigureCmd.Flags().String("kernel", "", "Kernel version")
@@ -139,7 +139,7 @@ func runReleaseConfigure(cmd *cobra.Command, args []string) error {
 	config := make(map[string]interface{})
 	if dist.Config != nil {
 		raw, _ := json.Marshal(dist.Config)
-		json.Unmarshal(raw, &config)
+		_ = json.Unmarshal(raw, &config)
 	}
 
 	// Build config from flags, merging with existing

@@ -91,9 +91,9 @@ func init() {
 	sourceCreateCmd.Flags().String("url", "", "Source URL (required)")
 	sourceCreateCmd.Flags().String("component-id", "", "Component ID (required)")
 	sourceCreateCmd.Flags().String("version-filter", "", "Version filter pattern")
-	sourceCreateCmd.MarkFlagRequired("name")
-	sourceCreateCmd.MarkFlagRequired("url")
-	sourceCreateCmd.MarkFlagRequired("component-id")
+	_ = sourceCreateCmd.MarkFlagRequired("name")
+	_ = sourceCreateCmd.MarkFlagRequired("url")
+	_ = sourceCreateCmd.MarkFlagRequired("component-id")
 
 	sourceUpdateCmd.Flags().String("name", "", "Source name")
 	sourceUpdateCmd.Flags().String("url", "", "Source URL")

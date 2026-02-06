@@ -146,16 +146,16 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 			log.Warn("Failed to update stage status", "build_id", job.ID, "stage", stageName, "error", err)
 		}
 
-		w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+		_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
 			fmt.Sprintf("Starting stage: %s", stageName))
 
 		stageStart := time.Now()
 
 		// Validate stage
 		if err := stage.Validate(jobCtx, sc); err != nil {
-			w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+			_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
 				fmt.Sprintf("Stage validation failed: %v", err))
-			w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
+			_ = w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
 			w.handleFailure(job, fmt.Sprintf("Stage %s validation failed: %v", stageName, err), string(stageName))
 			w.cleanup(workspacePath)
 			return
@@ -165,18 +165,18 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		progressFunc := func(percent int, message string) {
 			// Calculate overall progress
 			overallPercent := (i*100 + percent) / len(w.manager.stages)
-			w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), overallPercent)
+			_ = w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), overallPercent)
 
 			if message != "" {
-				w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info", message)
+				_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info", message)
 			}
 		}
 
 		if err := stage.Execute(jobCtx, sc, progressFunc); err != nil {
 			durationMs := time.Since(stageStart).Milliseconds()
-			w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+			_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
 				fmt.Sprintf("Stage execution failed: %v", err))
-			w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
+			_ = w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
 			_ = w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs)
 			w.handleFailure(job, fmt.Sprintf("Stage %s failed: %v", stageName, err), string(stageName))
 			w.cleanup(workspacePath)
@@ -189,7 +189,7 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 			log.Warn("Failed to mark stage completed", "build_id", job.ID, "stage", stageName, "error", err)
 		}
 
-		w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+		_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
 			fmt.Sprintf("Stage completed in %dms", durationMs))
 	}
 
@@ -206,12 +206,12 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		log.Error("Failed to mark build completed", "build_id", job.ID, "error", err)
 	}
 
-	w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
+	_ = w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
 		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize))
 
 	// Cleanup workspace only if clear_cache is enabled
 	if job.ClearCache {
-		w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Clearing local build cache as requested")
+		_ = w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Clearing local build cache as requested")
 		w.cleanup(workspacePath)
 	} else {
 		log.Debug("Keeping local build cache", "build_id", job.ID, "workspace", workspacePath)

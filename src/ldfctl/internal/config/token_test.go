@@ -54,7 +54,7 @@ func TestTokenData_JSONFieldNames(t *testing.T) {
 	}
 	data, _ := json.Marshal(td)
 	m := make(map[string]interface{})
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 
 	if _, ok := m["access_token"]; !ok {
 		t.Error("expected json field 'access_token'")

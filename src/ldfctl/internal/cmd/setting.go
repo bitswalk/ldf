@@ -144,7 +144,7 @@ func runSettingResetDB(cmd *cobra.Command, args []string) error {
 	if !yes {
 		fmt.Print("WARNING: This will reset the entire database. All data will be lost.\nType 'yes' to confirm: ")
 		var confirm string
-		fmt.Scanln(&confirm)
+		_, _ = fmt.Scanln(&confirm)
 		if confirm != "yes" {
 			output.PrintMessage("Database reset cancelled.")
 			return nil

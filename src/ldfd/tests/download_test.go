@@ -44,7 +44,7 @@ func setupURLBuilderTestDB(t *testing.T) (*db.Database, *db.ComponentRepository,
 
 	componentRepo := db.NewComponentRepository(database)
 
-	return database, componentRepo, func() { database.Shutdown() }
+	return database, componentRepo, func() { _ = database.Shutdown() }
 }
 
 func TestURLBuilder_BuildURL_Basic(t *testing.T) {
@@ -456,7 +456,7 @@ func setupVersionDiscoveryTestDB(t *testing.T) (*db.Database, *db.SourceVersionR
 
 	versionRepo := db.NewSourceVersionRepository(database)
 
-	return database, versionRepo, func() { database.Shutdown() }
+	return database, versionRepo, func() { _ = database.Shutdown() }
 }
 
 func TestVersionDiscovery_DetectDiscoveryMethod(t *testing.T) {
@@ -500,7 +500,7 @@ func TestVersionDiscovery_DiscoverVersions_GitHub(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			// Return mock releases
-			w.Write([]byte(`[
+			_, _ = w.Write([]byte(`[
 				{
 					"tag_name": "v2.0.0",
 					"name": "Release 2.0.0",
@@ -531,7 +531,7 @@ func TestVersionDiscovery_DiscoverVersions_GitHub(t *testing.T) {
 		if r.URL.Path == "/repos/owner/repo/tags" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[]`))
+			_, _ = w.Write([]byte(`[]`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -562,7 +562,7 @@ func TestVersionDiscovery_DiscoverVersions_HTTPDirectory(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`
+		_, _ = w.Write([]byte(`
 			<html>
 			<body>
 			<a href="package-1.0.0.tar.gz">package-1.0.0.tar.gz</a>
@@ -612,7 +612,7 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`
+		_, _ = w.Write([]byte(`
 			<html>
 			<body>
 			<a href="pkg-1.0.0.tar.gz">pkg-1.0.0.tar.gz</a>
@@ -634,7 +634,7 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 		IsSystem:        true,
 		Enabled:         true,
 	}
-	sourceRepo.CreateDefault(source)
+	_ = sourceRepo.CreateDefault(source)
 
 	// Create sync job
 	job := &db.VersionSyncJob{
@@ -642,7 +642,7 @@ func TestVersionDiscovery_SyncVersions(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	versionRepo.CreateSyncJob(job)
+	_ = versionRepo.CreateSyncJob(job)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -691,7 +691,7 @@ func TestVersionDiscovery_SyncVersions_Failure(t *testing.T) {
 		SourceType: "default",
 		Status:     db.SyncStatusPending,
 	}
-	versionRepo.CreateSyncJob(job)
+	_ = versionRepo.CreateSyncJob(job)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -744,7 +744,7 @@ func TestDownloadManager_NewManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	managerCfg := download.Config{
 		Workers:        2,
@@ -784,7 +784,7 @@ func TestDownloadManager_NewManager_DefaultValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	// Pass zero config, should use defaults
 	manager := download.NewManager(database, nil, download.Config{})
@@ -804,7 +804,7 @@ func TestDownloadManager_SubmitJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -816,7 +816,7 @@ func TestDownloadManager_SubmitJob(t *testing.T) {
 		DisplayName: "Submit Test Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(component)
+	_ = compRepo.Create(component)
 
 	// Create a distribution
 	distRepo := db.NewDistributionRepository(database)
@@ -826,7 +826,7 @@ func TestDownloadManager_SubmitJob(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	job := &db.DownloadJob{
 		DistributionID: dist.ID,
@@ -872,7 +872,7 @@ func TestDownloadManager_CancelJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -884,7 +884,7 @@ func TestDownloadManager_CancelJob(t *testing.T) {
 		DisplayName: "Cancel Test Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(component)
+	_ = compRepo.Create(component)
 
 	// Create a distribution
 	distRepo := db.NewDistributionRepository(database)
@@ -894,7 +894,7 @@ func TestDownloadManager_CancelJob(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	job := &db.DownloadJob{
 		DistributionID: dist.ID,
@@ -906,7 +906,7 @@ func TestDownloadManager_CancelJob(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	manager.SubmitJob(job)
+	_ = manager.SubmitJob(job)
 
 	err = manager.CancelJob(job.ID)
 	if err != nil {
@@ -930,7 +930,7 @@ func TestDownloadManager_RetryJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -942,7 +942,7 @@ func TestDownloadManager_RetryJob(t *testing.T) {
 		DisplayName: "Retry Test Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(component)
+	_ = compRepo.Create(component)
 
 	// Create a distribution
 	distRepo := db.NewDistributionRepository(database)
@@ -952,7 +952,7 @@ func TestDownloadManager_RetryJob(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	job := &db.DownloadJob{
 		DistributionID: dist.ID,
@@ -964,10 +964,10 @@ func TestDownloadManager_RetryJob(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	manager.SubmitJob(job)
+	_ = manager.SubmitJob(job)
 
 	// First mark it as failed
-	manager.JobRepo().MarkFailed(job.ID, "test failure")
+	_ = manager.JobRepo().MarkFailed(job.ID, "test failure")
 
 	// Now retry
 	err = manager.RetryJob(job.ID)
@@ -995,7 +995,7 @@ func TestDownloadManager_RetryJob_NotFailed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -1007,7 +1007,7 @@ func TestDownloadManager_RetryJob_NotFailed(t *testing.T) {
 		DisplayName: "Retry Not Failed Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(component)
+	_ = compRepo.Create(component)
 
 	// Create a distribution
 	distRepo := db.NewDistributionRepository(database)
@@ -1017,7 +1017,7 @@ func TestDownloadManager_RetryJob_NotFailed(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	job := &db.DownloadJob{
 		DistributionID: dist.ID,
@@ -1029,7 +1029,7 @@ func TestDownloadManager_RetryJob_NotFailed(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	manager.SubmitJob(job)
+	_ = manager.SubmitJob(job)
 
 	// Try to retry a pending job (not failed)
 	err = manager.RetryJob(job.ID)
@@ -1049,7 +1049,7 @@ func TestDownloadManager_RetryJob_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -1070,7 +1070,7 @@ func TestDownloadManager_GetJobStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 
@@ -1082,7 +1082,7 @@ func TestDownloadManager_GetJobStatus(t *testing.T) {
 		DisplayName: "Status Test Component",
 		IsSystem:    true,
 	}
-	compRepo.Create(component)
+	_ = compRepo.Create(component)
 
 	// Create a distribution
 	distRepo := db.NewDistributionRepository(database)
@@ -1092,7 +1092,7 @@ func TestDownloadManager_GetJobStatus(t *testing.T) {
 		Status:     db.StatusPending,
 		Visibility: db.VisibilityPrivate,
 	}
-	distRepo.Create(dist)
+	_ = distRepo.Create(dist)
 
 	job := &db.DownloadJob{
 		DistributionID: dist.ID,
@@ -1104,7 +1104,7 @@ func TestDownloadManager_GetJobStatus(t *testing.T) {
 		ResolvedURL:    "https://example.com/file.tar.gz",
 		Version:        "1.0.0",
 	}
-	manager.SubmitJob(job)
+	_ = manager.SubmitJob(job)
 
 	status, err := manager.GetJobStatus(job.ID)
 	if err != nil {
@@ -1129,7 +1129,7 @@ func TestDownloadManager_GetJobStatus_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create database: %v", err)
 	}
-	defer database.Shutdown()
+	defer func() { _ = database.Shutdown() }()
 
 	manager := download.NewManager(database, nil, download.DefaultConfig())
 

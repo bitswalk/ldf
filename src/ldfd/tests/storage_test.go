@@ -152,7 +152,7 @@ func TestLocalBackend_Download(t *testing.T) {
 
 	// Upload first
 	content := []byte("download test content")
-	backend.Upload(ctx, "download.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
+	_ = backend.Upload(ctx, "download.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
 
 	// Download
 	reader, info, err := backend.Download(ctx, "download.txt")
@@ -195,7 +195,7 @@ func TestLocalBackend_Delete(t *testing.T) {
 
 	// Upload first
 	content := []byte("delete test")
-	backend.Upload(ctx, "todelete.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
+	_ = backend.Upload(ctx, "todelete.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
 
 	// Verify exists
 	if exists, _ := backend.Exists(ctx, "todelete.txt"); !exists {
@@ -236,10 +236,10 @@ func TestLocalBackend_Delete_CleansEmptyDirs(t *testing.T) {
 
 	// Upload to nested path
 	content := []byte("nested content")
-	backend.Upload(ctx, "a/b/c/file.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
+	_ = backend.Upload(ctx, "a/b/c/file.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
 
 	// Delete the file
-	backend.Delete(ctx, "a/b/c/file.txt")
+	_ = backend.Delete(ctx, "a/b/c/file.txt")
 
 	// Empty parent directories should be cleaned up
 	dirPath := filepath.Join(tmpDir, "a", "b", "c")
@@ -263,7 +263,7 @@ func TestLocalBackend_Exists(t *testing.T) {
 
 	// Upload and check
 	content := []byte("exists test")
-	backend.Upload(ctx, "exists.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
+	_ = backend.Upload(ctx, "exists.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
 
 	exists, err = backend.Exists(ctx, "exists.txt")
 	if err != nil {
@@ -279,7 +279,7 @@ func TestLocalBackend_GetInfo(t *testing.T) {
 	ctx := context.Background()
 
 	content := []byte("info test content")
-	backend.Upload(ctx, "info.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
+	_ = backend.Upload(ctx, "info.txt", bytes.NewReader(content), int64(len(content)), "text/plain")
 
 	info, err := backend.GetInfo(ctx, "info.txt")
 	if err != nil {
@@ -328,7 +328,7 @@ func TestLocalBackend_List(t *testing.T) {
 
 	for _, f := range files {
 		content := []byte("content of " + f)
-		backend.Upload(ctx, f, bytes.NewReader(content), int64(len(content)), "text/plain")
+		_ = backend.Upload(ctx, f, bytes.NewReader(content), int64(len(content)), "text/plain")
 	}
 
 	// List all
@@ -432,9 +432,9 @@ func TestLocalBackend_PathTraversal(t *testing.T) {
 			exists, _ := backend.Exists(ctx, key)
 			if !exists {
 				// Try the base filename as fallback check
-				exists, _ = backend.Exists(ctx, filepath.Base(key))
+				exists, _ = backend.Exists(ctx, filepath.Base(key)) //nolint:ineffassign // verify call doesn't panic
+				_ = exists
 			}
-			// It's okay if exists is false - the backend might reject the key
 		}
 	}
 }
@@ -485,7 +485,7 @@ func TestLocalBackend_ContentTypeDetection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
 			content := []byte("test")
-			backend.Upload(ctx, tt.filename, bytes.NewReader(content), int64(len(content)), "")
+			_ = backend.Upload(ctx, tt.filename, bytes.NewReader(content), int64(len(content)), "")
 
 			info, err := backend.GetInfo(ctx, tt.filename)
 			if err != nil {

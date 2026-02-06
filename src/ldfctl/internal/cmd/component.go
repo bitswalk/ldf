@@ -91,7 +91,7 @@ func init() {
 	componentCreateCmd.Flags().String("description", "", "Component description")
 	componentCreateCmd.Flags().String("source-url", "", "Source URL")
 	componentCreateCmd.Flags().String("license", "", "License")
-	componentCreateCmd.MarkFlagRequired("name")
+	_ = componentCreateCmd.MarkFlagRequired("name")
 
 	componentUpdateCmd.Flags().String("name", "", "Component name")
 	componentUpdateCmd.Flags().String("category", "", "Component category")

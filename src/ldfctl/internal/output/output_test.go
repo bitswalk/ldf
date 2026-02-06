@@ -22,7 +22,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	return buf.String()
 }
 
@@ -53,7 +53,7 @@ func TestPrintJSON_Struct(t *testing.T) {
 	}
 	data := item{ID: "1", Name: "test"}
 	out := captureStdout(t, func() {
-		PrintJSON(data)
+		_ = PrintJSON(data)
 	})
 	if !strings.Contains(out, `"id": "1"`) {
 		t.Errorf("expected id field in JSON, got %s", out)
@@ -66,7 +66,7 @@ func TestPrintJSON_Struct(t *testing.T) {
 func TestPrintJSON_Indented(t *testing.T) {
 	data := map[string]string{"key": "value"}
 	out := captureStdout(t, func() {
-		PrintJSON(data)
+		_ = PrintJSON(data)
 	})
 	if !strings.Contains(out, "  ") {
 		t.Error("expected indented JSON output")
@@ -96,7 +96,7 @@ func TestPrintYAML_Struct(t *testing.T) {
 	}
 	data := item{ID: "1", Name: "test"}
 	out := captureStdout(t, func() {
-		PrintYAML(data)
+		_ = PrintYAML(data)
 	})
 	if !strings.Contains(out, "id:") {
 		t.Errorf("expected id field in YAML, got %q", out)
@@ -112,7 +112,7 @@ func TestPrintYAML_RespectsJsonTags(t *testing.T) {
 	}
 	data := item{SourceURL: "https://example.com"}
 	out := captureStdout(t, func() {
-		PrintYAML(data)
+		_ = PrintYAML(data)
 	})
 	if !strings.Contains(out, "source_url:") {
 		t.Errorf("expected source_url (json tag), got %q", out)
@@ -191,7 +191,7 @@ func TestPrintError(t *testing.T) {
 	os.Stderr = old
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	if !strings.Contains(buf.String(), "test error") {
 		t.Errorf("expected error message on stderr, got %q", buf.String())
 	}

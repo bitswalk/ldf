@@ -33,7 +33,7 @@ func (m *UserManager) CreateUser(user *User) error {
 	if err != nil {
 		return errors.ErrDatabaseTransaction.WithCause(err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Check if email already exists
 	var count int

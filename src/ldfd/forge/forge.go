@@ -6,18 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
-
-var log = logs.NewDefault()
-
-// SetLogger sets the logger for the forge package
-func SetLogger(l *logs.Logger) {
-	if l != nil {
-		log = l
-	}
-}
 
 // ForgeType represents the type of git forge
 type ForgeType string

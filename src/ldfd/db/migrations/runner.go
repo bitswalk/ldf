@@ -139,7 +139,7 @@ func (r *Runner) runMigration(m Migration) error {
 
 	// Execute the migration
 	if err := m.Up(tx); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
 
@@ -149,7 +149,7 @@ func (r *Runner) runMigration(m Migration) error {
 		m.Version, m.Description, time.Now().UTC(),
 	)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return fmt.Errorf("failed to record migration: %w", err)
 	}
 

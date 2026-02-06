@@ -161,7 +161,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	h.distRepo.AddLog(dist.ID, "info", "Distribution created")
+	_ = h.distRepo.AddLog(dist.ID, "info", "Distribution created")
 
 	c.JSON(http.StatusCreated, dist)
 }
@@ -347,7 +347,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 		return
 	}
 
-	h.distRepo.AddLog(dist.ID, "info", "Distribution updated")
+	_ = h.distRepo.AddLog(dist.ID, "info", "Distribution updated")
 
 	c.JSON(http.StatusOK, dist)
 }
@@ -577,7 +577,7 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		return
 	}
 
-	h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup")
+	_ = h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup")
 
 	c.Status(http.StatusNoContent)
 }

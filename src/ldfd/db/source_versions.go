@@ -199,7 +199,7 @@ func (r *SourceVersionRepository) BulkUpsert(versions []SourceVersion) (int, err
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Prepare the upsert statement
 	stmt, err := tx.Prepare(`

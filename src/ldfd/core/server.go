@@ -84,7 +84,6 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	buildManager.RegisterDefaultStages()
 
 	// Initialize forge registry for source detection and defaults
-	forge.SetLogger(log)
 	forgeRegistry := forge.NewRegistry()
 
 	// Create API instance with all dependencies

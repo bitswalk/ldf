@@ -156,7 +156,7 @@ func TestClient_Get_Success(t *testing.T) {
 			t.Errorf("expected path /v1/test, got %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(expected)
+		_ = json.NewEncoder(w).Encode(expected)
 	}))
 	defer srv.Close()
 
@@ -173,7 +173,7 @@ func TestClient_Get_Success(t *testing.T) {
 func TestClient_Get_Error(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "not_found", Message: "resource not found"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "not_found", Message: "resource not found"})
 	}))
 	defer srv.Close()
 
@@ -201,9 +201,9 @@ func TestClient_Post_Success(t *testing.T) {
 			t.Errorf("expected Content-Type application/json, got %s", ct)
 		}
 		var body map[string]string
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"id": "123", "name": body["name"]})
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": "123", "name": body["name"]})
 	}))
 	defer srv.Close()
 
@@ -244,13 +244,13 @@ func TestClient_AuthHeader(t *testing.T) {
 			t.Errorf("expected X-Subject-Token: test-token, got %s", token)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer srv.Close()
 
 	c := New(srv.URL)
 	c.Token = "test-token"
-	c.Get(context.Background(), "/v1/test", nil)
+	_ = c.Get(context.Background(), "/v1/test", nil)
 }
 
 func TestClient_Put_Success(t *testing.T) {
@@ -259,7 +259,7 @@ func TestClient_Put_Success(t *testing.T) {
 			t.Errorf("expected PUT, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"updated": "true"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"updated": "true"})
 	}))
 	defer srv.Close()
 
@@ -276,7 +276,7 @@ func TestClient_Put_Success(t *testing.T) {
 func TestClient_ErrorResponse_Structured(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "bad_request", Message: "invalid input"})
+		_ = json.NewEncoder(w).Encode(ErrorResponse{Error: "bad_request", Message: "invalid input"})
 	}))
 	defer srv.Close()
 
@@ -297,7 +297,7 @@ func TestClient_ErrorResponse_Structured(t *testing.T) {
 func TestClient_ErrorResponse_PlainText(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("something went wrong"))
+		_, _ = w.Write([]byte("something went wrong"))
 	}))
 	defer srv.Close()
 

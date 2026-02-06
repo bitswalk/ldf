@@ -322,11 +322,6 @@ func (p *GenericProvider) DefaultVersionFilter(ctx context.Context, repoInfo *Re
 	return "!*-rc*,!*alpha*,!*beta*,!*-dev*,!*-pre*", nil
 }
 
-// fallbackFilter returns a safe default filter
-func (p *GenericProvider) fallbackFilter() string {
-	return "!*-rc*,!*alpha*,!*beta*,!*-dev*,!*-pre*"
-}
-
 // GetDefaults returns both URL template and version filter for a URL
 func (p *GenericProvider) GetDefaults(ctx context.Context, urlStr string) (*ForgeDefaults, error) {
 	repoInfo, err := p.ParseRepoInfo(urlStr)

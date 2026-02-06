@@ -135,7 +135,7 @@ func (h *Handler) HandleGetAsset(c *gin.Context) {
 	c.Header("Content-Type", contentType)
 	c.Header("Cache-Control", "public, max-age=3600")
 	c.Status(http.StatusOK)
-	io.Copy(c.Writer, reader)
+	_, _ = io.Copy(c.Writer, reader)
 }
 
 // HandleGetAssetInfo returns metadata about a branding asset
@@ -242,7 +242,7 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 	}
 	contentType := http.DetectContentType(buffer[:n])
 
-	file.Seek(0, io.SeekStart)
+	_, _ = file.Seek(0, io.SeekStart)
 
 	allowed := allowedImageTypes[asset]
 	isAllowed := false
@@ -287,7 +287,7 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 
 	existingKey, _ := h.findBrandingAsset(ctx, asset)
 	if existingKey != "" {
-		h.storage.Delete(ctx, existingKey)
+		_ = h.storage.Delete(ctx, existingKey)
 	}
 
 	switch contentType {

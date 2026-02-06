@@ -84,7 +84,7 @@ func init() {
 	distributionCreateCmd.Flags().String("visibility", "", "Visibility (public, private)")
 	distributionCreateCmd.Flags().String("source-url", "", "Source URL")
 	distributionCreateCmd.Flags().String("checksum", "", "Checksum")
-	distributionCreateCmd.MarkFlagRequired("name")
+	_ = distributionCreateCmd.MarkFlagRequired("name")
 
 	// Update flags
 	distributionUpdateCmd.Flags().String("name", "", "Distribution name")

@@ -1098,8 +1098,8 @@ func TestUserManager_GetUserRefreshTokenCount(t *testing.T) {
 	}
 
 	// Create 3 tokens
-	userManager.CreateRefreshToken(user.ID)
-	userManager.CreateRefreshToken(user.ID)
+	_, _, _ = userManager.CreateRefreshToken(user.ID)
+	_, _, _ = userManager.CreateRefreshToken(user.ID)
 	_, record, _ := userManager.CreateRefreshToken(user.ID)
 
 	count, err = userManager.GetUserRefreshTokenCount(user.ID)
@@ -1111,7 +1111,7 @@ func TestUserManager_GetUserRefreshTokenCount(t *testing.T) {
 	}
 
 	// Revoke one token
-	userManager.RevokeRefreshToken(record.ID)
+	_ = userManager.RevokeRefreshToken(record.ID)
 
 	count, err = userManager.GetUserRefreshTokenCount(user.ID)
 	if err != nil {
@@ -1135,7 +1135,7 @@ func TestUserManager_CleanupExpiredTokens(t *testing.T) {
 
 	// Create and revoke a token (revoked tokens should be cleaned up)
 	_, record, _ := userManager.CreateRefreshToken(user.ID)
-	userManager.RevokeRefreshToken(record.ID)
+	_ = userManager.RevokeRefreshToken(record.ID)
 
 	// Cleanup should not error
 	if err := userManager.CleanupExpiredTokens(); err != nil {
@@ -1283,7 +1283,7 @@ func TestUserManager_CountUsers(t *testing.T) {
 			"hashedpass",
 			auth.RoleIDDeveloper,
 		)
-		userManager.CreateUser(user)
+		_ = userManager.CreateUser(user)
 	}
 
 	count, err = userManager.CountUsers()

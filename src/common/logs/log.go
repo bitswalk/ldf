@@ -161,13 +161,10 @@ func (w *journaldWriter) Write(p []byte) (n int, err error) {
 		return os.Stdout.Write(p)
 	}
 
-	n, err = stdin.Write(p)
+	n, _ = stdin.Write(p)
 	stdin.Close()
 
-	if err := cmd.Wait(); err != nil {
-		// Message was written but journald had an issue
-		// Return success since data was sent
-	}
+	_ = cmd.Wait()
 
 	return n, nil
 }

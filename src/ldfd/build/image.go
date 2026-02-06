@@ -80,7 +80,7 @@ func (g *RawImageGenerator) Generate(ctx context.Context, sc *StageContext, prog
 	if err != nil {
 		return "", fmt.Errorf("failed to setup loop device: %w", err)
 	}
-	defer g.detachLoopDevice(ctx, loopDev)
+	defer func() { _ = g.detachLoopDevice(ctx, loopDev) }()
 
 	progress(25, "Formatting partitions")
 
@@ -102,7 +102,7 @@ func (g *RawImageGenerator) Generate(ctx context.Context, sc *StageContext, prog
 	if err := g.mountPartitions(ctx, loopDev, mountPoint); err != nil {
 		return "", fmt.Errorf("failed to mount partitions: %w", err)
 	}
-	defer g.unmountPartitions(ctx, mountPoint)
+	defer func() { _ = g.unmountPartitions(ctx, mountPoint) }()
 
 	progress(40, "Copying root filesystem")
 
@@ -251,7 +251,7 @@ func (g *RawImageGenerator) mountPartitions(ctx context.Context, loopDev, mountP
 func (g *RawImageGenerator) unmountPartitions(ctx context.Context, mountPoint string) error {
 	// Unmount ESP first
 	espMount := filepath.Join(mountPoint, "boot", "efi")
-	exec.CommandContext(ctx, "umount", espMount).Run() // Ignore errors
+	_ = exec.CommandContext(ctx, "umount", espMount).Run()
 
 	// Unmount root
 	cmd := exec.CommandContext(ctx, "umount", mountPoint)
@@ -535,7 +535,10 @@ func (g *ISOImageGenerator) createEFIImage(ctx context.Context, sc *StageContext
 	if err != nil {
 		return err
 	}
-	f.Truncate(int64(sizeMB) * 1024 * 1024)
+	if err := f.Truncate(int64(sizeMB) * 1024 * 1024); err != nil {
+		f.Close()
+		return fmt.Errorf("truncate EFI image: %w", err)
+	}
 	f.Close()
 
 	// Format as FAT
@@ -555,7 +558,7 @@ func (g *ISOImageGenerator) createEFIImage(ctx context.Context, sc *StageContext
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mount EFI image failed: %s: %s", err, output)
 	}
-	defer exec.CommandContext(ctx, "umount", mountPoint).Run()
+	defer func() { _ = exec.CommandContext(ctx, "umount", mountPoint).Run() }()
 
 	// Create EFI directory structure
 	efiBootDir := filepath.Join(mountPoint, "EFI", "BOOT")

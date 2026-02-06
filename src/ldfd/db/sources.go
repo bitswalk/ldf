@@ -459,19 +459,6 @@ func (r *SourceRepository) scanSource(row *sql.Row) (*UpstreamSource, error) {
 	return &s, nil
 }
 
-// Deprecated scan functions for backwards compatibility
-// These are aliases to the new unified scan functions
-
-// scanDefaultSources is deprecated, use scanSources instead
-func (r *SourceRepository) scanDefaultSources(rows *sql.Rows) ([]UpstreamSource, error) {
-	return r.scanSources(rows)
-}
-
-// scanUserSources is deprecated, use scanSources instead
-func (r *SourceRepository) scanUserSources(rows *sql.Rows) ([]UpstreamSource, error) {
-	return r.scanSources(rows)
-}
-
 // nullString returns sql.NullString for empty strings
 func nullString(s string) sql.NullString {
 	if s == "" {
@@ -494,7 +481,7 @@ func parseComponentIDs(jsonStr string) []string {
 
 // serializeComponentIDs serializes a slice of component IDs to a JSON array string
 func serializeComponentIDs(ids []string) string {
-	if ids == nil || len(ids) == 0 {
+	if len(ids) == 0 {
 		return "[]"
 	}
 	data, err := json.Marshal(ids)

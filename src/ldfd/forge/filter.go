@@ -96,9 +96,7 @@ func (vf *VersionFilter) IsEmpty() bool {
 func (vf *VersionFilter) String() string {
 	parts := make([]string, 0, len(vf.includePatterns)+len(vf.excludePatterns))
 
-	for _, p := range vf.includePatterns {
-		parts = append(parts, p)
-	}
+	parts = append(parts, vf.includePatterns...)
 	for _, p := range vf.excludePatterns {
 		parts = append(parts, "!"+p)
 	}

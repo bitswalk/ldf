@@ -606,7 +606,7 @@ func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Upstream
 	discovered, err := d.DiscoverVersions(ctx, source)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to discover versions: %v", err)
-		d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
+		_ = d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
 		return err
 	}
 
@@ -628,7 +628,7 @@ func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Upstream
 	newCount, err := d.versionRepo.BulkUpsert(sourceVersions)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to save versions: %v", err)
-		d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
+		_ = d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
 		return err
 	}
 
