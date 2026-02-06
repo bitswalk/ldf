@@ -20,6 +20,7 @@ func DefaultJWTConfig() JWTConfig {
 		Issuer:               "ldfd",
 		TokenDuration:        15 * time.Minute,   // Short-lived access tokens
 		RefreshTokenDuration: 7 * 24 * time.Hour, // 7 days for refresh tokens
+		MaxRefreshTokens:     5,                  // Max active refresh tokens per user
 	}
 }
 
@@ -45,11 +46,17 @@ func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsSto
 		}
 	}
 
+	maxRefresh := cfg.MaxRefreshTokens
+	if maxRefresh <= 0 {
+		maxRefresh = 5
+	}
+
 	return &JWTService{
 		secretKey:            []byte(secretKey),
 		issuer:               cfg.Issuer,
 		tokenDuration:        cfg.TokenDuration,
 		refreshTokenDuration: cfg.RefreshTokenDuration,
+		maxRefreshTokens:     maxRefresh,
 		userManager:          userManager,
 	}
 }
@@ -117,7 +124,8 @@ func (s *JWTService) GenerateTokenPair(user *User) (*TokenPair, error) {
 	}, nil
 }
 
-// RefreshAccessToken validates a refresh token and generates a new access token
+// RefreshAccessToken validates a refresh token, rotates it (revokes old, issues new),
+// and generates a new access token. This prevents refresh token replay attacks.
 func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User, error) {
 	// Validate the refresh token
 	rt, err := s.userManager.ValidateRefreshToken(refreshToken)
@@ -125,9 +133,9 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User,
 		return nil, nil, err
 	}
 
-	// Update last used timestamp
-	if err := s.userManager.UpdateRefreshTokenLastUsed(rt.ID); err != nil {
-		log.Warn("Failed to update refresh token last used", "token_id", rt.ID, "error", err)
+	// Revoke the old refresh token (rotation: one-time use)
+	if err := s.userManager.RevokeRefreshToken(rt.ID); err != nil {
+		log.Warn("Failed to revoke old refresh token during rotation", "token_id", rt.ID, "error", err)
 	}
 
 	// Get the user
@@ -142,12 +150,27 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User,
 		return nil, nil, err
 	}
 
+	// Issue a new refresh token (rotation)
+	newRefreshToken, _, err := s.userManager.CreateRefreshToken(user.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create rotated refresh token: %w", err)
+	}
+
+	// Clean up excess refresh tokens for this user
+	maxTokens := s.maxRefreshTokens
+	if maxTokens <= 0 {
+		maxTokens = 5
+	}
+	if err := s.userManager.CleanupExcessTokens(user.ID, maxTokens); err != nil {
+		log.Warn("Failed to cleanup excess refresh tokens", "user_id", user.ID, "error", err)
+	}
+
 	now := time.Now().UTC()
 	expiresAt := now.Add(s.tokenDuration)
 
 	return &TokenPair{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken, // Return the same refresh token
+		RefreshToken: newRefreshToken, // Return the rotated refresh token
 		ExpiresAt:    expiresAt,
 		ExpiresIn:    int64(s.tokenDuration.Seconds()),
 	}, user, nil

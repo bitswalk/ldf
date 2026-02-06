@@ -163,6 +163,7 @@ type JWTService struct {
 	issuer               string
 	tokenDuration        time.Duration
 	refreshTokenDuration time.Duration
+	maxRefreshTokens     int
 	userManager          *UserManager
 }
 
@@ -171,6 +172,7 @@ type JWTConfig struct {
 	Issuer               string
 	TokenDuration        time.Duration
 	RefreshTokenDuration time.Duration
+	MaxRefreshTokens     int
 }
 
 // SettingsStore interface for getting/setting persistent settings

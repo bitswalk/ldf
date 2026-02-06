@@ -103,6 +103,8 @@ func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "mirror.create", Resource: "mirror:" + entry.ID, Detail: entry.Name, Success: true})
+
 	c.JSON(http.StatusCreated, mirrorToResponse(*entry))
 }
 
@@ -186,6 +188,8 @@ func (h *MirrorHandler) HandleUpdateMirror(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "mirror.update", Resource: "mirror:" + id, Success: true})
+
 	c.JSON(http.StatusOK, mirrorToResponse(*existing))
 }
 
@@ -221,6 +225,8 @@ func (h *MirrorHandler) HandleDeleteMirror(c *gin.Context) {
 		})
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "mirror.delete", Resource: "mirror:" + id, Success: true})
 
 	c.Status(http.StatusNoContent)
 }

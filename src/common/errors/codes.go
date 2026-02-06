@@ -17,6 +17,16 @@ const (
 )
 
 // ============================================================================
+// Rate Limiting Errors
+// ============================================================================
+
+var (
+	// ErrRateLimited is returned when a client exceeds the request rate limit
+	ErrRateLimited = New(DomainAuth, CodeRateLimited, 429,
+		"Too many requests")
+)
+
+// ============================================================================
 // Authentication Errors
 // ============================================================================
 

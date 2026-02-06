@@ -203,6 +203,29 @@ func (m *UserManager) IsTokenRevoked(tokenID string) (bool, error) {
 	return count > 0, nil
 }
 
+// CleanupExcessTokens removes the oldest active refresh tokens for a user,
+// keeping only the maxTokens most recent ones. This prevents token accumulation
+// from repeated refresh operations.
+func (m *UserManager) CleanupExcessTokens(userID string, maxTokens int) error {
+	// Delete all but the N most recent active (non-revoked, non-expired) refresh tokens
+	_, err := m.db.Exec(`
+		DELETE FROM refresh_tokens
+		WHERE user_id = ? AND revoked = FALSE AND expires_at > ?
+		AND id NOT IN (
+			SELECT id FROM refresh_tokens
+			WHERE user_id = ? AND revoked = FALSE AND expires_at > ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		)
+	`, userID, time.Now().UTC(), userID, time.Now().UTC(), maxTokens)
+
+	if err != nil {
+		return errors.ErrDatabaseQuery.WithCause(err)
+	}
+
+	return nil
+}
+
 // CleanupExpiredTokens removes expired and revoked tokens from both tables
 func (m *UserManager) CleanupExpiredTokens() error {
 	now := time.Now().UTC()

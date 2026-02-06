@@ -6,6 +6,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/errors"
 	"github.com/bitswalk/ldf/src/common/logs"
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	coreauth "github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -109,6 +110,8 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "auth.create_user", UserID: user.ID, UserName: user.Name, Success: true})
+
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
@@ -167,6 +170,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(creds.Password)); err != nil {
+		common.AuditLog(c, common.AuditEvent{Action: "auth.login", UserName: creds.Name, Detail: "invalid password", Success: false})
 		c.JSON(http.StatusUnauthorized, errors.ErrInvalidCredentials.ToResponse())
 		return
 	}
@@ -176,6 +180,8 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, errors.ErrInternal.ToResponse())
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "auth.login", UserID: user.ID, UserName: user.Name, Success: true})
 
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{
@@ -235,9 +241,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		return
 	}
 
-	if log != nil {
-		log.Info("User logged out", "user", claims.UserName, "user_id", claims.UserID)
-	}
+	common.AuditLog(c, common.AuditEvent{Action: "auth.logout", UserID: claims.UserID, UserName: claims.UserName, Success: true})
 
 	c.JSON(498, gin.H{
 		"message": "Token revoked successfully",
@@ -271,14 +275,13 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 
 	tokenPair, user, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
+		common.AuditLog(c, common.AuditEvent{Action: "auth.refresh", Detail: "invalid refresh token", Success: false})
 		status := errors.GetHTTPStatus(err)
 		c.JSON(status, errors.NewResponse(err))
 		return
 	}
 
-	if log != nil {
-		log.Debug("Token refreshed", "user", user.Name, "user_id", user.ID)
-	}
+	common.AuditLog(c, common.AuditEvent{Action: "auth.refresh", UserID: user.ID, UserName: user.Name, Success: true})
 
 	c.Header("X-Subject-Token", tokenPair.AccessToken)
 	c.JSON(http.StatusOK, gin.H{

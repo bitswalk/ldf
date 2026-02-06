@@ -142,6 +142,8 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "build.start", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + distID, Success: true})
+
 	c.JSON(http.StatusAccepted, BuildJobResponse{
 		BuildJob: *job,
 	})
@@ -467,6 +469,8 @@ func (h *Handler) HandleCancelBuild(c *gin.Context) {
 		})
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "build.cancel", UserID: claims.UserID, UserName: claims.UserName, Resource: "build:" + buildID, Success: true})
 
 	c.Status(http.StatusNoContent)
 }
