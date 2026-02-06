@@ -60,6 +60,7 @@ func (r *Runner) registerAll() {
 		migration012BuildJobs(),
 		migration013BuildClearCache(),
 		migration014BoardProfiles(),
+		migration015ArchSupport(),
 	}
 
 	// Sort by version to ensure correct order
