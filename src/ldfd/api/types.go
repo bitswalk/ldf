@@ -4,6 +4,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/artifacts"
 	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
 	"github.com/bitswalk/ldf/src/ldfd/api/base"
+	boardprofiles "github.com/bitswalk/ldf/src/ldfd/api/board/profiles"
 	"github.com/bitswalk/ldf/src/ldfd/api/branding"
 	"github.com/bitswalk/ldf/src/ldfd/api/builds"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
@@ -40,6 +41,7 @@ type API struct {
 	LangPacks     *langpacks.Handler
 	Settings      *settings.Handler
 	Forge         *apiforge.Handler
+	BoardProfiles *boardprofiles.Handler
 
 	// Direct dependencies for middleware
 	jwtService    *auth.JWTService
@@ -55,6 +57,7 @@ type Config struct {
 	SourceVersionRepo *db.SourceVersionRepository
 	DownloadJobRepo   *db.DownloadJobRepository
 	LangPackRepo      *db.LanguagePackRepository
+	BoardProfileRepo  *db.BoardProfileRepository
 	Database          *db.Database
 	Storage           storage.Backend
 	UserManager       *auth.UserManager

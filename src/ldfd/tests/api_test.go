@@ -88,6 +88,7 @@ func setupTestAPI(t *testing.T) *testAPI {
 	componentRepo := db.NewComponentRepository(database)
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
 	langPackRepo := db.NewLanguagePackRepository(database)
+	boardProfileRepo := db.NewBoardProfileRepository(database)
 
 	// Create API
 	apiInstance := api.New(api.Config{
@@ -96,6 +97,7 @@ func setupTestAPI(t *testing.T) *testAPI {
 		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
 		LangPackRepo:      langPackRepo,
+		BoardProfileRepo:  boardProfileRepo,
 		Database:          database,
 		Storage:           nil, // No storage for basic tests
 		UserManager:       userManager,
@@ -2295,6 +2297,7 @@ func setupTestAPIWithStorage(t *testing.T) *testAPI {
 	componentRepo := db.NewComponentRepository(database)
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
 	langPackRepo := db.NewLanguagePackRepository(database)
+	boardProfileRepo := db.NewBoardProfileRepository(database)
 
 	apiInstance := api.New(api.Config{
 		DistRepo:          distRepo,
@@ -2302,6 +2305,7 @@ func setupTestAPIWithStorage(t *testing.T) *testAPI {
 		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
 		LangPackRepo:      langPackRepo,
+		BoardProfileRepo:  boardProfileRepo,
 		Database:          database,
 		Storage:           mockStore,
 		UserManager:       userManager,

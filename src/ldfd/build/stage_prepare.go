@@ -120,6 +120,18 @@ func (s *PrepareStage) Execute(ctx context.Context, sc *StageContext, progress P
 		if err := s.kernelConfig.Generate(ctx, sc, kernelComponent, configPath); err != nil {
 			return fmt.Errorf("failed to generate kernel config: %w", err)
 		}
+
+		// Merge board profile kernel overlay options on top of generated config
+		if sc.BoardProfile != nil && len(sc.BoardProfile.Config.KernelOverlay) > 0 {
+			log.Info("Applying board profile kernel overlay",
+				"board", sc.BoardProfile.Name,
+				"options", len(sc.BoardProfile.Config.KernelOverlay))
+			overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
+			if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
+				return fmt.Errorf("failed to generate board kernel overlay: %w", err)
+			}
+		}
+
 		log.Info("Generated kernel config", "path", configPath)
 	}
 

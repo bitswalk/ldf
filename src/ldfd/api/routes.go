@@ -124,6 +124,26 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			}
 		}
 
+		// Board routes - extensible namespace for board-related endpoints
+		board := v1.Group("/board")
+		{
+			// Board profile routes - read operations (public)
+			boardProfilesRead := board.Group("/profiles")
+			{
+				boardProfilesRead.GET("", a.BoardProfiles.HandleList)
+				boardProfilesRead.GET("/:id", a.BoardProfiles.HandleGet)
+			}
+
+			// Board profile routes - write operations (requires write access)
+			boardProfilesWrite := board.Group("/profiles")
+			boardProfilesWrite.Use(a.writeAccessRequired())
+			{
+				boardProfilesWrite.POST("", a.BoardProfiles.HandleCreate)
+				boardProfilesWrite.PUT("/:id", a.BoardProfiles.HandleUpdate)
+				boardProfilesWrite.DELETE("/:id", a.BoardProfiles.HandleDelete)
+			}
+		}
+
 		// Sources routes - unified API (authenticated)
 		// All sources use the same endpoints with permission checks based on is_system/owner_id
 		sourcesGroup := v1.Group("/sources")
