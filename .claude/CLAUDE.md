@@ -63,7 +63,19 @@ cd src/webui && /home/flint/.bun/bin/bun run dev  # WebUI dev server (port 3000)
 - WebUI never uses `<div>`/`<span>` -- semantic HTML5 tags only
 - Swagger UI served at `/swagger/index.html` (swaggo/swag annotations on all 74 operations)
 
-## Roadmap & Planning
+## Project Management
 
-- Roadmap and feature specs are tracked in auto memory
+- **GitHub Project**: [LDF Roadmap](https://github.com/orgs/bitswalk/projects/9) -- linked to `bitswalk/ldf`
+- **GitHub Milestones**: M1-M4 (closed), M5-M7 (open) -- each with subtask issues
+- **GitHub Issues**: All work items tracked as issues with labels and milestones
+- **GitHub Wiki**: Available for long-form documentation and guides
+- **Labels**: `priority:` (critical/high/medium/low), `component:` (server/cli/webui/build/common), `type:` (feature/infrastructure/security)
+
+### Workflow
+
+- When starting a new task, find or create the corresponding GitHub issue
+- Reference issues in commit messages (e.g., `fixes #35`)
+- Use `gh issue list --milestone "M5 - Platform Maturity"` to see current work
+- Use `gh project item-list 9 --owner bitswalk` to see the roadmap board
+- Close issues when work is merged to main
 - Use the `/project-manager` skill when planning work or deciding what to work on next
