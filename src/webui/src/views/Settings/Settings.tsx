@@ -14,6 +14,7 @@ import {
   SummaryButton,
 } from "../../components/Summary";
 import { ServerSettingsPanel } from "../../components/ServerSettingsPanel";
+import { MirrorManager } from "../../components/MirrorManager";
 import { Modal } from "../../components/Modal";
 import { Spinner } from "../../components/Spinner";
 import { themeService } from "../../services/theme";
@@ -512,6 +513,10 @@ export const Settings: Component<SettingsProps> = (props) => {
               <SummaryNavItem
                 id="server-settings"
                 label={t("settings.server.settings.title")}
+              />
+              <SummaryNavItem
+                id="mirrors"
+                label={t("settings.mirrors.title")}
               />
             </Show>
           </SummaryCategory>
@@ -1058,6 +1063,15 @@ export const Settings: Component<SettingsProps> = (props) => {
               onRetry={loadServerSettings}
               onResetDatabase={openResetDbModal}
             />
+          </SummarySection>
+
+          {/* Mirrors Section (Root users only) */}
+          <SummarySection
+            id="mirrors"
+            title={t("settings.mirrors.title")}
+            description={t("settings.mirrors.description")}
+          >
+            <MirrorManager />
           </SummarySection>
 
           {/* Profile Section */}

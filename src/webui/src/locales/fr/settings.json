@@ -257,6 +257,36 @@
       }
     }
   },
+  "mirrors": {
+    "title": "Miroirs de telechargement",
+    "description": "Configurer les miroirs de telechargement pour rediriger les URL amont vers des alternatives locales ou plus rapides",
+    "empty": "Aucun miroir de telechargement configure",
+    "add": "Ajouter un miroir",
+    "addMirror": "Ajouter un miroir",
+    "editMirror": "Modifier le miroir",
+    "columns": {
+      "name": "Nom",
+      "urlPrefix": "Prefixe URL",
+      "mirrorUrl": "URL du miroir",
+      "priority": "Priorite",
+      "enabled": "Active",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Nom",
+      "urlPrefix": "Prefixe URL",
+      "urlPrefixDescription": "Prefixe URL original a faire correspondre (ex: https://cdn.kernel.org/)",
+      "mirrorUrl": "URL du miroir",
+      "mirrorUrlDescription": "URL du miroir de remplacement (ex: https://mirror.exemple.com/kernel/)",
+      "priority": "Priorite",
+      "priorityDescription": "Les valeurs plus elevees sont essayees en premier (0 = par defaut)",
+      "enabled": "Active"
+    },
+    "delete": {
+      "title": "Supprimer le miroir",
+      "confirm": "Etes-vous sur de vouloir supprimer le miroir \"{{ name }}\" ? Cette action est irreversible."
+    }
+  },
   "server": {
     "connection": {
       "title": "Connexion",

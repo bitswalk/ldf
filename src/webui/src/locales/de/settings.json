@@ -257,6 +257,36 @@
       }
     }
   },
+  "mirrors": {
+    "title": "Download-Spiegel",
+    "description": "Download-Spiegel konfigurieren, um Upstream-URLs auf lokale oder schnellere Alternativen umzuleiten",
+    "empty": "Keine Download-Spiegel konfiguriert",
+    "add": "Spiegel hinzufugen",
+    "addMirror": "Spiegel hinzufugen",
+    "editMirror": "Spiegel bearbeiten",
+    "columns": {
+      "name": "Name",
+      "urlPrefix": "URL-Prafix",
+      "mirrorUrl": "Spiegel-URL",
+      "priority": "Prioritat",
+      "enabled": "Aktiviert",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "name": "Name",
+      "urlPrefix": "URL-Prafix",
+      "urlPrefixDescription": "Ursprungliches URL-Prafix zum Abgleich (z.B. https://cdn.kernel.org/)",
+      "mirrorUrl": "Spiegel-URL",
+      "mirrorUrlDescription": "Ersatz-Spiegel-URL (z.B. https://mirror.beispiel.com/kernel/)",
+      "priority": "Prioritat",
+      "priorityDescription": "Hohere Werte werden zuerst versucht (0 = Standard)",
+      "enabled": "Aktiviert"
+    },
+    "delete": {
+      "title": "Spiegel loschen",
+      "confirm": "Sind Sie sicher, dass Sie den Spiegel \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden."
+    }
+  },
   "server": {
     "connection": {
       "title": "Verbindung",
