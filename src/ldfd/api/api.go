@@ -6,6 +6,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/artifacts"
 	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
 	"github.com/bitswalk/ldf/src/ldfd/api/base"
+	boardprofiles "github.com/bitswalk/ldf/src/ldfd/api/board/profiles"
 	"github.com/bitswalk/ldf/src/ldfd/api/branding"
 	"github.com/bitswalk/ldf/src/ldfd/api/builds"
 	"github.com/bitswalk/ldf/src/ldfd/api/components"
@@ -92,6 +93,10 @@ func New(cfg Config) *API {
 
 		Forge: apiforge.NewHandler(apiforge.Config{
 			Registry: cfg.ForgeRegistry,
+		}),
+
+		BoardProfiles: boardprofiles.NewHandler(boardprofiles.Config{
+			BoardProfileRepo: cfg.BoardProfileRepo,
 		}),
 
 		jwtService:    cfg.JWTService,

@@ -4,11 +4,12 @@ import "time"
 
 // DistributionConfig represents the full configuration for building a distribution
 type DistributionConfig struct {
-	Core     CoreConfig     `json:"core"`
-	System   SystemConfig   `json:"system"`
-	Security SecurityConfig `json:"security"`
-	Runtime  RuntimeConfig  `json:"runtime"`
-	Target   TargetConfig   `json:"target"`
+	Core           CoreConfig     `json:"core"`
+	System         SystemConfig   `json:"system"`
+	Security       SecurityConfig `json:"security"`
+	Runtime        RuntimeConfig  `json:"runtime"`
+	Target         TargetConfig   `json:"target"`
+	BoardProfileID string         `json:"board_profile_id,omitempty"`
 }
 
 // CoreConfig contains core system configuration
@@ -395,4 +396,50 @@ type LanguagePackMeta struct {
 	Author    string    `json:"author,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// BoardProfile represents a hardware board profile for targeted builds
+type BoardProfile struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"` // unique slug: "rpi4", "generic-x86_64"
+	DisplayName string      `json:"display_name"`
+	Description string      `json:"description,omitempty"`
+	Arch        TargetArch  `json:"arch"` // architecture constraint
+	Config      BoardConfig `json:"config"`
+	IsSystem    bool        `json:"is_system"`
+	OwnerID     string      `json:"owner_id,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+// BoardConfig holds all board-specific build parameters
+type BoardConfig struct {
+	DeviceTrees     []DeviceTreeSpec  `json:"device_trees,omitempty"`
+	KernelOverlay   map[string]string `json:"kernel_overlay,omitempty"`   // CONFIG_ options merged on top
+	KernelDefconfig string            `json:"kernel_defconfig,omitempty"` // board-specific defconfig (e.g. "bcm2711_defconfig")
+	BootParams      BoardBootParams   `json:"boot_params,omitempty"`
+	Firmware        []BoardFirmware   `json:"firmware,omitempty"`
+	KernelCmdline   string            `json:"kernel_cmdline,omitempty"`
+}
+
+// DeviceTreeSpec defines a device tree source to compile and include
+type DeviceTreeSpec struct {
+	Source   string   `json:"source"`             // path relative to kernel source tree
+	Overlays []string `json:"overlays,omitempty"` // optional DT overlay paths
+}
+
+// BoardBootParams holds board-specific bootloader parameters
+type BoardBootParams struct {
+	BootloaderOverride string            `json:"bootloader_override,omitempty"` // override distro bootloader choice
+	UBootBoard         string            `json:"uboot_board,omitempty"`         // U-Boot board config name
+	ExtraFiles         map[string]string `json:"extra_files,omitempty"`         // extra files to place (dest -> content)
+	ConfigTxt          string            `json:"config_txt,omitempty"`          // RPi config.txt content
+}
+
+// BoardFirmware describes firmware blobs required by the board
+type BoardFirmware struct {
+	Name        string `json:"name"`
+	ComponentID string `json:"component_id,omitempty"` // optional reference to component registry
+	Path        string `json:"path,omitempty"`         // install path in rootfs
+	Description string `json:"description,omitempty"`
 }

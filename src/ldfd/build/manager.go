@@ -44,16 +44,17 @@ func DefaultConfig() Config {
 
 // Manager coordinates build jobs across workers
 type Manager struct {
-	db              *db.Database
-	storage         storage.Backend
-	buildJobRepo    *db.BuildJobRepository
-	distRepo        *db.DistributionRepository
-	downloadJobRepo *db.DownloadJobRepository
-	componentRepo   *db.ComponentRepository
-	sourceRepo      *db.SourceRepository
-	downloadManager *download.Manager
-	config          Config
-	stages          []Stage
+	db               *db.Database
+	storage          storage.Backend
+	buildJobRepo     *db.BuildJobRepository
+	distRepo         *db.DistributionRepository
+	downloadJobRepo  *db.DownloadJobRepository
+	componentRepo    *db.ComponentRepository
+	sourceRepo       *db.SourceRepository
+	boardProfileRepo *db.BoardProfileRepository
+	downloadManager  *download.Manager
+	config           Config
+	stages           []Stage
 
 	jobQueue    chan *db.BuildJob
 	cancelFuncs map[string]context.CancelFunc
@@ -86,17 +87,18 @@ func NewManager(database *db.Database, storageBackend storage.Backend,
 	}
 
 	m := &Manager{
-		db:              database,
-		storage:         storageBackend,
-		buildJobRepo:    db.NewBuildJobRepository(database),
-		distRepo:        db.NewDistributionRepository(database),
-		downloadJobRepo: db.NewDownloadJobRepository(database),
-		componentRepo:   db.NewComponentRepository(database),
-		sourceRepo:      db.NewSourceRepository(database),
-		downloadManager: downloadMgr,
-		config:          cfg,
-		jobQueue:        make(chan *db.BuildJob, cfg.Workers*2),
-		cancelFuncs:     make(map[string]context.CancelFunc),
+		db:               database,
+		storage:          storageBackend,
+		buildJobRepo:     db.NewBuildJobRepository(database),
+		distRepo:         db.NewDistributionRepository(database),
+		downloadJobRepo:  db.NewDownloadJobRepository(database),
+		componentRepo:    db.NewComponentRepository(database),
+		sourceRepo:       db.NewSourceRepository(database),
+		boardProfileRepo: db.NewBoardProfileRepository(database),
+		downloadManager:  downloadMgr,
+		config:           cfg,
+		jobQueue:         make(chan *db.BuildJob, cfg.Workers*2),
+		cancelFuncs:      make(map[string]context.CancelFunc),
 	}
 
 	return m
@@ -112,7 +114,7 @@ func (m *Manager) RegisterDefaultStages() {
 	executor := NewContainerExecutor(m.config.ContainerImage, nil)
 
 	m.stages = []Stage{
-		NewResolveStage(m.componentRepo, m.downloadJobRepo),
+		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo),
 		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
 		NewPrepareStage(m.storage),
 		NewCompileStage(executor),
