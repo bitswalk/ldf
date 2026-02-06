@@ -195,6 +195,19 @@ func (b *S3Backend) Download(ctx context.Context, key string) (io.ReadCloser, *O
 	return output.Body, info, nil
 }
 
+// Copy copies an object from srcKey to dstKey within the same S3 bucket
+func (b *S3Backend) Copy(ctx context.Context, srcKey, dstKey string) error {
+	_, err := b.s3Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     aws.String(b.config.Bucket),
+		CopySource: aws.String(b.config.Bucket + "/" + srcKey),
+		Key:        aws.String(dstKey),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to copy object %s to %s: %w", srcKey, dstKey, err)
+	}
+	return nil
+}
+
 // Delete deletes an object from S3
 func (b *S3Backend) Delete(ctx context.Context, key string) error {
 	_, err := b.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{

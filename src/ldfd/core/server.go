@@ -60,10 +60,40 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	jwtCfg := auth.DefaultJWTConfig()
 	jwtService := auth.NewJWTService(jwtCfg, userManager, database)
 
-	// Initialize download manager
+	// Initialize download manager with artifact cache, mirrors, and throttle
 	download.SetLogger(log)
 	downloadCfg := download.DefaultConfig()
-	downloadManager := download.NewManager(database, storageBackend, downloadCfg)
+
+	// Configure mirror/proxy
+	mirrorCfg := download.MirrorConfig{
+		ProxyURL:  viper.GetString("download.proxy_url"),
+		LocalPath: viper.GetString("download.local_mirror_path"),
+	}
+	downloadCfg.Mirror = mirrorCfg
+
+	// Configure bandwidth throttle (settings are in MB/s, convert to bytes/s)
+	perWorkerMbps := viper.GetInt("download.throttle.per_worker_mbps")
+	globalMbps := viper.GetInt("download.throttle.global_mbps")
+	downloadCfg.Throttle = download.ThrottleConfig{
+		PerWorkerBytesPerSec: int64(perWorkerMbps) * 1024 * 1024,
+		GlobalBytesPerSec:    int64(globalMbps) * 1024 * 1024,
+	}
+
+	// Initialize artifact cache
+	cacheRepo := db.NewArtifactCacheRepository(database)
+	cacheCfg := download.DefaultCacheConfig()
+	artifactCache := download.NewCache(cacheRepo, storageBackend, cacheCfg)
+
+	// Initialize mirror resolver
+	mirrorConfigRepo := db.NewMirrorConfigRepository(database)
+	enabledMirrors, err := mirrorConfigRepo.ListEnabled()
+	if err != nil {
+		log.Warn("Failed to load mirror configs", "error", err)
+		enabledMirrors = nil
+	}
+	mirrorResolver := download.NewMirrorResolver(enabledMirrors, mirrorCfg)
+
+	downloadManager := download.NewManager(database, storageBackend, downloadCfg, artifactCache, mirrorResolver)
 
 	// Initialize source version repository and discovery service
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
@@ -95,6 +125,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
 		DownloadJobRepo:   db.NewDownloadJobRepository(database),
+		MirrorConfigRepo:  mirrorConfigRepo,
 		LangPackRepo:      db.NewLanguagePackRepository(database),
 		BoardProfileRepo:  db.NewBoardProfileRepository(database),
 		Database:          database,

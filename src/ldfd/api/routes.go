@@ -226,6 +226,16 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			downloadsAdmin.GET("/active", a.Downloads.HandleListActiveDownloads)
 		}
 
+		// Mirror configuration routes - admin only
+		mirrorsAdmin := v1.Group("/mirrors")
+		mirrorsAdmin.Use(a.adminAccessRequired())
+		{
+			mirrorsAdmin.GET("", a.Mirrors.HandleListMirrors)
+			mirrorsAdmin.POST("", a.Mirrors.HandleCreateMirror)
+			mirrorsAdmin.PUT("/:id", a.Mirrors.HandleUpdateMirror)
+			mirrorsAdmin.DELETE("/:id", a.Mirrors.HandleDeleteMirror)
+		}
+
 		// Build routes - read (auth required)
 		distBuildsRead := v1.Group("/distributions/:id/builds")
 		distBuildsRead.Use(a.authRequired())

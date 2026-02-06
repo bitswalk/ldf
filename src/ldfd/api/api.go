@@ -68,6 +68,8 @@ func New(cfg Config) *API {
 			DownloadManager: cfg.DownloadManager,
 		}),
 
+		Mirrors: downloads.NewMirrorHandler(cfg.MirrorConfigRepo),
+
 		Builds: builds.NewHandler(builds.Config{
 			DistRepo:     cfg.DistRepo,
 			BuildManager: cfg.BuildManager,

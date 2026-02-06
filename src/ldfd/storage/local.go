@@ -99,6 +99,43 @@ func (b *LocalBackend) Upload(ctx context.Context, key string, reader io.Reader,
 	return nil
 }
 
+// Copy copies a file from srcKey to dstKey using hard link when possible,
+// falling back to file copy for cross-device scenarios.
+func (b *LocalBackend) Copy(ctx context.Context, srcKey, dstKey string) error {
+	srcPath := b.fullPath(srcKey)
+	dstPath := b.fullPath(dstKey)
+
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return fmt.Errorf("failed to create directory for %s: %w", dstKey, err)
+	}
+
+	// Try hard link first (zero-copy on same filesystem)
+	if err := os.Link(srcPath, dstPath); err == nil {
+		return nil
+	}
+
+	// Fallback to file copy
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to open source %s: %w", srcKey, err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		return fmt.Errorf("failed to create destination %s: %w", dstKey, err)
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		os.Remove(dstPath)
+		return fmt.Errorf("failed to copy %s to %s: %w", srcKey, dstKey, err)
+	}
+
+	return nil
+}
+
 // Download downloads a file from local filesystem
 func (b *LocalBackend) Download(ctx context.Context, key string) (io.ReadCloser, *ObjectInfo, error) {
 	fullPath := b.fullPath(key)

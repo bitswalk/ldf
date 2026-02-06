@@ -24,6 +24,9 @@ type Backend interface {
 	// GetInfo retrieves metadata for an object
 	GetInfo(ctx context.Context, key string) (*ObjectInfo, error)
 
+	// Copy copies an object from srcKey to dstKey within the same backend
+	Copy(ctx context.Context, srcKey, dstKey string) error
+
 	// List lists objects with the given prefix
 	List(ctx context.Context, prefix string) ([]ObjectInfo, error)
 

@@ -2209,6 +2209,21 @@ func (m *mockStorage) Exists(ctx context.Context, key string) (bool, error) {
 	return ok, nil
 }
 
+func (m *mockStorage) Copy(ctx context.Context, srcKey, dstKey string) error {
+	obj, ok := m.objects[srcKey]
+	if !ok {
+		return fmt.Errorf("source object not found: %s", srcKey)
+	}
+	data := make([]byte, len(obj.data))
+	copy(data, obj.data)
+	m.objects[dstKey] = &mockObject{
+		data:        data,
+		contentType: obj.contentType,
+		size:        obj.size,
+	}
+	return nil
+}
+
 func (m *mockStorage) GetInfo(ctx context.Context, key string) (*storage.ObjectInfo, error) {
 	obj, ok := m.objects[key]
 	if !ok {
@@ -2989,13 +3004,17 @@ func setupTestAPIWithDownloadManager(t *testing.T) *testAPI {
 	langPackRepo := db.NewLanguagePackRepository(database)
 
 	// Create download manager
-	downloadManager := download.NewManager(database, mockStore, download.DefaultConfig())
+	downloadManager := download.NewManager(database, mockStore, download.DefaultConfig(), nil, nil)
+
+	mirrorConfigRepo := db.NewMirrorConfigRepository(database)
 
 	apiInstance := api.New(api.Config{
 		DistRepo:          distRepo,
 		SourceRepo:        sourceRepo,
 		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
+		DownloadJobRepo:   db.NewDownloadJobRepository(database),
+		MirrorConfigRepo:  mirrorConfigRepo,
 		LangPackRepo:      langPackRepo,
 		Database:          database,
 		Storage:           mockStore,
