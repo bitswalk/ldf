@@ -1,41 +1,53 @@
 ---
 name: create-release
-description: Build release binaries, package them, and create a GitHub release with tag, release notes, and assets. Use when cutting a new version.
-argument-hint: "<version> [release-name]"
+description: Manage the release lifecycle -- create a release branch with version bump, or finalize by merging to main and tagging. Use at the start or end of a release cycle.
+argument-hint: "<version> <codename> [--finalize]"
 
 ---
 
 # Create Release
 
-Build, package, and publish a GitHub release.
+Manage the full release lifecycle. Each release has a unique one-word codename.
+
+Previous releases: Phoenix (1.0.0).
 
 ## Arguments
 
-- `$ARGUMENTS[0]` -- Version number (e.g., `1.0.0`, `1.1.0`). Required.
-- `$ARGUMENTS[1]` -- Release codename (e.g., `Phoenix`). Optional -- defaults to current `RELEASE_NAME` in `Taskfile.yml`.
+- `$ARGUMENTS[0]` -- Version number (e.g., `1.1.0`). Required.
+- `$ARGUMENTS[1]` -- Release codename (e.g., `Gryphon`). Required when creating; ignored with `--finalize`.
+- `--finalize` -- Finalize an existing release branch (merge to main + tag + push).
 
-## Steps
+Without `--finalize`, creates a new release branch. With `--finalize`, ships the release.
+
+---
+
+## Phase 1: Create Release Branch (default)
+
+Use at the **start** of a release cycle.
 
 ### 1. Validate preconditions
-
-Ensure we're on `main` with a clean working tree:
 
 ```bash
 git status --porcelain
 git branch --show-current
 ```
 
-If there are uncommitted changes or we're not on `main`, stop and ask the user.
+Must be on `main` with a clean working tree. If not, stop and ask the user.
 
-### 2. Update version references
+### 2. Create the release branch
 
-Update `RELEASE_VERSION` in `Taskfile.yml`:
-
-```yaml
-RELEASE_VERSION: <version>
+```bash
+git checkout -b release/<version>
 ```
 
-If a release name was provided, also update `RELEASE_NAME`.
+### 3. Update version references
+
+Update `RELEASE_VERSION` and `RELEASE_NAME` in `Taskfile.yml`:
+
+```yaml
+RELEASE_NAME: <codename>
+RELEASE_VERSION: <version>
+```
 
 Update `version` in `src/webui/package.json`:
 
@@ -43,82 +55,96 @@ Update `version` in `src/webui/package.json`:
 "version": "<version>"
 ```
 
-### 3. Commit version bump
+### 4. Commit and push
 
 ```bash
 git add -A
-git commit -m "release: v<version> <release-name>"
-git push
+git commit -m "release: begin v<version> <codename>"
+git push -u origin release/<version>
 ```
 
-### 4. Run tests
+### 5. Report
+
+Summarize:
+- Release branch: `release/<version>`
+- Codename: `<codename>`
+- Version bumped to `<version>`
+- Next steps: create feature/bugfix/fix branches from `release/<version>`, merge them back via PR
+
+---
+
+## Phase 2: Finalize Release (`--finalize`)
+
+Use when all work on the release branch is **complete and tested**.
+
+### 1. Validate preconditions
+
+```bash
+git status --porcelain
+git branch --show-current
+```
+
+Must be on `release/<version>` with a clean working tree. If not, stop and ask the user.
+
+### 2. Read release metadata
+
+Extract `RELEASE_NAME` and `RELEASE_VERSION` from `Taskfile.yml` to use in tags and messages.
+
+### 3. Run full test suite
 
 ```bash
 task fmt
 task lint
-go test ./...
+task test
 ```
 
 All must pass. If anything fails, stop and fix before continuing.
 
-### 5. Build release binaries
+### 4. Build and verify
 
 ```bash
-task build:srv
-task build:cli
-```
-
-Verify version is stamped correctly:
-
-```bash
+task build
 ./build/bin/ldfctl version
 ```
 
-Confirm the output shows the expected version.
+Confirm the output shows the expected version and codename.
 
-### 6. Package assets
-
-Create release tarballs and checksums:
+### 5. Merge release branch to main
 
 ```bash
-mkdir -p build/release
-tar -czf build/release/ldfd-v<version>-linux-amd64.tar.gz -C build/bin ldfd
-tar -czf build/release/ldfctl-v<version>-linux-amd64.tar.gz -C build/bin ldfctl
-cd build/release && sha256sum *.tar.gz > checksums-v<version>-sha256.txt
+git checkout main
+git pull origin main
+git merge --no-ff release/<version> -m "Merge release/<version> - v<version> <codename>"
 ```
 
-### 7. Generate release notes
-
-Build a GitHub-flavored markdown release body with:
-
-- **Title**: `LDF v<version> -- <release-name>`
-- **Highlights**: Summarize major changes since the last release. Use `git log --oneline <prev-tag>..HEAD` to review commits. Group by type (features, fixes, improvements).
-- **Components table**: ldfd, ldfctl, WebUI
-- **Checksums block**: Contents of the checksums file in a fenced code block
-- **Installation snippet**: tar extract + verify commands
-
-### 8. Create GitHub release
+### 6. Tag the release
 
 ```bash
-gh release create v<version> \
-  --title "v<version> - <release-name>" \
-  --notes "<release-notes>" \
-  --target main \
-  build/release/ldfd-v<version>-linux-amd64.tar.gz \
-  build/release/ldfctl-v<version>-linux-amd64.tar.gz \
-  build/release/checksums-v<version>-sha256.txt
+git tag -a v<version> -m "v<version> - <codename>"
 ```
 
-### 9. Clean up
+### 7. Push main and tag
 
 ```bash
-rm -rf build/release
+git push origin main
+git push origin v<version>
 ```
 
-### 10. Report
+This triggers the automated release workflow (`.github/workflows/release.yml`), which builds production binaries, packages them with checksums, and creates the GitHub release.
+
+### 8. Clean up
+
+```bash
+git branch -d release/<version>
+git push origin --delete release/<version>
+```
+
+### 9. Report
 
 Summarize:
-- Release URL (from `gh release create` output)
-- Tag: `v<version>`
-- Assets uploaded with sizes
-- SHA-256 checksums
+- Release branch merged to `main`
+- Tag pushed: `v<version>`
+- Codename: `<codename>`
+- Automated release workflow triggered
+- Release branch deleted (local and remote)
+- Check: `https://github.com/bitswalk/ldf/actions`

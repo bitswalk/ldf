@@ -44,7 +44,10 @@ Assists with project planning and coordination using GitHub Project, Issues, and
 ## Workflow
 
 ```
-Query GH milestones/issues -> Read MEMORY.md -> Identify next open issue -> Create feature branch -> Work on it -> Close issue -> Update MEMORY.md
+Query GH milestones/issues -> Read MEMORY.md -> Identify next open issue ->
+  If release branch exists: branch from release/<version>
+  If no release branch: branch from main
+-> Work on it -> Close issue -> Update MEMORY.md
 ```
 
 ## Creating new work items
@@ -60,6 +63,20 @@ gh issue create --title "Title" --body "Description" \
 # Add to project board
 gh project item-add 9 --owner bitswalk --url "https://github.com/bitswalk/ldf/issues/NUMBER"
 ```
+
+## Release cycle workflow
+
+When planning a new release:
+
+1. Identify the version number, codename, and all work items (milestone subtasks, bugs, fixes)
+2. Create GitHub issues for all items, assign to the appropriate milestone
+3. Use `/create-release <version> <codename>` to create the `release/<version>` branch
+4. All feature/bugfix/fix branches for this release should be created from `release/<version>`
+5. Merge completed work back into `release/<version>` (use `/milestone-complete`)
+6. When all work is done and tested, use `/create-release <version> --finalize` to merge to main and tag
+7. The tag push triggers automated release build and publish via GitHub Actions
+
+Previous releases: Phoenix (1.0.0). Each release must have a unique one-word codename.
 
 ## Key references
 

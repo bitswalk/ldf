@@ -23,12 +23,30 @@ Monorepo with four main components:
 
 ## Branch Workflow
 
+### Branch Types
+
+- **Release branches**: `release/<version>` (e.g., `release/1.1.0`) -- integration branch for a release cycle
 - **Feature branches**: `feature/m<milestone>_<subtask>` (e.g., M5.1 -> `feature/m5_1`) -- for milestone work
 - **Bugfix branches**: `bugfix/<issue-number>-<short-description>` (e.g., `bugfix/46-setting-list-decode`) -- for bug fixes
 - **Fix branches**: `fix/<short-description>` -- for non-issue-tracked fixes (CI, lint, etc.)
-- **Before starting work**: Create a branch from `main`
-- **After completing work**: Merge back to `main`, then delete the branch
-- **Never** switch to a new branch without merging or stashing the current one first
+
+### Release Cycle
+
+Each release has a unique one-word codename (e.g., v1.0.0 = Phoenix).
+
+1. **Plan**: Create the milestone on the roadmap; identify and create issues for all work items.
+2. **Branch**: Use `/create-release <version> <codename>` to create `release/<version>` from `main` with version bump.
+3. **Develop**: Create feature/bugfix/fix branches **from the release branch** (not from `main`).
+4. **Integrate**: Merge completed branches back **into the release branch** via PR or merge.
+5. **Stabilize**: Test the release branch as a whole; fix any integration issues.
+6. **Ship**: Use `/create-release <version> --finalize` to merge to `main`, tag `v<version>`, and push.
+7. **Automate**: The `v*` tag push triggers `.github/workflows/release.yml` which builds, packages, and publishes the GitHub release.
+
+### General Rules
+
+- When a release branch exists for your milestone, branch from it and merge back to it -- **not** `main`.
+- When no release branch exists (hotfixes, standalone work), branch from and merge to `main` as before.
+- **Never** switch to a new branch without merging or stashing the current one first.
 
 ## Environment Notes
 

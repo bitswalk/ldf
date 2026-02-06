@@ -33,11 +33,31 @@ All must pass before proceeding. Fix any failures.
 
 If there are uncommitted changes, commit them using conventional commit format.
 
-### 3. Merge to main
+### 3. Merge to target branch
+
+Determine the merge target. Check if a release branch exists for the current work:
+
+```bash
+RELEASE_BRANCH=$(git branch -r --list 'origin/release/*' | head -1 | xargs)
+```
+
+If a release branch exists and the current feature/bugfix/fix branch was created from it, merge into the release branch:
+
+```bash
+TARGET=${RELEASE_BRANCH#origin/}
+git checkout "$TARGET"
+git pull origin "$TARGET"
+git merge --no-ff <current-branch> -m "Merge branch '<current-branch>' - $1"
+git push origin "$TARGET"
+```
+
+If no release branch exists, merge to `main` as before:
 
 ```bash
 git checkout main
+git pull origin main
 git merge --no-ff <current-branch> -m "Merge branch '<current-branch>' - $1"
+git push origin main
 ```
 
 The branch name should follow the convention `feature/m<X>_<Y>` (e.g., `feature/m5_1` for M5.1).
@@ -68,4 +88,5 @@ Summarize:
 
 - Milestone subtask: `feature/m<milestone>_<subtask>` (e.g., M5.1 -> `feature/m5_1`)
 - When a branch combines multiple subtasks, use the first subtask number
-- Create branches from `main`, merge back to `main` with `--no-ff`
+- When a `release/<version>` branch exists: create feature branches from it, merge back to it with `--no-ff`
+- When no release branch exists: create from `main`, merge back to `main` with `--no-ff`
