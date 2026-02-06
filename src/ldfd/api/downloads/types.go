@@ -35,10 +35,47 @@ type DownloadJobsListResponse struct {
 // StartDownloadsRequest represents the request to start downloads
 type StartDownloadsRequest struct {
 	Components []string `json:"components"`
+	Priority   int      `json:"priority,omitempty"`
 }
 
 // StartDownloadsResponse represents the response after starting downloads
 type StartDownloadsResponse struct {
 	Count int                   `json:"count"`
 	Jobs  []DownloadJobResponse `json:"jobs"`
+}
+
+// MirrorResponse represents a mirror configuration in API responses
+type MirrorResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URLPrefix string `json:"url_prefix"`
+	MirrorURL string `json:"mirror_url"`
+	Priority  int    `json:"priority"`
+	Enabled   bool   `json:"enabled"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// MirrorListResponse represents a list of mirror configurations
+type MirrorListResponse struct {
+	Count   int              `json:"count"`
+	Mirrors []MirrorResponse `json:"mirrors"`
+}
+
+// CreateMirrorRequest represents the request to create a mirror
+type CreateMirrorRequest struct {
+	Name      string `json:"name" binding:"required"`
+	URLPrefix string `json:"url_prefix" binding:"required"`
+	MirrorURL string `json:"mirror_url" binding:"required"`
+	Priority  int    `json:"priority"`
+	Enabled   *bool  `json:"enabled,omitempty"`
+}
+
+// UpdateMirrorRequest represents the request to update a mirror
+type UpdateMirrorRequest struct {
+	Name      string `json:"name,omitempty"`
+	URLPrefix string `json:"url_prefix,omitempty"`
+	MirrorURL string `json:"mirror_url,omitempty"`
+	Priority  *int   `json:"priority,omitempty"`
+	Enabled   *bool  `json:"enabled,omitempty"`
 }

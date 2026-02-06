@@ -753,7 +753,7 @@ func TestDownloadManager_NewManager(t *testing.T) {
 		MaxRetries:     3,
 	}
 
-	manager := download.NewManager(database, nil, managerCfg)
+	manager := download.NewManager(database, nil, managerCfg, nil, nil)
 	if manager == nil {
 		t.Fatal("expected manager to be created")
 	}
@@ -787,7 +787,7 @@ func TestDownloadManager_NewManager_DefaultValues(t *testing.T) {
 	defer func() { _ = database.Shutdown() }()
 
 	// Pass zero config, should use defaults
-	manager := download.NewManager(database, nil, download.Config{})
+	manager := download.NewManager(database, nil, download.Config{}, nil, nil)
 	if manager == nil {
 		t.Fatal("expected manager to be created")
 	}
@@ -806,7 +806,7 @@ func TestDownloadManager_SubmitJob(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	// Create a component
 	compRepo := db.NewComponentRepository(database)
@@ -874,7 +874,7 @@ func TestDownloadManager_CancelJob(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	// Create a component
 	compRepo := db.NewComponentRepository(database)
@@ -932,7 +932,7 @@ func TestDownloadManager_RetryJob(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	// Create a component
 	compRepo := db.NewComponentRepository(database)
@@ -997,7 +997,7 @@ func TestDownloadManager_RetryJob_NotFailed(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	// Create a component
 	compRepo := db.NewComponentRepository(database)
@@ -1051,7 +1051,7 @@ func TestDownloadManager_RetryJob_NotFound(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	err = manager.RetryJob("nonexistent-job-id")
 	if err == nil {
@@ -1072,7 +1072,7 @@ func TestDownloadManager_GetJobStatus(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	// Create a component
 	compRepo := db.NewComponentRepository(database)
@@ -1131,7 +1131,7 @@ func TestDownloadManager_GetJobStatus_NotFound(t *testing.T) {
 	}
 	defer func() { _ = database.Shutdown() }()
 
-	manager := download.NewManager(database, nil, download.DefaultConfig())
+	manager := download.NewManager(database, nil, download.DefaultConfig(), nil, nil)
 
 	status, err := manager.GetJobStatus("nonexistent-id")
 	if err != nil {
@@ -1139,5 +1139,110 @@ func TestDownloadManager_GetJobStatus_NotFound(t *testing.T) {
 	}
 	if status != nil {
 		t.Fatal("expected nil for non-existent job")
+	}
+}
+
+// TestListPending_PriorityOrder verifies that ListPending returns jobs ordered by priority DESC
+func TestListPending_PriorityOrder(t *testing.T) {
+	database, err := db.New(db.Config{})
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer func() { _ = database.Shutdown() }()
+
+	// Create required FK targets
+	compRepo := db.NewComponentRepository(database)
+	comps := []*db.Component{
+		{Name: "priority-comp-a", Category: "core", DisplayName: "Comp A", IsSystem: true},
+		{Name: "priority-comp-b", Category: "bootloader", DisplayName: "Comp B", IsSystem: true},
+		{Name: "priority-comp-c", Category: "runtime", DisplayName: "Comp C", IsSystem: true},
+	}
+	for _, c := range comps {
+		_ = compRepo.Create(c)
+	}
+	distRepo := db.NewDistributionRepository(database)
+	dist := &db.Distribution{Name: "priority-test-dist", Version: "1.0", Status: db.StatusPending, Visibility: db.VisibilityPrivate}
+	_ = distRepo.Create(dist)
+
+	jobRepo := db.NewDownloadJobRepository(database)
+
+	// Create jobs with different priorities
+	jobs := []db.DownloadJob{
+		{DistributionID: dist.ID, OwnerID: "user1", ComponentID: comps[0].ID, SourceID: "src1", Version: "1.0", Status: db.JobStatusPending, Priority: 0, MaxRetries: 3},
+		{DistributionID: dist.ID, OwnerID: "user1", ComponentID: comps[1].ID, SourceID: "src2", Version: "1.0", Status: db.JobStatusPending, Priority: 10, MaxRetries: 3},
+		{DistributionID: dist.ID, OwnerID: "user1", ComponentID: comps[2].ID, SourceID: "src3", Version: "1.0", Status: db.JobStatusPending, Priority: 5, MaxRetries: 3},
+	}
+
+	for i := range jobs {
+		if err := jobRepo.Create(&jobs[i]); err != nil {
+			t.Fatalf("failed to create job: %v", err)
+		}
+	}
+
+	pending, err := jobRepo.ListPending()
+	if err != nil {
+		t.Fatalf("failed to list pending: %v", err)
+	}
+	if len(pending) != 3 {
+		t.Fatalf("expected 3 pending jobs, got %d", len(pending))
+	}
+
+	// Should be ordered: priority 10, 5, 0
+	if pending[0].Priority != 10 {
+		t.Errorf("expected first job priority=10, got %d", pending[0].Priority)
+	}
+	if pending[1].Priority != 5 {
+		t.Errorf("expected second job priority=5, got %d", pending[1].Priority)
+	}
+	if pending[2].Priority != 0 {
+		t.Errorf("expected third job priority=0, got %d", pending[2].Priority)
+	}
+}
+
+// TestDownloadJob_CacheHitField verifies the CacheHit field is persisted and read back
+func TestDownloadJob_CacheHitField(t *testing.T) {
+	database, err := db.New(db.Config{})
+	if err != nil {
+		t.Fatalf("failed to create database: %v", err)
+	}
+	defer func() { _ = database.Shutdown() }()
+
+	// Create required FK targets
+	compRepo := db.NewComponentRepository(database)
+	comp := &db.Component{Name: "cachehit-comp", Category: "core", DisplayName: "Cache Hit Comp", IsSystem: true}
+	_ = compRepo.Create(comp)
+	distRepo := db.NewDistributionRepository(database)
+	dist := &db.Distribution{Name: "cachehit-dist", Version: "1.0", Status: db.StatusPending, Visibility: db.VisibilityPrivate}
+	_ = distRepo.Create(dist)
+
+	jobRepo := db.NewDownloadJobRepository(database)
+
+	job := &db.DownloadJob{
+		DistributionID: dist.ID,
+		OwnerID:        "user1",
+		ComponentID:    comp.ID,
+		SourceID:       "src1",
+		Version:        "1.0",
+		Status:         db.JobStatusCompleted,
+		CacheHit:       true,
+		Priority:       10,
+		MaxRetries:     3,
+	}
+	if err := jobRepo.Create(job); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	fetched, err := jobRepo.GetByID(job.ID)
+	if err != nil {
+		t.Fatalf("failed to get job: %v", err)
+	}
+	if fetched == nil {
+		t.Fatal("expected job to exist")
+	}
+	if !fetched.CacheHit {
+		t.Error("expected CacheHit to be true")
+	}
+	if fetched.Priority != 10 {
+		t.Errorf("expected Priority=10, got %d", fetched.Priority)
 	}
 }

@@ -35,6 +35,7 @@ type API struct {
 	Components    *components.Handler
 	Sources       *sources.Handler
 	Downloads     *downloads.Handler
+	Mirrors       *downloads.MirrorHandler
 	Builds        *builds.Handler
 	Artifacts     *artifacts.Handler
 	Branding      *branding.Handler
@@ -56,6 +57,7 @@ type Config struct {
 	ComponentRepo     *db.ComponentRepository
 	SourceVersionRepo *db.SourceVersionRepository
 	DownloadJobRepo   *db.DownloadJobRepository
+	MirrorConfigRepo  *db.MirrorConfigRepository
 	LangPackRepo      *db.LanguagePackRepository
 	BoardProfileRepo  *db.BoardProfileRepository
 	Database          *db.Database

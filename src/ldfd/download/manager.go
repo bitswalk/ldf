@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -25,10 +26,13 @@ func SetLogger(l *logs.Logger) {
 
 // Config holds configuration for the download manager
 type Config struct {
-	Workers        int           // Number of concurrent download workers
-	RetryDelay     time.Duration // Base delay between retries
-	RequestTimeout time.Duration // HTTP request timeout
-	MaxRetries     int           // Default max retries per job
+	Workers        int            // Number of concurrent download workers
+	RetryDelay     time.Duration  // Base delay between retries
+	RequestTimeout time.Duration  // HTTP request timeout
+	MaxRetries     int            // Default max retries per job
+	Cache          CacheConfig    // Artifact cache configuration
+	Mirror         MirrorConfig   // Mirror/proxy configuration
+	Throttle       ThrottleConfig // Bandwidth throttling configuration
 }
 
 // DefaultConfig returns sensible default configuration
@@ -52,6 +56,9 @@ type Manager struct {
 	urlBuilder        *URLBuilder
 	verifier          *Verifier
 	downloader        *Downloader
+	cache             *Cache
+	mirror            *MirrorResolver
+	globalThrottle    *rateLimiter
 	config            Config
 
 	jobQueue    chan *db.DownloadJob
@@ -64,8 +71,9 @@ type Manager struct {
 	cancel  context.CancelFunc
 }
 
-// NewManager creates a new download manager
-func NewManager(database *db.Database, storageBackend storage.Backend, cfg Config) *Manager {
+// NewManager creates a new download manager.
+// The cache and mirror parameters are optional (nil disables the feature).
+func NewManager(database *db.Database, storageBackend storage.Backend, cfg Config, cache *Cache, mirror *MirrorResolver) *Manager {
 	if cfg.Workers <= 0 {
 		cfg.Workers = DefaultConfig().Workers
 	}
@@ -83,6 +91,21 @@ func NewManager(database *db.Database, storageBackend storage.Backend, cfg Confi
 		Timeout: cfg.RequestTimeout,
 	}
 
+	// Apply proxy transport if mirror resolver has one configured
+	var proxyTransport *http.Transport
+	if mirror != nil {
+		proxyTransport = mirror.GetHTTPTransport()
+		if proxyTransport != nil {
+			httpClient.Transport = proxyTransport
+		}
+	}
+
+	// Initialize global rate limiter for bandwidth throttling
+	var globalLimiter *rateLimiter
+	if cfg.Throttle.GlobalBytesPerSec > 0 {
+		globalLimiter = newRateLimiter(cfg.Throttle.GlobalBytesPerSec)
+	}
+
 	jobRepo := db.NewDownloadJobRepository(database)
 	componentRepo := db.NewComponentRepository(database)
 	sourceRepo := db.NewSourceRepository(database)
@@ -98,6 +121,9 @@ func NewManager(database *db.Database, storageBackend storage.Backend, cfg Confi
 		urlBuilder:        NewURLBuilder(componentRepo),
 		verifier:          NewVerifier(httpClient),
 		downloader:        NewDownloader(nil, storageBackend, jobRepo), // nil client = no timeout for downloads
+		cache:             cache,
+		mirror:            mirror,
+		globalThrottle:    globalLimiter,
 		config:            cfg,
 		jobQueue:          make(chan *db.DownloadJob, cfg.Workers*2),
 		cancelFuncs:       make(map[string]context.CancelFunc),
@@ -378,6 +404,106 @@ func (m *Manager) createOrReuseJobForComponent(
 		return nil, existingJob.ID, nil
 	}
 
+	// Cross-distribution cache lookup: check if artifact is already cached
+	if m.cache != nil {
+		cacheEntry, cacheErr := m.cache.Lookup(context.Background(), source.ID, version)
+		if cacheErr != nil {
+			log.Warn("Cache lookup failed", "source", source.Name, "version", version, "error", cacheErr)
+		}
+		if cacheEntry != nil {
+			// Cache hit — create a completed job instantly by copying from cache
+			resolvedURL, _ := m.urlBuilder.BuildURL(source, component, version)
+			artifactPath := m.buildDistArtifactPath(dist, source, component, version, resolvedURL)
+
+			if copyErr := m.cache.CopyToDistribution(context.Background(), cacheEntry, artifactPath); copyErr != nil {
+				log.Warn("Failed to copy from cache", "source", source.Name, "version", version, "error", copyErr)
+			} else {
+				job := &db.DownloadJob{
+					DistributionID:  dist.ID,
+					OwnerID:         dist.OwnerID,
+					ComponentID:     component.ID,
+					ComponentName:   component.Name,
+					ComponentIDs:    []string{component.ID},
+					SourceID:        source.ID,
+					SourceName:      source.Name,
+					SourceType:      m.getSourceType(source),
+					RetrievalMethod: source.RetrievalMethod,
+					ResolvedURL:     resolvedURL,
+					Version:         version,
+					Status:          db.JobStatusCompleted,
+					ArtifactPath:    artifactPath,
+					Checksum:        cacheEntry.Checksum,
+					MaxRetries:      m.config.MaxRetries,
+					CacheHit:        true,
+				}
+				if err := m.jobRepo.Create(job); err != nil {
+					log.Warn("Failed to create cache-hit job", "error", err)
+				} else {
+					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, cacheEntry.Checksum); err != nil {
+						log.Warn("Failed to mark cache-hit job completed", "error", err)
+					}
+					createdJobs[key] = job.ID
+					log.Info("Cache hit: artifact copied from cache",
+						"component", componentName,
+						"source", source.Name,
+						"version", version,
+						"cache_path", cacheEntry.CachePath)
+					return job, "", nil
+				}
+			}
+		}
+
+		// Cross-dist check: any other distribution has a completed job for this source+version?
+		crossJob, crossErr := m.jobRepo.GetCompletedBySourceAndVersion(source.ID, version)
+		if crossErr != nil {
+			log.Warn("Cross-dist lookup failed", "error", crossErr)
+		}
+		if crossJob != nil && crossJob.ArtifactPath != "" {
+			resolvedURL, _ := m.urlBuilder.BuildURL(source, component, version)
+			artifactPath := m.buildDistArtifactPath(dist, source, component, version, resolvedURL)
+
+			if copyErr := m.storage.Copy(context.Background(), crossJob.ArtifactPath, artifactPath); copyErr != nil {
+				log.Warn("Failed to copy cross-dist artifact", "error", copyErr)
+			} else {
+				// Store in cache for future hits
+				_ = m.cache.Store(context.Background(), source.ID, version,
+					crossJob.ArtifactPath, crossJob.Checksum, crossJob.TotalBytes, "")
+
+				job := &db.DownloadJob{
+					DistributionID:  dist.ID,
+					OwnerID:         dist.OwnerID,
+					ComponentID:     component.ID,
+					ComponentName:   component.Name,
+					ComponentIDs:    []string{component.ID},
+					SourceID:        source.ID,
+					SourceName:      source.Name,
+					SourceType:      m.getSourceType(source),
+					RetrievalMethod: source.RetrievalMethod,
+					ResolvedURL:     resolvedURL,
+					Version:         version,
+					Status:          db.JobStatusCompleted,
+					ArtifactPath:    artifactPath,
+					Checksum:        crossJob.Checksum,
+					MaxRetries:      m.config.MaxRetries,
+				}
+				if err := m.jobRepo.Create(job); err != nil {
+					log.Warn("Failed to create cross-dist job", "error", err)
+				} else {
+					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, crossJob.Checksum); err != nil {
+						log.Warn("Failed to mark cross-dist job completed", "error", err)
+					}
+					createdJobs[key] = job.ID
+					log.Info("Cross-dist dedup: artifact copied from another distribution",
+						"component", componentName,
+						"source", source.Name,
+						"version", version,
+						"from_dist", crossJob.DistributionID)
+					return job, "", nil
+				}
+			}
+		}
+	}
+
 	// Build the resolved URL
 	resolvedURL, err := m.urlBuilder.BuildURL(source, component, version)
 	if err != nil {
@@ -405,6 +531,7 @@ func (m *Manager) createOrReuseJobForComponent(
 		Version:         version,
 		Status:          db.JobStatusPending,
 		MaxRetries:      m.config.MaxRetries,
+		Priority:        componentPriority(component),
 	}
 
 	if err := m.jobRepo.Create(job); err != nil {
@@ -600,10 +727,45 @@ func containsIgnoreCase(s, substr string) bool {
 		len(substr) > 0 && (strings.Contains(strings.ToLower(s), strings.ToLower(substr))))
 }
 
+// componentPriority returns a download priority for a component based on its category.
+// Higher values are downloaded first. Kernel (10) and bootloader (5) are critical-path
+// components that block builds, so they get higher priority.
+func componentPriority(c *db.Component) int {
+	switch c.Category {
+	case "core":
+		return 10 // kernel
+	case "bootloader":
+		return 5
+	case "init":
+		return 3
+	default:
+		return 0
+	}
+}
+
 // getSourceType determines if a source is "default" or "user"
 // Deprecated: Use db.GetSourceType() directly instead
 func (m *Manager) getSourceType(source *db.UpstreamSource) string {
 	return db.GetSourceType(source)
+}
+
+// buildDistArtifactPath constructs the distribution-specific artifact storage path.
+// Mirrors the path logic in downloader.go buildArtifactPath.
+func (m *Manager) buildDistArtifactPath(dist *db.Distribution, source *db.UpstreamSource, component *db.Component, version, resolvedURL string) string {
+	filename := filepath.Base(resolvedURL)
+	if filename == "" || filename == "." || filename == "/" {
+		filename = fmt.Sprintf("%s-%s.tar.gz", source.ID, version)
+	}
+	subdir := "components"
+	if source.RetrievalMethod == "git" {
+		subdir = "sources"
+	}
+	pathID := source.ID
+	if pathID == "" {
+		pathID = component.ID
+	}
+	return fmt.Sprintf("distribution/%s/%s/%s/%s/%s/%s",
+		dist.OwnerID, dist.ID, subdir, pathID, version, filename)
 }
 
 // registerCancel registers a cancel function for a job

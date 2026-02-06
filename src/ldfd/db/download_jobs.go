@@ -47,15 +47,16 @@ func (r *DownloadJobRepository) Create(job *DownloadJob) error {
 		INSERT INTO download_jobs (id, distribution_id, owner_id, component_id,
 			source_id, source_name, source_type, retrieval_method, resolved_url, version, status,
 			progress_bytes, total_bytes, created_at, started_at, completed_at,
-			artifact_path, checksum, error_message, retry_count, max_retries, component_ids)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			artifact_path, checksum, error_message, retry_count, max_retries, component_ids,
+			priority, cache_hit)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err = r.db.DB().Exec(query,
 		job.ID, job.DistributionID, job.OwnerID, job.ComponentID,
 		job.SourceID, job.SourceName, job.SourceType, job.RetrievalMethod, job.ResolvedURL, job.Version, job.Status,
 		job.ProgressBytes, job.TotalBytes, job.CreatedAt, job.StartedAt, job.CompletedAt,
 		job.ArtifactPath, job.Checksum, job.ErrorMessage, job.RetryCount, job.MaxRetries,
-		string(componentIDsJSON),
+		string(componentIDsJSON), job.Priority, job.CacheHit,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create download job: %w", err)
@@ -72,12 +73,21 @@ func (r *DownloadJobRepository) GetBySourceAndVersion(distributionID, sourceID, 
 	return r.scanJob(row)
 }
 
+// GetCompletedBySourceAndVersion finds any completed job across all distributions
+// for the given source+version. Used for cross-distribution cache population.
+func (r *DownloadJobRepository) GetCompletedBySourceAndVersion(sourceID, version string) (*DownloadJob, error) {
+	query := selectJobsQuery + ` WHERE dj.source_id = ? AND dj.version = ? AND dj.status = 'completed' LIMIT 1`
+	row := r.db.DB().QueryRow(query, sourceID, version)
+	return r.scanJob(row)
+}
+
 // selectJobsQuery is the base SELECT query with JOIN to get component name
 const selectJobsQuery = `
 	SELECT dj.id, dj.distribution_id, dj.owner_id, dj.component_id, c.name as component_name,
 		dj.source_id, dj.source_name, dj.source_type, dj.retrieval_method, dj.resolved_url, dj.version, dj.status,
 		dj.progress_bytes, dj.total_bytes, dj.created_at, dj.started_at, dj.completed_at,
-		dj.artifact_path, dj.checksum, dj.error_message, dj.retry_count, dj.max_retries, dj.component_ids
+		dj.artifact_path, dj.checksum, dj.error_message, dj.retry_count, dj.max_retries, dj.component_ids,
+		dj.priority, dj.cache_hit
 	FROM download_jobs dj
 	LEFT JOIN components c ON dj.component_id = c.id
 `
@@ -113,9 +123,16 @@ func (r *DownloadJobRepository) ListByStatus(status DownloadJobStatus) ([]Downlo
 	return r.scanJobs(rows)
 }
 
-// ListPending retrieves all pending download jobs ordered by creation time
+// ListPending retrieves all pending download jobs ordered by priority (highest first), then creation time
 func (r *DownloadJobRepository) ListPending() ([]DownloadJob, error) {
-	return r.ListByStatus(JobStatusPending)
+	query := selectJobsQuery + ` WHERE dj.status = ? ORDER BY dj.priority DESC, dj.created_at ASC`
+	rows, err := r.db.DB().Query(query, JobStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pending download jobs: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanJobs(rows)
 }
 
 // ListActive retrieves all active (pending, verifying, downloading) download jobs
@@ -340,6 +357,7 @@ func (r *DownloadJobRepository) scanJob(row *sql.Row) (*DownloadJob, error) {
 		&job.SourceID, &sourceName, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 		&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
 		&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries, &componentIDsJSON,
+		&job.Priority, &job.CacheHit,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -385,6 +403,7 @@ func (r *DownloadJobRepository) scanJobs(rows *sql.Rows) ([]DownloadJob, error) 
 			&job.SourceID, &sourceName, &job.SourceType, &job.RetrievalMethod, &job.ResolvedURL, &job.Version, &job.Status,
 			&job.ProgressBytes, &job.TotalBytes, &job.CreatedAt, &startedAt, &completedAt,
 			&artifactPath, &checksum, &errorMsg, &job.RetryCount, &job.MaxRetries, &componentIDsJSON,
+			&job.Priority, &job.CacheHit,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan download job: %w", err)
 		}

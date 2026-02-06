@@ -64,6 +64,18 @@ var settingsRegistry = []SettingMeta{
 	// Build settings
 	{"build.workspace", "string", "Base directory for build workspaces (supports ~ for home directory)", true, "build", false},
 	{"build.workers", "int", "Number of concurrent build workers", true, "build", false},
+
+	// Download cache settings
+	{"download.cache.enabled", "bool", "Enable artifact caching across distributions", false, "download", false},
+	{"download.cache.max_size_gb", "int", "Maximum cache size in GB (0 = unlimited)", false, "download", false},
+
+	// Download mirror/proxy settings
+	{"download.proxy_url", "string", "HTTP(S) proxy URL for all downloads", false, "download", true},
+	{"download.local_mirror_path", "string", "Local directory path for offline mirror", false, "download", false},
+
+	// Download throttle settings
+	{"download.throttle.per_worker_mbps", "int", "Per-worker bandwidth limit in MB/s (0 = unlimited)", false, "download", false},
+	{"download.throttle.global_mbps", "int", "Global bandwidth limit in MB/s across all workers (0 = unlimited)", false, "download", false},
 }
 
 // GetSettingsRegistry returns the settings registry for use by core/config.go

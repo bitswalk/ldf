@@ -174,6 +174,160 @@ func (d *Downloader) downloadHTTP(ctx context.Context, job *db.DownloadJob, prog
 	return nil
 }
 
+// DownloadLocal copies a file from a local mirror path into storage
+func (d *Downloader) DownloadLocal(ctx context.Context, job *db.DownloadJob, localPath string) error {
+	if err := d.jobRepo.MarkStarted(job.ID); err != nil {
+		return fmt.Errorf("failed to mark job started: %w", err)
+	}
+
+	f, err := os.Open(localPath)
+	if err != nil {
+		return fmt.Errorf("failed to open local mirror file: %w", err)
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat local mirror file: %w", err)
+	}
+
+	// Calculate checksum
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return fmt.Errorf("failed to calculate checksum: %w", err)
+	}
+	checksum := hex.EncodeToString(hash.Sum(nil))
+
+	if _, err := f.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek local file: %w", err)
+	}
+
+	artifactPath := d.buildArtifactPath(job)
+	contentType := d.detectContentType(localPath)
+
+	if err := d.storage.Upload(ctx, artifactPath, f, stat.Size(), contentType); err != nil {
+		return fmt.Errorf("failed to upload to storage: %w", err)
+	}
+
+	if err := d.jobRepo.UpdateProgress(job.ID, stat.Size(), stat.Size()); err != nil {
+		log.Warn("Failed to update progress for local download", "job_id", job.ID, "error", err)
+	}
+
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+		return fmt.Errorf("failed to mark job completed: %w", err)
+	}
+
+	log.Info("Local mirror download completed", "job_id", job.ID, "path", localPath, "size", stat.Size())
+	return nil
+}
+
+// DownloadHTTPWithOptions downloads a file via HTTP using a resolved URL with optional rate limiters
+func (d *Downloader) DownloadHTTPWithOptions(ctx context.Context, job *db.DownloadJob, resolvedURL string, progressCb ProgressCallback, limiters ...*rateLimiter) error {
+	if err := d.jobRepo.MarkStarted(job.ID); err != nil {
+		return fmt.Errorf("failed to mark job started: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", resolvedURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "ldfd/1.0")
+
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	totalBytes := resp.ContentLength
+
+	tempFile, err := os.CreateTemp("", fmt.Sprintf("ldf-download-%s-*", job.ID))
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
+	defer tempFile.Close()
+
+	hash := sha256.New()
+	writer := io.MultiWriter(tempFile, hash)
+
+	// Wrap response body with throttled reader if limiters are provided
+	var reader io.Reader = resp.Body
+	tr := newThrottledReader(ctx, resp.Body, limiters...)
+	if len(tr.limiters) > 0 {
+		reader = tr
+	}
+
+	var bytesReceived int64
+	buf := make([]byte, 32*1024)
+	lastProgressUpdate := time.Now()
+	progressUpdateInterval := 2 * time.Second
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		n, readErr := reader.Read(buf)
+		if n > 0 {
+			if _, writeErr := writer.Write(buf[:n]); writeErr != nil {
+				return fmt.Errorf("failed to write to temp file: %w", writeErr)
+			}
+			bytesReceived += int64(n)
+			if progressCb != nil {
+				progressCb(bytesReceived, totalBytes)
+			}
+			now := time.Now()
+			if now.Sub(lastProgressUpdate) >= progressUpdateInterval {
+				if err := d.jobRepo.UpdateProgress(job.ID, bytesReceived, totalBytes); err != nil {
+					log.Warn("Failed to update job progress", "job_id", job.ID, "error", err)
+				}
+				lastProgressUpdate = now
+			}
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return fmt.Errorf("failed to read response body: %w", readErr)
+		}
+	}
+
+	if err := d.jobRepo.UpdateProgress(job.ID, bytesReceived, totalBytes); err != nil {
+		log.Warn("Failed to update final job progress", "job_id", job.ID, "error", err)
+	}
+
+	checksum := hex.EncodeToString(hash.Sum(nil))
+
+	if _, err := tempFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek temp file: %w", err)
+	}
+
+	artifactPath := d.buildArtifactPath(job)
+	stat, err := tempFile.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat temp file: %w", err)
+	}
+
+	contentType := d.detectContentType(resolvedURL)
+	if err := d.storage.Upload(ctx, artifactPath, tempFile, stat.Size(), contentType); err != nil {
+		return fmt.Errorf("failed to upload to storage: %w", err)
+	}
+
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+		return fmt.Errorf("failed to mark job completed: %w", err)
+	}
+
+	return nil
+}
+
 // downloadGit clones a git repository
 func (d *Downloader) downloadGit(ctx context.Context, job *db.DownloadJob, progressCb ProgressCallback) error {
 	// Mark job as started

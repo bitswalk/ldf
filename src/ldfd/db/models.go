@@ -233,6 +233,8 @@ type DownloadJob struct {
 	ErrorMessage    string            `json:"error_message,omitempty"`
 	RetryCount      int               `json:"retry_count"`
 	MaxRetries      int               `json:"max_retries"`
+	Priority        int               `json:"priority"`
+	CacheHit        bool              `json:"cache_hit"`
 }
 
 // VersionType represents the type/category of a version
