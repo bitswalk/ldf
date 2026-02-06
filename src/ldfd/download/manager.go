@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -752,7 +752,7 @@ func (m *Manager) getSourceType(source *db.UpstreamSource) string {
 // buildDistArtifactPath constructs the distribution-specific artifact storage path.
 // Mirrors the path logic in downloader.go buildArtifactPath.
 func (m *Manager) buildDistArtifactPath(dist *db.Distribution, source *db.UpstreamSource, component *db.Component, version, resolvedURL string) string {
-	filename := filepath.Base(resolvedURL)
+	filename := path.Base(resolvedURL)
 	if filename == "" || filename == "." || filename == "/" {
 		filename = fmt.Sprintf("%s-%s.tar.gz", source.ID, version)
 	}

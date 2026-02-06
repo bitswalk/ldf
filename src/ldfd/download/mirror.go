@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	urlpath "path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -74,7 +75,7 @@ func (r *MirrorResolver) ResolveLocalPath(originalURL, sourceID, version string)
 		return ""
 	}
 
-	filename := filepath.Base(originalURL)
+	filename := urlpath.Base(originalURL)
 	if filename == "" || filename == "." {
 		return ""
 	}

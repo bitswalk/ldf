@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	urlpath "path"
 	"path/filepath"
 	"time"
 
@@ -420,7 +421,7 @@ func (d *Downloader) downloadGit(ctx context.Context, job *db.DownloadJob, progr
 // For git sources: distribution/{ownerID}/{distributionID}/sources/{sourceID}/{version}/{filename}
 func (d *Downloader) buildArtifactPath(job *db.DownloadJob) string {
 	// Extract filename from URL or construct one
-	filename := filepath.Base(job.ResolvedURL)
+	filename := urlpath.Base(job.ResolvedURL)
 	if filename == "" || filename == "." || filename == "/" {
 		filename = fmt.Sprintf("%s-%s.tar.gz", job.SourceID, job.Version)
 	}
@@ -453,7 +454,7 @@ func (d *Downloader) buildArtifactPath(job *db.DownloadJob) string {
 
 // detectContentType attempts to determine content type from URL
 func (d *Downloader) detectContentType(url string) string {
-	ext := filepath.Ext(url)
+	ext := urlpath.Ext(url)
 	switch ext {
 	case ".tar.gz", ".tgz":
 		return "application/gzip"

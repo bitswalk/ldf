@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	urlpath "path"
 	"path/filepath"
 	"strings"
 
@@ -82,7 +83,7 @@ func (s *PrepareStage) Execute(ctx context.Context, sc *StageContext, progress P
 		progress(basePct, fmt.Sprintf("Extracting: %s v%s", rc.Component.Name, rc.Version))
 
 		// Download artifact from storage to sources dir
-		localArchive := filepath.Join(sc.SourcesDir, filepath.Base(rc.ArtifactPath))
+		localArchive := filepath.Join(sc.SourcesDir, urlpath.Base(rc.ArtifactPath))
 		if err := s.downloadArtifact(ctx, rc.ArtifactPath, localArchive); err != nil {
 			return fmt.Errorf("failed to download %s: %w", rc.Component.Name, err)
 		}
