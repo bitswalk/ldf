@@ -175,24 +175,25 @@ const (
 
 // Component represents a downloadable component in the registry
 type Component struct {
-	ID                       string      `json:"id"`
-	Name                     string      `json:"name"`
-	Category                 string      `json:"category"`             // Primary category (first in categories list)
-	Categories               []string    `json:"categories,omitempty"` // All categories (stored as comma-separated in DB)
-	DisplayName              string      `json:"display_name"`
-	Description              string      `json:"description,omitempty"`
-	ArtifactPattern          string      `json:"artifact_pattern,omitempty"`
-	DefaultURLTemplate       string      `json:"default_url_template,omitempty"`
-	GitHubNormalizedTemplate string      `json:"github_normalized_template,omitempty"`
-	IsOptional               bool        `json:"is_optional"`
-	IsSystem                 bool        `json:"is_system"`
-	IsKernelModule           bool        `json:"is_kernel_module"` // Requires kernel configuration at build time
-	IsUserspace              bool        `json:"is_userspace"`     // Needs to be built as userspace binary
-	OwnerID                  string      `json:"owner_id,omitempty"`
-	DefaultVersion           string      `json:"default_version,omitempty"`      // Pinned version or resolved value
-	DefaultVersionRule       VersionRule `json:"default_version_rule,omitempty"` // "pinned", "latest-stable", "latest-lts"
-	CreatedAt                time.Time   `json:"created_at"`
-	UpdatedAt                time.Time   `json:"updated_at"`
+	ID                       string       `json:"id"`
+	Name                     string       `json:"name"`
+	Category                 string       `json:"category"`             // Primary category (first in categories list)
+	Categories               []string     `json:"categories,omitempty"` // All categories (stored as comma-separated in DB)
+	DisplayName              string       `json:"display_name"`
+	Description              string       `json:"description,omitempty"`
+	ArtifactPattern          string       `json:"artifact_pattern,omitempty"`
+	DefaultURLTemplate       string       `json:"default_url_template,omitempty"`
+	GitHubNormalizedTemplate string       `json:"github_normalized_template,omitempty"`
+	IsOptional               bool         `json:"is_optional"`
+	IsSystem                 bool         `json:"is_system"`
+	IsKernelModule           bool         `json:"is_kernel_module"` // Requires kernel configuration at build time
+	IsUserspace              bool         `json:"is_userspace"`     // Needs to be built as userspace binary
+	OwnerID                  string       `json:"owner_id,omitempty"`
+	DefaultVersion           string       `json:"default_version,omitempty"`         // Pinned version or resolved value
+	DefaultVersionRule       VersionRule  `json:"default_version_rule,omitempty"`    // "pinned", "latest-stable", "latest-lts"
+	SupportedArchitectures   []TargetArch `json:"supported_architectures,omitempty"` // When empty, supports all architectures
+	CreatedAt                time.Time    `json:"created_at"`
+	UpdatedAt                time.Time    `json:"updated_at"`
 }
 
 // DownloadJobStatus represents the status of a download job

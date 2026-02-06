@@ -79,6 +79,22 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		}
 	}
 
+	// Validate build environment (architecture, toolchain, container image)
+	buildEnv, err := ValidateBuildEnvironment(w.manager.config.ContainerImage, job.TargetArch)
+	if err != nil {
+		w.handleFailure(job, fmt.Sprintf("Build environment validation failed: %v", err), "")
+		return
+	}
+
+	log.Info("Build environment validated",
+		"host_arch", buildEnv.HostArch,
+		"target_arch", buildEnv.TargetArch,
+		"native", buildEnv.IsNative,
+		"cross_compile", buildEnv.Toolchain.CrossCompilePrefix,
+		"container_image", buildEnv.ContainerImage,
+		"qemu_emulation", buildEnv.UseQEMUEmulation,
+	)
+
 	// Set up workspace (expand ~ to home directory)
 	workspaceBase := paths.Expand(w.manager.config.WorkspaceBase)
 	workspacePath := filepath.Join(workspaceBase, job.ID)
@@ -108,6 +124,7 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		RootfsDir:      rootfsDir,
 		OutputDir:      outputDir,
 		ConfigDir:      configDir,
+		BuildEnv:       buildEnv,
 	}
 
 	// Create stage records in database

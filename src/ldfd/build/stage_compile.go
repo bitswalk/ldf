@@ -76,9 +76,9 @@ func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress P
 		configMode = string(db.KernelConfigModeDefconfig)
 	}
 
-	// Determine cross-compile prefix
-	crossCompile := s.getCrossCompilePrefix(sc.TargetArch)
-	makeArch := s.getMakeArch(sc.TargetArch)
+	// Determine cross-compile prefix from build environment
+	crossCompile := s.getCrossCompilePrefix(sc)
+	makeArch := s.getMakeArch(sc)
 
 	progress(5, fmt.Sprintf("Config mode: %s, arch: %s", configMode, sc.TargetArch))
 
@@ -130,10 +130,19 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 
 	progress(15, "Running kernel compilation in container")
 
+	// Use BuildEnv container image if available, otherwise fall back to default
+	containerImage := s.executor.defaultImage
+	var platformFlag string
+	if sc.BuildEnv != nil {
+		containerImage = sc.BuildEnv.ContainerImage
+		platformFlag = sc.BuildEnv.PodmanPlatformFlag
+	}
+
 	opts := ContainerRunOpts{
-		Image:   s.executor.defaultImage,
-		Mounts:  mounts,
-		WorkDir: "/src/kernel",
+		Image:    containerImage,
+		Mounts:   mounts,
+		WorkDir:  "/src/kernel",
+		Platform: platformFlag,
 		Env: map[string]string{
 			"ARCH":          makeArch,
 			"CROSS_COMPILE": crossCompile,
@@ -189,10 +198,19 @@ func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext,
 	}
 	defer logFile.Close()
 
+	// Use BuildEnv container image if available, otherwise fall back to default
+	dtbContainerImage := s.executor.defaultImage
+	var dtbPlatformFlag string
+	if sc.BuildEnv != nil {
+		dtbContainerImage = sc.BuildEnv.ContainerImage
+		dtbPlatformFlag = sc.BuildEnv.PodmanPlatformFlag
+	}
+
 	opts := ContainerRunOpts{
-		Image:   s.executor.defaultImage,
-		Mounts:  mounts,
-		WorkDir: "/src/kernel",
+		Image:    dtbContainerImage,
+		Mounts:   mounts,
+		WorkDir:  "/src/kernel",
+		Platform: dtbPlatformFlag,
 		Env: map[string]string{
 			"ARCH":          makeArch,
 			"CROSS_COMPILE": crossCompile,
@@ -425,28 +443,30 @@ func (s *CompileStage) parseConfigMode(configPath string) (string, error) {
 	return "", fmt.Errorf("LDF_CONFIG_MODE not found in config")
 }
 
-// getCrossCompilePrefix returns the cross-compile prefix for target architecture
-func (s *CompileStage) getCrossCompilePrefix(arch db.TargetArch) string {
-	// TODO: This should be configurable based on host arch vs target arch
-	// For now, we assume host is x86_64
-	switch arch {
-	case db.ArchAARCH64:
-		return "aarch64-linux-gnu-"
-	default:
-		return "" // Native compilation
+// getCrossCompilePrefix returns the cross-compile prefix from BuildEnvironment,
+// falling back to toolchain registry lookup if BuildEnv is not populated.
+func (s *CompileStage) getCrossCompilePrefix(sc *StageContext) string {
+	if sc.BuildEnv != nil {
+		return sc.BuildEnv.Toolchain.CrossCompilePrefix
 	}
+	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	if err != nil {
+		return ""
+	}
+	return tc.CrossCompilePrefix
 }
 
-// getMakeArch returns the ARCH value for make
-func (s *CompileStage) getMakeArch(arch db.TargetArch) string {
-	switch arch {
-	case db.ArchX86_64:
-		return "x86"
-	case db.ArchAARCH64:
-		return "arm64"
-	default:
+// getMakeArch returns the ARCH value for make from BuildEnvironment,
+// falling back to toolchain registry lookup if BuildEnv is not populated.
+func (s *CompileStage) getMakeArch(sc *StageContext) string {
+	if sc.BuildEnv != nil {
+		return sc.BuildEnv.Toolchain.MakeArch
+	}
+	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	if err != nil {
 		return "x86"
 	}
+	return tc.MakeArch
 }
 
 // findKernelComponent finds the kernel component in the resolved list

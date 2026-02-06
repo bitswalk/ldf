@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -119,6 +120,16 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 			})
 			return
 		}
+	}
+
+	// Pre-flight: validate build environment for the requested architecture
+	if _, err := build.ValidateBuildEnvironment(h.buildManager.GetConfig().ContainerImage, arch); err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Build environment not available",
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Cannot build for %s: %v", arch, err),
+		})
+		return
 	}
 
 	job, err := h.buildManager.SubmitBuild(dist, claims.UserID, arch, format, req.ClearCache)

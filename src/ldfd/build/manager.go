@@ -303,6 +303,11 @@ func (m *Manager) GetBuildStatus(buildID string) (*db.BuildJob, error) {
 	return m.buildJobRepo.GetByID(buildID)
 }
 
+// GetConfig returns the build manager configuration
+func (m *Manager) GetConfig() Config {
+	return m.config
+}
+
 // BuildJobRepo returns the build job repository
 func (m *Manager) BuildJobRepo() *db.BuildJobRepository {
 	return m.buildJobRepo

@@ -89,6 +89,15 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 			return fmt.Errorf("component not found: %s", name)
 		}
 
+		// Filter out components incompatible with target architecture
+		if !isComponentCompatible(component, sc.TargetArch) {
+			log.Info("Skipping component incompatible with target architecture",
+				"component", component.Name,
+				"target_arch", sc.TargetArch,
+				"supported", component.SupportedArchitectures)
+			continue
+		}
+
 		// Resolve version from config override or component default
 		version := s.getComponentVersion(sc.Config, component)
 		if version == "" {
@@ -270,6 +279,21 @@ func (s *ResolveStage) getDistributionVersionOverride(config *db.DistributionCon
 	}
 
 	return ""
+}
+
+// isComponentCompatible returns true if the component supports the given target
+// architecture. An empty SupportedArchitectures list means the component supports
+// all architectures (backward compatible default).
+func isComponentCompatible(c *db.Component, arch db.TargetArch) bool {
+	if len(c.SupportedArchitectures) == 0 {
+		return true
+	}
+	for _, a := range c.SupportedArchitectures {
+		if a == arch {
+			return true
+		}
+	}
+	return false
 }
 
 // containsString checks if a slice contains a string
