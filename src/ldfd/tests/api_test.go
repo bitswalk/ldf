@@ -1636,7 +1636,7 @@ func TestAPI_HandleSourceListDefaults(t *testing.T) {
 
 	_, token := ta.createTestUser(t, "admin", "admin@example.com", auth.RoleIDRoot)
 
-	rec := ta.makeRequest("GET", "/v1/sources/defaults", nil, token)
+	rec := ta.makeRequest("GET", "/v1/sources", nil, token)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
@@ -1653,12 +1653,12 @@ func TestAPI_HandleSourceListDefaults(t *testing.T) {
 func TestAPI_HandleSourceListDefaults_Forbidden(t *testing.T) {
 	ta := setupTestAPI(t)
 
-	_, token := ta.createTestUser(t, "developer", "developer@example.com", auth.RoleIDDeveloper)
+	// Unified list endpoint is accessible to all authenticated users.
+	// Test that unauthenticated requests get 401.
+	rec := ta.makeRequest("GET", "/v1/sources", nil, "")
 
-	rec := ta.makeRequest("GET", "/v1/sources/defaults", nil, token)
-
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected status 403, got %d: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -2551,7 +2551,7 @@ func TestAPI_HandleSourceGetDefaultByID(t *testing.T) {
 	}
 	sourceRepo.CreateDefault(source)
 
-	rec := ta.makeRequest("GET", "/v1/sources/defaults/"+source.ID, nil, token)
+	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, token)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
@@ -2570,7 +2570,7 @@ func TestAPI_HandleSourceGetDefaultByID_NotFound(t *testing.T) {
 
 	_, token := ta.createTestUser(t, "admin", "admin@example.com", auth.RoleIDRoot)
 
-	rec := ta.makeRequest("GET", "/v1/sources/defaults/nonexistent-id", nil, token)
+	rec := ta.makeRequest("GET", "/v1/sources/nonexistent-id", nil, token)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d: %s", rec.Code, rec.Body.String())
@@ -2587,7 +2587,7 @@ func TestAPI_HandleSourceCreateDefault(t *testing.T) {
 		"url":  "https://example.com/releases",
 	}
 
-	rec := ta.makeRequest("POST", "/v1/sources/defaults", body, token)
+	rec := ta.makeRequest("POST", "/v1/sources", body, token)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
@@ -2611,7 +2611,7 @@ func TestAPI_HandleSourceUpdateDefault(t *testing.T) {
 		"url": "https://new.example.com",
 	}
 
-	rec := ta.makeRequest("PUT", "/v1/sources/defaults/"+source.ID, body, token)
+	rec := ta.makeRequest("PUT", "/v1/sources/"+source.ID, body, token)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
@@ -2631,7 +2631,7 @@ func TestAPI_HandleSourceDeleteDefault(t *testing.T) {
 	}
 	sourceRepo.CreateDefault(source)
 
-	rec := ta.makeRequest("DELETE", "/v1/sources/defaults/"+source.ID, nil, token)
+	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, token)
 
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d: %s", rec.Code, rec.Body.String())
@@ -2652,7 +2652,7 @@ func TestAPI_HandleSourceGetUserSourceByID(t *testing.T) {
 	}
 	sourceRepo.CreateUserSource(source)
 
-	rec := ta.makeRequest("GET", "/v1/sources/user/"+source.ID, nil, token)
+	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, token)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
@@ -2674,7 +2674,7 @@ func TestAPI_HandleSourceGetUserSourceByID_Forbidden(t *testing.T) {
 	}
 	sourceRepo.CreateUserSource(source)
 
-	rec := ta.makeRequest("GET", "/v1/sources/user/"+source.ID, nil, otherToken)
+	rec := ta.makeRequest("GET", "/v1/sources/"+source.ID, nil, otherToken)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d: %s", rec.Code, rec.Body.String())
@@ -3385,7 +3385,7 @@ func TestAPI_HandleSourceDeleteDefault_Success(t *testing.T) {
 	}
 	sourceRepo.CreateDefault(source)
 
-	rec := ta.makeRequest("DELETE", "/v1/sources/defaults/"+source.ID, nil, token)
+	rec := ta.makeRequest("DELETE", "/v1/sources/"+source.ID, nil, token)
 
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected status 204, got %d: %s", rec.Code, rec.Body.String())
@@ -3397,7 +3397,7 @@ func TestAPI_HandleSourceDeleteDefault_NotFound(t *testing.T) {
 
 	_, token := ta.createTestUser(t, "srcdeleter2", "srcdeleter2@example.com", auth.RoleIDRoot)
 
-	rec := ta.makeRequest("DELETE", "/v1/sources/defaults/nonexistent-id", nil, token)
+	rec := ta.makeRequest("DELETE", "/v1/sources/nonexistent-id", nil, token)
 
 	// API returns 500 with "not found" message for missing sources
 	if rec.Code != http.StatusNotFound && rec.Code != http.StatusInternalServerError {
