@@ -146,16 +146,22 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 			log.Warn("Failed to update stage status", "build_id", job.ID, "stage", stageName, "error", err)
 		}
 
-		_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
-			fmt.Sprintf("Starting stage: %s", stageName))
+		if err := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+			fmt.Sprintf("Starting stage: %s", stageName)); err != nil {
+			log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
+		}
 
 		stageStart := time.Now()
 
 		// Validate stage
 		if err := stage.Validate(jobCtx, sc); err != nil {
-			_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
-				fmt.Sprintf("Stage validation failed: %v", err))
-			_ = w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
+			if logErr := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+				fmt.Sprintf("Stage validation failed: %v", err)); logErr != nil {
+				log.Warn("Failed to append build log", "build_id", job.ID, "error", logErr)
+			}
+			if logErr := w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error()); logErr != nil {
+				log.Warn("Failed to mark stage failed", "build_id", job.ID, "stage", stageName, "error", logErr)
+			}
 			w.handleFailure(job, fmt.Sprintf("Stage %s validation failed: %v", stageName, err), string(stageName))
 			w.cleanup(workspacePath)
 			return
@@ -165,19 +171,29 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		progressFunc := func(percent int, message string) {
 			// Calculate overall progress
 			overallPercent := (i*100 + percent) / len(w.manager.stages)
-			_ = w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), overallPercent)
+			if err := w.manager.buildJobRepo.UpdateStage(job.ID, string(stageName), overallPercent); err != nil {
+				log.Warn("Failed to update build stage progress", "build_id", job.ID, "error", err)
+			}
 
 			if message != "" {
-				_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info", message)
+				if err := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info", message); err != nil {
+					log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
+				}
 			}
 		}
 
 		if err := stage.Execute(jobCtx, sc, progressFunc); err != nil {
 			durationMs := time.Since(stageStart).Milliseconds()
-			_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
-				fmt.Sprintf("Stage execution failed: %v", err))
-			_ = w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error())
-			_ = w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs)
+			if logErr := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
+				fmt.Sprintf("Stage execution failed: %v", err)); logErr != nil {
+				log.Warn("Failed to append build log", "build_id", job.ID, "error", logErr)
+			}
+			if logErr := w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error()); logErr != nil {
+				log.Warn("Failed to mark stage failed", "build_id", job.ID, "stage", stageName, "error", logErr)
+			}
+			if logErr := w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs); logErr != nil {
+				log.Warn("Failed to mark stage completed", "build_id", job.ID, "stage", stageName, "error", logErr)
+			}
 			w.handleFailure(job, fmt.Sprintf("Stage %s failed: %v", stageName, err), string(stageName))
 			w.cleanup(workspacePath)
 			return
@@ -189,8 +205,10 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 			log.Warn("Failed to mark stage completed", "build_id", job.ID, "stage", stageName, "error", err)
 		}
 
-		_ = w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
-			fmt.Sprintf("Stage completed in %dms", durationMs))
+		if err := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "info",
+			fmt.Sprintf("Stage completed in %dms", durationMs)); err != nil {
+			log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
+		}
 	}
 
 	// Build completed successfully
@@ -206,12 +224,16 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		log.Error("Failed to mark build completed", "build_id", job.ID, "error", err)
 	}
 
-	_ = w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
-		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize))
+	if err := w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
+		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize)); err != nil {
+		log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
+	}
 
 	// Cleanup workspace only if clear_cache is enabled
 	if job.ClearCache {
-		_ = w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Clearing local build cache as requested")
+		if err := w.manager.buildJobRepo.AppendLog(job.ID, "", "info", "Clearing local build cache as requested"); err != nil {
+			log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
+		}
 		w.cleanup(workspacePath)
 	} else {
 		log.Debug("Keeping local build cache", "build_id", job.ID, "workspace", workspacePath)

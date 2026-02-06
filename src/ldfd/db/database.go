@@ -9,10 +9,13 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/common/paths"
 	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+var log = logs.NewDefault()
 
 // Database wraps the SQLite connection with persistence capabilities
 type Database struct {
@@ -196,7 +199,11 @@ func (d *Database) LoadFromDisk() error {
 	if _, err := d.db.Exec(attachQuery); err != nil {
 		return fmt.Errorf("failed to attach disk database: %w", err)
 	}
-	defer func() { _, _ = d.db.Exec("DETACH DATABASE disk_db") }()
+	defer func() {
+		if _, err := d.db.Exec("DETACH DATABASE disk_db"); err != nil {
+			log.Warn("Failed to detach disk database", "error", err)
+		}
+	}()
 
 	var loadedTables []string
 	var loadErrors []string
@@ -290,16 +297,20 @@ func (d *Database) LoadFromDisk() error {
 		// Check if the disk schema is compatible by looking for the 'is_optional' column
 		// (this is a key column in the current components schema)
 		var hasIsOptionalCol int
-		_ = d.db.QueryRow(`
+		if err := d.db.QueryRow(`
 			SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_optional'
-		`).Scan(&hasIsOptionalCol)
+		`).Scan(&hasIsOptionalCol); err != nil {
+			log.Warn("Failed to check disk schema compatibility", "error", err)
+		}
 
 		if hasIsOptionalCol > 0 {
 			// Check if disk has the new build type columns
 			var hasKernelModuleCol int
-			_ = d.db.QueryRow(`
+			if err := d.db.QueryRow(`
 				SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_kernel_module'
-			`).Scan(&hasKernelModuleCol)
+			`).Scan(&hasKernelModuleCol); err != nil {
+				log.Warn("Failed to check kernel module column", "error", err)
+			}
 
 			// Compatible schema - delete seeded components and load from disk
 			// ON DELETE CASCADE handles cleanup of related tables (download_jobs),
@@ -619,7 +630,9 @@ func (d *Database) ResetToDefaults() error {
 	for _, table := range tables {
 		if _, err := d.db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", table)); err != nil {
 			// Re-enable foreign keys before returning
-			_, _ = d.db.Exec("PRAGMA foreign_keys = ON")
+			if _, fkErr := d.db.Exec("PRAGMA foreign_keys = ON"); fkErr != nil {
+				log.Warn("Failed to re-enable foreign keys", "error", fkErr)
+			}
 			return fmt.Errorf("failed to drop table %s: %w", table, err)
 		}
 	}
@@ -642,14 +655,22 @@ func (d *Database) ResetToDefaults() error {
 // This is called after loading from disk to handle older databases that may have incorrect defaults.
 func (d *Database) applyComponentBuildTypeDefaults() {
 	// Kernel is kernel-only, not userspace
-	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`)
+	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`); err != nil {
+		log.Warn("Failed to apply kernel build type defaults", "error", err)
+	}
 
 	// Filesystem components have both kernel drivers and userspace tools
-	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`)
+	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`); err != nil {
+		log.Warn("Failed to apply filesystem build type defaults", "error", err)
+	}
 
 	// Security components have kernel LSM modules and userspace tools
-	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`)
+	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`); err != nil {
+		log.Warn("Failed to apply security build type defaults", "error", err)
+	}
 
 	// Virtualization components that require KVM kernel module
-	_, _ = d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`)
+	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`); err != nil {
+		log.Warn("Failed to apply virtualization build type defaults", "error", err)
+	}
 }

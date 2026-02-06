@@ -80,7 +80,11 @@ func (g *RawImageGenerator) Generate(ctx context.Context, sc *StageContext, prog
 	if err != nil {
 		return "", fmt.Errorf("failed to setup loop device: %w", err)
 	}
-	defer func() { _ = g.detachLoopDevice(ctx, loopDev) }()
+	defer func() {
+		if err := g.detachLoopDevice(ctx, loopDev); err != nil {
+			log.Warn("Failed to detach loop device", "device", loopDev, "error", err)
+		}
+	}()
 
 	progress(25, "Formatting partitions")
 
@@ -102,7 +106,11 @@ func (g *RawImageGenerator) Generate(ctx context.Context, sc *StageContext, prog
 	if err := g.mountPartitions(ctx, loopDev, mountPoint); err != nil {
 		return "", fmt.Errorf("failed to mount partitions: %w", err)
 	}
-	defer func() { _ = g.unmountPartitions(ctx, mountPoint) }()
+	defer func() {
+		if err := g.unmountPartitions(ctx, mountPoint); err != nil {
+			log.Warn("Failed to unmount partitions", "mount_point", mountPoint, "error", err)
+		}
+	}()
 
 	progress(40, "Copying root filesystem")
 
@@ -251,7 +259,9 @@ func (g *RawImageGenerator) mountPartitions(ctx context.Context, loopDev, mountP
 func (g *RawImageGenerator) unmountPartitions(ctx context.Context, mountPoint string) error {
 	// Unmount ESP first
 	espMount := filepath.Join(mountPoint, "boot", "efi")
-	_ = exec.CommandContext(ctx, "umount", espMount).Run()
+	if err := exec.CommandContext(ctx, "umount", espMount).Run(); err != nil {
+		log.Warn("Failed to unmount ESP", "mount_point", espMount, "error", err)
+	}
 
 	// Unmount root
 	cmd := exec.CommandContext(ctx, "umount", mountPoint)
@@ -558,7 +568,11 @@ func (g *ISOImageGenerator) createEFIImage(ctx context.Context, sc *StageContext
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mount EFI image failed: %s: %s", err, output)
 	}
-	defer func() { _ = exec.CommandContext(ctx, "umount", mountPoint).Run() }()
+	defer func() {
+		if err := exec.CommandContext(ctx, "umount", mountPoint).Run(); err != nil {
+			log.Warn("Failed to unmount EFI image", "mount_point", mountPoint, "error", err)
+		}
+	}()
 
 	// Create EFI directory structure
 	efiBootDir := filepath.Join(mountPoint, "EFI", "BOOT")

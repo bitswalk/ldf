@@ -3,10 +3,13 @@ package downloads
 import (
 	"net/http"
 
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
+
+var log = logs.NewDefault()
 
 // NewHandler creates a new downloads handler
 func NewHandler(cfg Config) *Handler {
@@ -594,7 +597,9 @@ func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 
 	for _, job := range activeJobs {
 		if job.Status == "pending" || job.Status == "verifying" || job.Status == "downloading" {
-			_ = h.downloadManager.CancelJob(job.ID)
+			if err := h.downloadManager.CancelJob(job.ID); err != nil {
+				log.Warn("Failed to cancel download job during flush", "job_id", job.ID, "error", err)
+			}
 		}
 	}
 

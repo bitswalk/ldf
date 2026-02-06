@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/gin-gonic/gin"
 )
+
+var log = logs.NewDefault()
 
 // NewHandler creates a new branding handler
 func NewHandler(cfg Config) *Handler {
@@ -135,7 +138,9 @@ func (h *Handler) HandleGetAsset(c *gin.Context) {
 	c.Header("Content-Type", contentType)
 	c.Header("Cache-Control", "public, max-age=3600")
 	c.Status(http.StatusOK)
-	_, _ = io.Copy(c.Writer, reader)
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		log.Warn("Failed to stream branding asset to client", "asset", asset, "error", err)
+	}
 }
 
 // HandleGetAssetInfo returns metadata about a branding asset
@@ -242,7 +247,11 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 	}
 	contentType := http.DetectContentType(buffer[:n])
 
-	_, _ = file.Seek(0, io.SeekStart)
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		log.Warn("Failed to seek branding file", "error", err)
+		common.InternalError(c, "Failed to process file")
+		return
+	}
 
 	allowed := allowedImageTypes[asset]
 	isAllowed := false
@@ -287,7 +296,9 @@ func (h *Handler) HandleUploadAsset(c *gin.Context) {
 
 	existingKey, _ := h.findBrandingAsset(ctx, asset)
 	if existingKey != "" {
-		_ = h.storage.Delete(ctx, existingKey)
+		if err := h.storage.Delete(ctx, existingKey); err != nil {
+			log.Warn("Failed to delete existing branding asset", "key", existingKey, "error", err)
+		}
 	}
 
 	switch contentType {

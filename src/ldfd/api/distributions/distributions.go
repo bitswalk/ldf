@@ -161,7 +161,9 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	_ = h.distRepo.AddLog(dist.ID, "info", "Distribution created")
+	if err := h.distRepo.AddLog(dist.ID, "info", "Distribution created"); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+	}
 
 	c.JSON(http.StatusCreated, dist)
 }
@@ -347,7 +349,9 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 		return
 	}
 
-	_ = h.distRepo.AddLog(dist.ID, "info", "Distribution updated")
+	if err := h.distRepo.AddLog(dist.ID, "info", "Distribution updated"); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+	}
 
 	c.JSON(http.StatusOK, dist)
 }
@@ -577,7 +581,9 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		return
 	}
 
-	_ = h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup")
+	if err := h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup"); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", id, "error", err)
+	}
 
 	c.Status(http.StatusNoContent)
 }

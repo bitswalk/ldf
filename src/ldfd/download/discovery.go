@@ -606,7 +606,9 @@ func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Upstream
 	discovered, err := d.DiscoverVersions(ctx, source)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to discover versions: %v", err)
-		_ = d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
+		if markErr := d.versionRepo.MarkSyncJobFailed(job.ID, errMsg); markErr != nil {
+			log.Warn("Failed to mark sync job as failed", "job_id", job.ID, "error", markErr)
+		}
 		return err
 	}
 
@@ -628,7 +630,9 @@ func (d *VersionDiscovery) SyncVersions(ctx context.Context, source *db.Upstream
 	newCount, err := d.versionRepo.BulkUpsert(sourceVersions)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to save versions: %v", err)
-		_ = d.versionRepo.MarkSyncJobFailed(job.ID, errMsg)
+		if markErr := d.versionRepo.MarkSyncJobFailed(job.ID, errMsg); markErr != nil {
+			log.Warn("Failed to mark sync job as failed", "job_id", job.ID, "error", markErr)
+		}
 		return err
 	}
 

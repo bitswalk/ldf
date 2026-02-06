@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/gin-gonic/gin"
 )
+
+var log = logs.NewDefault()
 
 // NewHandler creates a new artifacts handler
 func NewHandler(cfg Config) *Handler {
@@ -166,7 +169,9 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 		return
 	}
 
-	_ = h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size))
+	if err := h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact uploaded: %s (%d bytes)", artifactPath, header.Size)); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", distID, "error", err)
+	}
 
 	c.JSON(http.StatusCreated, ArtifactUploadResponse{
 		Key:     key,
@@ -301,7 +306,9 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 	c.Header("ETag", info.ETag)
 
 	c.Status(http.StatusOK)
-	_, _ = io.Copy(c.Writer, reader)
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		log.Warn("Failed to stream artifact to client", "artifact", artifactPath, "error", err)
+	}
 }
 
 // HandleDelete deletes an artifact from a distribution
@@ -363,7 +370,9 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 		return
 	}
 
-	_ = h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath))
+	if err := h.distRepo.AddLog(distID, "info", fmt.Sprintf("Artifact deleted: %s", artifactPath)); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", distID, "error", err)
+	}
 
 	c.Status(http.StatusNoContent)
 }

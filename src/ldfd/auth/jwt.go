@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/common/errors"
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+var log = logs.NewDefault()
 
 // DefaultJWTConfig returns default JWT configuration
 func DefaultJWTConfig() JWTConfig {
@@ -37,7 +40,9 @@ func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsSto
 	if err != nil || secretKey == "" {
 		// Generate new secret key and persist it
 		secretKey = generateSecretKey()
-		_ = settings.SetSetting("jwt_secret", secretKey)
+		if err := settings.SetSetting("jwt_secret", secretKey); err != nil {
+			log.Warn("Failed to persist JWT secret key", "error", err)
+		}
 	}
 
 	return &JWTService{
@@ -121,7 +126,9 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User,
 	}
 
 	// Update last used timestamp
-	_ = s.userManager.UpdateRefreshTokenLastUsed(rt.ID)
+	if err := s.userManager.UpdateRefreshTokenLastUsed(rt.ID); err != nil {
+		log.Warn("Failed to update refresh token last used", "token_id", rt.ID, "error", err)
+	}
 
 	// Get the user
 	user, err := s.userManager.GetUserByID(rt.UserID)
