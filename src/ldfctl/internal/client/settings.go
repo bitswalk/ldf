@@ -17,7 +17,7 @@ type Setting struct {
 
 // SettingsListResponse represents all settings
 type SettingsListResponse struct {
-	Settings map[string]Setting `json:"settings"`
+	Settings []Setting `json:"settings"`
 }
 
 // UpdateSettingRequest represents the request to update a setting

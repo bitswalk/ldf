@@ -770,8 +770,8 @@ func TestSettingList_MockServer(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/settings", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"settings": map[string]interface{}{
-				"max_downloads": map[string]interface{}{"key": "max_downloads", "value": 5, "type": "int"},
+			"settings": []map[string]interface{}{
+				{"key": "max_downloads", "value": 5, "type": "int"},
 			},
 		})
 	})

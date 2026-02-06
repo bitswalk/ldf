@@ -23,10 +23,12 @@ Monorepo with four main components:
 
 ## Branch Workflow
 
-- **Naming**: `feature/m<milestone>_<subtask>` (e.g., M3.1 -> `feature/m3_1`)
-- **Before starting work**: Create a feature branch from `main`
-- **After completing work**: Merge back to `main` with `--no-ff`, then delete the feature branch
-- **Never** switch to a new feature branch without merging the current one first
+- **Feature branches**: `feature/m<milestone>_<subtask>` (e.g., M5.1 -> `feature/m5_1`) -- for milestone work
+- **Bugfix branches**: `bugfix/<issue-number>-<short-description>` (e.g., `bugfix/46-setting-list-decode`) -- for bug fixes
+- **Fix branches**: `fix/<short-description>` -- for non-issue-tracked fixes (CI, lint, etc.)
+- **Before starting work**: Create a branch from `main`
+- **After completing work**: Merge back to `main`, then delete the branch
+- **Never** switch to a new branch without merging or stashing the current one first
 
 ## Environment Notes
 

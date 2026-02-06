@@ -66,9 +66,9 @@ func runSettingList(cmd *cobra.Command, args []string) error {
 	}
 
 	rows := [][]string{}
-	for key, s := range resp.Settings {
+	for _, s := range resp.Settings {
 		val := fmt.Sprintf("%v", s.Value)
-		rows = append(rows, []string{key, val, s.Type})
+		rows = append(rows, []string{s.Key, val, s.Type})
 	}
 	output.PrintTable([]string{"KEY", "VALUE", "TYPE"}, rows)
 	return nil
