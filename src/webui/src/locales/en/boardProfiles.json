@@ -1,0 +1,65 @@
+{
+  "title": "Board Profiles",
+  "description": "Manage hardware board profiles for distribution builds",
+  "create": "Create Board Profile",
+  "edit": "Edit Board Profile",
+  "empty": "No board profiles found",
+  "emptyDescription": "Create a board profile to define hardware-specific build configurations.",
+  "filter": {
+    "allArchitectures": "All Architectures"
+  },
+  "columns": {
+    "name": "Name",
+    "displayName": "Display Name",
+    "arch": "Architecture",
+    "defconfig": "Kernel Defconfig",
+    "system": "System",
+    "owner": "Owner",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "description": "Unique slug identifier (e.g., rpi4, jetson-orin)",
+      "placeholder": "my-board"
+    },
+    "displayName": {
+      "label": "Display Name",
+      "description": "Human-readable name for the profile",
+      "placeholder": "My Custom Board"
+    },
+    "description": {
+      "label": "Description",
+      "description": "Optional description of the board profile",
+      "placeholder": "Description of the board and its configuration"
+    },
+    "arch": {
+      "label": "Architecture",
+      "description": "Target CPU architecture"
+    },
+    "kernelDefconfig": {
+      "label": "Kernel Defconfig",
+      "description": "Board-specific kernel defconfig name (optional)",
+      "placeholder": "bcm2711_defconfig"
+    },
+    "kernelCmdline": {
+      "label": "Kernel Command Line",
+      "description": "Custom kernel command line parameters (optional)",
+      "placeholder": "console=ttyS0,115200 root=/dev/mmcblk0p2"
+    }
+  },
+  "delete": {
+    "title": "Delete Board Profile",
+    "confirm": "Are you sure you want to delete the board profile \"{{ name }}\"? This action cannot be undone.",
+    "systemError": "System board profiles cannot be deleted."
+  },
+  "badges": {
+    "system": "System"
+  },
+  "errors": {
+    "loadFailed": "Failed to load board profiles",
+    "createFailed": "Failed to create board profile",
+    "updateFailed": "Failed to update board profile",
+    "deleteFailed": "Failed to delete board profile"
+  }
+}

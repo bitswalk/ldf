@@ -126,6 +126,18 @@
       "port": {
         "label": "Port",
         "description": "Port for the server to listen on"
+      },
+      "tlsEnabled": {
+        "label": "TLS Enabled",
+        "description": "Enable native HTTPS/TLS support"
+      },
+      "tlsCertPath": {
+        "label": "TLS Certificate Path",
+        "description": "Path to TLS certificate file (PEM format)"
+      },
+      "tlsKeyPath": {
+        "label": "TLS Key Path",
+        "description": "Path to TLS private key file (PEM format)"
       }
     },
     "log": {
@@ -216,6 +228,92 @@
         "label": "Workers",
         "description": "Number of concurrent build workers"
       }
+    },
+    "download": {
+      "label": "Downloads",
+      "description": "Download cache, proxy, and bandwidth settings",
+      "cacheEnabled": {
+        "label": "Cache Enabled",
+        "description": "Enable artifact caching across distributions"
+      },
+      "cacheMaxSize": {
+        "label": "Cache Max Size (GB)",
+        "description": "Maximum cache size in GB (0 = unlimited)"
+      },
+      "proxyUrl": {
+        "label": "Proxy URL",
+        "description": "HTTP(S) proxy URL for all downloads"
+      },
+      "localMirrorPath": {
+        "label": "Local Mirror Path",
+        "description": "Local directory path for offline mirror"
+      },
+      "throttlePerWorker": {
+        "label": "Per-Worker Bandwidth (MB/s)",
+        "description": "Per-worker bandwidth limit in MB/s (0 = unlimited)"
+      },
+      "throttleGlobal": {
+        "label": "Global Bandwidth (MB/s)",
+        "description": "Global bandwidth limit in MB/s across all workers (0 = unlimited)"
+      }
+    },
+    "security": {
+      "label": "Security",
+      "description": "Rate limiting, token management, and encryption settings",
+      "rateLimitEnabled": {
+        "label": "Rate Limiting Enabled",
+        "description": "Enable API rate limiting"
+      },
+      "rateLimitAuthPerMin": {
+        "label": "Auth Requests Per Minute",
+        "description": "Max auth requests (login/register/refresh) per minute per IP"
+      },
+      "rateLimitApiPerMin": {
+        "label": "API Requests Per Minute",
+        "description": "Max API requests per minute per user/IP"
+      },
+      "rateLimitTrustProxy": {
+        "label": "Trust Proxy Headers",
+        "description": "Trust X-Forwarded-For header for client IP detection"
+      },
+      "maxRefreshTokens": {
+        "label": "Max Refresh Tokens Per User",
+        "description": "Maximum active refresh tokens per user"
+      },
+      "masterKeyPath": {
+        "label": "Master Key Path",
+        "description": "Path to master encryption key file (auto-generated if missing)"
+      }
+    }
+  },
+  "mirrors": {
+    "title": "Download Mirrors",
+    "description": "Configure download mirrors to redirect upstream URLs to local or faster alternatives",
+    "empty": "No download mirrors configured",
+    "add": "Add Mirror",
+    "addMirror": "Add Mirror",
+    "editMirror": "Edit Mirror",
+    "columns": {
+      "name": "Name",
+      "urlPrefix": "URL Prefix",
+      "mirrorUrl": "Mirror URL",
+      "priority": "Priority",
+      "enabled": "Enabled",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Name",
+      "urlPrefix": "URL Prefix",
+      "urlPrefixDescription": "Original URL prefix to match (e.g., https://cdn.kernel.org/)",
+      "mirrorUrl": "Mirror URL",
+      "mirrorUrlDescription": "Replacement mirror URL (e.g., https://mirror.example.com/kernel/)",
+      "priority": "Priority",
+      "priorityDescription": "Higher values are tried first (0 = default)",
+      "enabled": "Enabled"
+    },
+    "delete": {
+      "title": "Delete Mirror",
+      "confirm": "Are you sure you want to delete the mirror \"{{ name }}\"? This action cannot be undone."
     }
   },
   "server": {

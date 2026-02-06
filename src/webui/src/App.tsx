@@ -12,6 +12,7 @@ import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
 import { Settings } from "./views/Settings";
+import { BoardProfiles } from "./views/BoardProfiles";
 import { Console } from "./components/Console";
 import { Menu, type MenuItem } from "./components/Menu";
 import { logout, ensureValidToken, type UserInfo } from "./services/auth";
@@ -46,6 +47,7 @@ type ViewType =
   | "source-details"
   | "components"
   | "component-details"
+  | "board-profiles"
   | "login"
   | "register"
   | "settings";
@@ -288,6 +290,12 @@ const App: Component = () => {
       icon: "git-branch",
       onClick: () => setCurrentView("sources"),
     },
+    {
+      id: "board-profiles",
+      label: "Board Profiles",
+      icon: "cpu",
+      onClick: () => setCurrentView("board-profiles"),
+    },
   ];
 
   return (
@@ -365,6 +373,12 @@ const App: Component = () => {
                     componentId={selectedComponentId()!}
                     onBack={handleBackFromComponentDetails}
                     onDeleted={handleBackFromComponentDetails}
+                    user={authState().user}
+                  />
+                </Match>
+                <Match when={currentView() === "board-profiles"}>
+                  <BoardProfiles
+                    isLoggedIn={isLoggedIn()}
                     user={authState().user}
                   />
                 </Match>

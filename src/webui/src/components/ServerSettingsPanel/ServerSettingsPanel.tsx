@@ -60,6 +60,24 @@ const getSettingsStructure = (): SettingGroupConfig[] => [
         description: t("settings.serverPanel.server.port.description"),
         type: "int",
       },
+      {
+        key: "server.tls.enabled",
+        label: t("settings.serverPanel.server.tlsEnabled.label"),
+        description: t("settings.serverPanel.server.tlsEnabled.description"),
+        type: "bool",
+      },
+      {
+        key: "server.tls.cert_path",
+        label: t("settings.serverPanel.server.tlsCertPath.label"),
+        description: t("settings.serverPanel.server.tlsCertPath.description"),
+        type: "string",
+      },
+      {
+        key: "server.tls.key_path",
+        label: t("settings.serverPanel.server.tlsKeyPath.label"),
+        description: t("settings.serverPanel.server.tlsKeyPath.description"),
+        type: "string",
+      },
     ],
   },
   {
@@ -246,6 +264,118 @@ const getSettingsStructure = (): SettingGroupConfig[] => [
       },
     ],
   },
+  {
+    key: "download",
+    label: t("settings.serverPanel.download.label"),
+    description: t("settings.serverPanel.download.description"),
+    icon: "download-simple",
+    required: false,
+    children: [
+      {
+        key: "download.cache.enabled",
+        label: t("settings.serverPanel.download.cacheEnabled.label"),
+        description: t(
+          "settings.serverPanel.download.cacheEnabled.description",
+        ),
+        type: "bool",
+      },
+      {
+        key: "download.cache.max_size_gb",
+        label: t("settings.serverPanel.download.cacheMaxSize.label"),
+        description: t(
+          "settings.serverPanel.download.cacheMaxSize.description",
+        ),
+        type: "int",
+      },
+      {
+        key: "download.proxy_url",
+        label: t("settings.serverPanel.download.proxyUrl.label"),
+        description: t("settings.serverPanel.download.proxyUrl.description"),
+        type: "string",
+      },
+      {
+        key: "download.local_mirror_path",
+        label: t("settings.serverPanel.download.localMirrorPath.label"),
+        description: t(
+          "settings.serverPanel.download.localMirrorPath.description",
+        ),
+        type: "string",
+      },
+      {
+        key: "download.throttle.per_worker_mbps",
+        label: t("settings.serverPanel.download.throttlePerWorker.label"),
+        description: t(
+          "settings.serverPanel.download.throttlePerWorker.description",
+        ),
+        type: "int",
+      },
+      {
+        key: "download.throttle.global_mbps",
+        label: t("settings.serverPanel.download.throttleGlobal.label"),
+        description: t(
+          "settings.serverPanel.download.throttleGlobal.description",
+        ),
+        type: "int",
+      },
+    ],
+  },
+  {
+    key: "security",
+    label: t("settings.serverPanel.security.label"),
+    description: t("settings.serverPanel.security.description"),
+    icon: "shield-check",
+    required: false,
+    children: [
+      {
+        key: "security.rate_limit.enabled",
+        label: t("settings.serverPanel.security.rateLimitEnabled.label"),
+        description: t(
+          "settings.serverPanel.security.rateLimitEnabled.description",
+        ),
+        type: "bool",
+      },
+      {
+        key: "security.rate_limit.auth_per_min",
+        label: t("settings.serverPanel.security.rateLimitAuthPerMin.label"),
+        description: t(
+          "settings.serverPanel.security.rateLimitAuthPerMin.description",
+        ),
+        type: "int",
+      },
+      {
+        key: "security.rate_limit.api_per_min",
+        label: t("settings.serverPanel.security.rateLimitApiPerMin.label"),
+        description: t(
+          "settings.serverPanel.security.rateLimitApiPerMin.description",
+        ),
+        type: "int",
+      },
+      {
+        key: "security.rate_limit.trust_proxy",
+        label: t("settings.serverPanel.security.rateLimitTrustProxy.label"),
+        description: t(
+          "settings.serverPanel.security.rateLimitTrustProxy.description",
+        ),
+        type: "bool",
+      },
+      {
+        key: "security.max_refresh_tokens_per_user",
+        label: t("settings.serverPanel.security.maxRefreshTokens.label"),
+        description: t(
+          "settings.serverPanel.security.maxRefreshTokens.description",
+        ),
+        type: "int",
+      },
+      {
+        key: "security.master_key_path",
+        label: t("settings.serverPanel.security.masterKeyPath.label"),
+        description: t(
+          "settings.serverPanel.security.masterKeyPath.description",
+        ),
+        type: "string",
+      },
+    ],
+  },
 ];
 
 // Component for rendering a single setting input
@@ -264,11 +394,8 @@ const SettingInput: Component<{
   const [revealedValue, setRevealedValue] = createSignal<string | null>(null);
   const [loadingReveal, setLoadingReveal] = createSignal(false);
 
-  // Check if value is sensitive (masked)
-  const isSensitive = () => {
-    const key = props.config.key;
-    return key === "storage.s3.access_key" || key === "storage.s3.secret_key";
-  };
+  // Check if value is sensitive (masked) - detected from server response
+  const isSensitive = () => String(value()) === "********";
 
   // Toggle secret visibility - fetch revealed value from server
   const toggleSecretVisibility = async () => {
