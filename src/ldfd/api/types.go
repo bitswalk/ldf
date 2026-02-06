@@ -4,6 +4,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/artifacts"
 	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
 	"github.com/bitswalk/ldf/src/ldfd/api/base"
+	boardprofiles "github.com/bitswalk/ldf/src/ldfd/api/board/profiles"
 	"github.com/bitswalk/ldf/src/ldfd/api/branding"
 	"github.com/bitswalk/ldf/src/ldfd/api/builds"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
@@ -19,6 +20,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
@@ -34,15 +36,18 @@ type API struct {
 	Components    *components.Handler
 	Sources       *sources.Handler
 	Downloads     *downloads.Handler
+	Mirrors       *downloads.MirrorHandler
 	Builds        *builds.Handler
 	Artifacts     *artifacts.Handler
 	Branding      *branding.Handler
 	LangPacks     *langpacks.Handler
 	Settings      *settings.Handler
 	Forge         *apiforge.Handler
+	BoardProfiles *boardprofiles.Handler
 
 	// Direct dependencies for middleware
 	jwtService    *auth.JWTService
+	rateLimiter   *RateLimiter
 	storage       storage.Backend
 	forgeRegistry *forge.Registry
 }
@@ -54,8 +59,12 @@ type Config struct {
 	ComponentRepo     *db.ComponentRepository
 	SourceVersionRepo *db.SourceVersionRepository
 	DownloadJobRepo   *db.DownloadJobRepository
+	MirrorConfigRepo  *db.MirrorConfigRepository
 	LangPackRepo      *db.LanguagePackRepository
+	BoardProfileRepo  *db.BoardProfileRepository
 	Database          *db.Database
+	RateLimitConfig   RateLimitConfig
+	SecretManager     *security.SecretManager
 	Storage           storage.Backend
 	UserManager       *auth.UserManager
 	JWTService        *auth.JWTService

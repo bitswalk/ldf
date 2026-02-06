@@ -70,7 +70,7 @@ func (g *KernelConfigGenerator) generateDefconfig(ctx context.Context, sc *Stage
 
 LDF_CONFIG_MODE=defconfig
 LDF_TARGET_ARCH=%s
-`, sc.TargetArch, kernel.Version, g.getDefconfigName(sc.TargetArch), sc.TargetArch)
+`, sc.TargetArch, kernel.Version, g.getDefconfigName(sc), sc.TargetArch)
 
 	// Also generate recommended options that will be applied after defconfig
 	recommendedOptions := g.getRecommendedOptions(sc)
@@ -114,7 +114,7 @@ LDF_CONFIG_MODE=options
 LDF_TARGET_ARCH=%s
 
 # Custom options to apply:
-`, sc.TargetArch, kernel.Version, g.getDefconfigName(sc.TargetArch), sc.TargetArch))
+`, sc.TargetArch, kernel.Version, g.getDefconfigName(sc), sc.TargetArch))
 
 	// Sort keys for deterministic output
 	keys := make([]string, 0, len(allOptions))
@@ -199,9 +199,14 @@ LDF_TARGET_ARCH=%s
 	return nil
 }
 
-// getDefconfigName returns the defconfig target name for an architecture
-func (g *KernelConfigGenerator) getDefconfigName(arch db.TargetArch) string {
-	switch arch {
+// getDefconfigName returns the defconfig target name for an architecture,
+// using the board profile's defconfig if available
+func (g *KernelConfigGenerator) getDefconfigName(sc *StageContext) string {
+	// Board-specific defconfig takes priority
+	if sc.BoardProfile != nil && sc.BoardProfile.Config.KernelDefconfig != "" {
+		return sc.BoardProfile.Config.KernelDefconfig
+	}
+	switch sc.TargetArch {
 	case db.ArchX86_64:
 		return "x86_64"
 	case db.ArchAARCH64:

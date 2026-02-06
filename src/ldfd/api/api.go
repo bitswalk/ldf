@@ -6,8 +6,10 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/artifacts"
 	apiauth "github.com/bitswalk/ldf/src/ldfd/api/auth"
 	"github.com/bitswalk/ldf/src/ldfd/api/base"
+	boardprofiles "github.com/bitswalk/ldf/src/ldfd/api/board/profiles"
 	"github.com/bitswalk/ldf/src/ldfd/api/branding"
 	"github.com/bitswalk/ldf/src/ldfd/api/builds"
+	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/api/components"
 	"github.com/bitswalk/ldf/src/ldfd/api/distributions"
 	"github.com/bitswalk/ldf/src/ldfd/api/downloads"
@@ -16,6 +18,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
@@ -25,6 +28,7 @@ func SetLogger(l *logs.Logger) {
 	sources.SetLogger(l)
 	settings.SetLogger(l)
 	apiauth.SetLogger(l)
+	common.SetAuditLogger(l)
 }
 
 // SetVersionInfo sets the version info for the api package and subpackages
@@ -67,6 +71,8 @@ func New(cfg Config) *API {
 			DownloadManager: cfg.DownloadManager,
 		}),
 
+		Mirrors: downloads.NewMirrorHandler(cfg.MirrorConfigRepo),
+
 		Builds: builds.NewHandler(builds.Config{
 			DistRepo:     cfg.DistRepo,
 			BuildManager: cfg.BuildManager,
@@ -87,14 +93,20 @@ func New(cfg Config) *API {
 		}),
 
 		Settings: settings.NewHandler(settings.Config{
-			Database: cfg.Database,
+			Database:      cfg.Database,
+			SecretManager: cfg.SecretManager,
 		}),
 
 		Forge: apiforge.NewHandler(apiforge.Config{
 			Registry: cfg.ForgeRegistry,
 		}),
 
+		BoardProfiles: boardprofiles.NewHandler(boardprofiles.Config{
+			BoardProfileRepo: cfg.BoardProfileRepo,
+		}),
+
 		jwtService:    cfg.JWTService,
+		rateLimiter:   NewRateLimiter(cfg.RateLimitConfig),
 		storage:       cfg.Storage,
 		forgeRegistry: cfg.ForgeRegistry,
 	}
@@ -114,8 +126,14 @@ func (a *API) HasStorage() bool {
 	return a.storage != nil
 }
 
-// LoadConfigFromDatabase re-exports settings.LoadConfigFromDatabase for use by core/server.go
-func LoadConfigFromDatabase(database *db.Database) error {
+// LoadConfigFromDatabase re-exports settings.LoadConfigFromDatabase for use by core/server.go.
+// An optional SecretManager can be provided to decrypt sensitive settings.
+func LoadConfigFromDatabase(database *db.Database, secrets ...interface{}) error {
+	if len(secrets) > 0 {
+		if sm, ok := secrets[0].(*security.SecretManager); ok {
+			return settings.LoadConfigFromDatabase(database, sm)
+		}
+	}
 	return settings.LoadConfigFromDatabase(database)
 }
 

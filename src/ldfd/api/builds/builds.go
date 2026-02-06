@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -121,6 +122,16 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		}
 	}
 
+	// Pre-flight: validate build environment for the requested architecture
+	if _, err := build.ValidateBuildEnvironment(h.buildManager.GetConfig().ContainerImage, arch); err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Build environment not available",
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Cannot build for %s: %v", arch, err),
+		})
+		return
+	}
+
 	job, err := h.buildManager.SubmitBuild(dist, claims.UserID, arch, format, req.ClearCache)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
@@ -130,6 +141,8 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		})
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "build.start", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + distID, Success: true})
 
 	c.JSON(http.StatusAccepted, BuildJobResponse{
 		BuildJob: *job,
@@ -456,6 +469,8 @@ func (h *Handler) HandleCancelBuild(c *gin.Context) {
 		})
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "build.cancel", UserID: claims.UserID, UserName: claims.UserName, Resource: "build:" + buildID, Success: true})
 
 	c.Status(http.StatusNoContent)
 }

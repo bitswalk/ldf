@@ -17,6 +17,7 @@ import (
 	_ "github.com/bitswalk/ldf/src/ldfd/docs"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -36,7 +37,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
+func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr *security.SecretManager) *Server {
 	// Set Gin mode based on log level
 	if viper.GetString("log.level") == "debug" {
 		gin.SetMode(gin.DebugMode)
@@ -45,6 +46,14 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	}
 
 	router := gin.New()
+
+	// Configure trusted proxies for rate limiting
+	if viper.GetBool("security.rate_limit.trust_proxy") {
+		router.ForwardedByClientIP = true
+	} else {
+		router.ForwardedByClientIP = false
+		_ = router.SetTrustedProxies(nil)
+	}
 
 	// Add recovery middleware
 	router.Use(gin.Recovery())
@@ -58,12 +67,45 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	// Initialize auth components
 	userManager := auth.NewUserManager(database.DB())
 	jwtCfg := auth.DefaultJWTConfig()
+	if maxTokens := viper.GetInt("security.max_refresh_tokens_per_user"); maxTokens > 0 {
+		jwtCfg.MaxRefreshTokens = maxTokens
+	}
 	jwtService := auth.NewJWTService(jwtCfg, userManager, database)
 
-	// Initialize download manager
+	// Initialize download manager with artifact cache, mirrors, and throttle
 	download.SetLogger(log)
 	downloadCfg := download.DefaultConfig()
-	downloadManager := download.NewManager(database, storageBackend, downloadCfg)
+
+	// Configure mirror/proxy
+	mirrorCfg := download.MirrorConfig{
+		ProxyURL:  viper.GetString("download.proxy_url"),
+		LocalPath: viper.GetString("download.local_mirror_path"),
+	}
+	downloadCfg.Mirror = mirrorCfg
+
+	// Configure bandwidth throttle (settings are in MB/s, convert to bytes/s)
+	perWorkerMbps := viper.GetInt("download.throttle.per_worker_mbps")
+	globalMbps := viper.GetInt("download.throttle.global_mbps")
+	downloadCfg.Throttle = download.ThrottleConfig{
+		PerWorkerBytesPerSec: int64(perWorkerMbps) * 1024 * 1024,
+		GlobalBytesPerSec:    int64(globalMbps) * 1024 * 1024,
+	}
+
+	// Initialize artifact cache
+	cacheRepo := db.NewArtifactCacheRepository(database)
+	cacheCfg := download.DefaultCacheConfig()
+	artifactCache := download.NewCache(cacheRepo, storageBackend, cacheCfg)
+
+	// Initialize mirror resolver
+	mirrorConfigRepo := db.NewMirrorConfigRepository(database)
+	enabledMirrors, err := mirrorConfigRepo.ListEnabled()
+	if err != nil {
+		log.Warn("Failed to load mirror configs", "error", err)
+		enabledMirrors = nil
+	}
+	mirrorResolver := download.NewMirrorResolver(enabledMirrors, mirrorCfg)
+
+	downloadManager := download.NewManager(database, storageBackend, downloadCfg, artifactCache, mirrorResolver)
 
 	// Initialize source version repository and discovery service
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
@@ -86,6 +128,14 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 	// Initialize forge registry for source detection and defaults
 	forgeRegistry := forge.NewRegistry()
 
+	// Configure rate limiting
+	rateLimitCfg := api.RateLimitConfig{
+		Enabled:            viper.GetBool("security.rate_limit.enabled"),
+		AuthRequestsPerMin: viper.GetInt("security.rate_limit.auth_per_min"),
+		APIRequestsPerMin:  viper.GetInt("security.rate_limit.api_per_min"),
+		TrustProxy:         viper.GetBool("security.rate_limit.trust_proxy"),
+	}
+
 	// Create API instance with all dependencies
 	api.SetLogger(log)
 	api.SetVersionInfo(VersionInfo)
@@ -95,8 +145,12 @@ func NewServer(database *db.Database, storageBackend storage.Backend) *Server {
 		ComponentRepo:     componentRepo,
 		SourceVersionRepo: sourceVersionRepo,
 		DownloadJobRepo:   db.NewDownloadJobRepository(database),
+		MirrorConfigRepo:  mirrorConfigRepo,
 		LangPackRepo:      db.NewLanguagePackRepository(database),
+		BoardProfileRepo:  db.NewBoardProfileRepository(database),
 		Database:          database,
+		RateLimitConfig:   rateLimitCfg,
+		SecretManager:     secretMgr,
 		Storage:           storageBackend,
 		UserManager:       userManager,
 		JWTService:        jwtService,
@@ -166,15 +220,26 @@ func (s *Server) Run() error {
 
 	// Start server in goroutine
 	go func() {
-		log.Info("Starting ldfd server", "address", addr)
-
 		if s.storage != nil {
 			log.Info("Storage enabled", "type", s.storage.Type(), "location", s.storage.Location())
 		} else {
 			log.Warn("Storage not configured - artifact endpoints disabled")
 		}
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errChan <- err
+
+		tlsEnabled := viper.GetBool("server.tls.enabled")
+		certPath := viper.GetString("server.tls.cert_path")
+		keyPath := viper.GetString("server.tls.key_path")
+
+		if tlsEnabled && certPath != "" && keyPath != "" {
+			log.Info("Starting ldfd server with TLS", "address", addr)
+			if err := s.httpServer.ListenAndServeTLS(certPath, keyPath); err != nil && err != http.ErrServerClosed {
+				errChan <- err
+			}
+		} else {
+			log.Info("Starting ldfd server", "address", addr)
+			if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				errChan <- err
+			}
 		}
 	}()
 
@@ -318,10 +383,17 @@ func runServer() error {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 
+	// Initialize secret manager for encrypting/decrypting sensitive settings
+	masterKeyPath := viper.GetString("security.master_key_path")
+	secretMgr, err := security.NewSecretManager(masterKeyPath)
+	if err != nil {
+		log.Warn("Failed to initialize secret manager, sensitive settings will not be encrypted", "error", err)
+	}
+
 	// Load settings from database - these have highest priority
 	// and override CLI/config file values
 	log.Info("Loading configuration from database")
-	if err := api.LoadConfigFromDatabase(database); err != nil {
+	if err := api.LoadConfigFromDatabase(database, secretMgr); err != nil {
 		log.Warn("Failed to load configuration from database", "error", err)
 	}
 
@@ -375,7 +447,7 @@ func runServer() error {
 		}
 	}
 
-	server := NewServer(database, storageBackend)
+	server := NewServer(database, storageBackend, secretMgr)
 
 	// Run server (blocks until shutdown signal)
 	err = server.Run()

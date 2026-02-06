@@ -7,8 +7,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 	// Root endpoint - API discovery
 	router.GET("/", a.Base.HandleRoot)
 
-	// Auth routes
+	// Auth routes (rate-limited: strict)
 	authGroup := router.Group("/auth")
+	authGroup.Use(a.rateLimitAuth())
 	{
 		authGroup.POST("/create", a.Auth.HandleCreate)
 		authGroup.POST("/login", a.Auth.HandleLogin)
@@ -33,8 +34,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 		rolesAdmin.DELETE("/:id", a.Auth.HandleDeleteRole)
 	}
 
-	// API v1 routes
+	// API v1 routes (rate-limited: lenient)
 	v1 := router.Group("/v1")
+	v1.Use(a.rateLimitAPI())
 	{
 		v1.GET("/health", a.Base.HandleHealth)
 		v1.GET("/version", a.Base.HandleVersion)
@@ -124,6 +126,26 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			}
 		}
 
+		// Board routes - extensible namespace for board-related endpoints
+		board := v1.Group("/board")
+		{
+			// Board profile routes - read operations (public)
+			boardProfilesRead := board.Group("/profiles")
+			{
+				boardProfilesRead.GET("", a.BoardProfiles.HandleList)
+				boardProfilesRead.GET("/:id", a.BoardProfiles.HandleGet)
+			}
+
+			// Board profile routes - write operations (requires write access)
+			boardProfilesWrite := board.Group("/profiles")
+			boardProfilesWrite.Use(a.writeAccessRequired())
+			{
+				boardProfilesWrite.POST("", a.BoardProfiles.HandleCreate)
+				boardProfilesWrite.PUT("/:id", a.BoardProfiles.HandleUpdate)
+				boardProfilesWrite.DELETE("/:id", a.BoardProfiles.HandleDelete)
+			}
+		}
+
 		// Sources routes - unified API (authenticated)
 		// All sources use the same endpoints with permission checks based on is_system/owner_id
 		sourcesGroup := v1.Group("/sources")
@@ -204,6 +226,16 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 		downloadsAdmin.Use(a.adminAccessRequired())
 		{
 			downloadsAdmin.GET("/active", a.Downloads.HandleListActiveDownloads)
+		}
+
+		// Mirror configuration routes - admin only
+		mirrorsAdmin := v1.Group("/mirrors")
+		mirrorsAdmin.Use(a.adminAccessRequired())
+		{
+			mirrorsAdmin.GET("", a.Mirrors.HandleListMirrors)
+			mirrorsAdmin.POST("", a.Mirrors.HandleCreateMirror)
+			mirrorsAdmin.PUT("/:id", a.Mirrors.HandleUpdateMirror)
+			mirrorsAdmin.DELETE("/:id", a.Mirrors.HandleDeleteMirror)
 		}
 
 		// Build routes - read (auth required)

@@ -9,6 +9,7 @@ import (
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -25,7 +26,8 @@ func SetLogger(l *logs.Logger) {
 // NewHandler creates a new settings handler
 func NewHandler(cfg Config) *Handler {
 	return &Handler{
-		database: cfg.Database,
+		database:      cfg.Database,
+		secretManager: cfg.SecretManager,
 	}
 }
 
@@ -64,6 +66,35 @@ var settingsRegistry = []SettingMeta{
 	// Build settings
 	{"build.workspace", "string", "Base directory for build workspaces (supports ~ for home directory)", true, "build", false},
 	{"build.workers", "int", "Number of concurrent build workers", true, "build", false},
+
+	// Download cache settings
+	{"download.cache.enabled", "bool", "Enable artifact caching across distributions", false, "download", false},
+	{"download.cache.max_size_gb", "int", "Maximum cache size in GB (0 = unlimited)", false, "download", false},
+
+	// Download mirror/proxy settings
+	{"download.proxy_url", "string", "HTTP(S) proxy URL for all downloads", false, "download", true},
+	{"download.local_mirror_path", "string", "Local directory path for offline mirror", false, "download", false},
+
+	// Download throttle settings
+	{"download.throttle.per_worker_mbps", "int", "Per-worker bandwidth limit in MB/s (0 = unlimited)", false, "download", false},
+	{"download.throttle.global_mbps", "int", "Global bandwidth limit in MB/s across all workers (0 = unlimited)", false, "download", false},
+
+	// Security settings - rate limiting
+	{"security.rate_limit.enabled", "bool", "Enable API rate limiting", false, "security", false},
+	{"security.rate_limit.auth_per_min", "int", "Max auth requests (login/create/refresh) per minute per IP", false, "security", false},
+	{"security.rate_limit.api_per_min", "int", "Max API requests per minute per user/IP", false, "security", false},
+	{"security.rate_limit.trust_proxy", "bool", "Trust X-Forwarded-For header for client IP detection", false, "security", false},
+
+	// Security settings - token management
+	{"security.max_refresh_tokens_per_user", "int", "Maximum active refresh tokens per user", false, "security", false},
+
+	// Security settings - secrets encryption
+	{"security.master_key_path", "string", "Path to master encryption key file (auto-generated if missing)", true, "security", false},
+
+	// TLS settings
+	{"server.tls.enabled", "bool", "Enable native HTTPS/TLS support", true, "server", false},
+	{"server.tls.cert_path", "string", "Path to TLS certificate file (PEM)", true, "server", false},
+	{"server.tls.key_path", "string", "Path to TLS private key file (PEM)", true, "server", false},
 }
 
 // GetSettingsRegistry returns the settings registry for use by core/config.go
@@ -296,7 +327,18 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 
 	viper.Set(key, typedValue)
 
-	if err := h.database.SetSetting(key, stringValue); err != nil {
+	// Encrypt sensitive values before persisting to database
+	persistValue := stringValue
+	if reg.Sensitive && h.secretManager != nil && stringValue != "" {
+		encrypted, err := h.secretManager.Encrypt(stringValue)
+		if err != nil {
+			log.Warn("Failed to encrypt sensitive setting", "key", key, "error", err)
+		} else {
+			persistValue = encrypted
+		}
+	}
+
+	if err := h.database.SetSetting(key, persistValue); err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
 			Code:    http.StatusInternalServerError,
@@ -308,6 +350,8 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	if !reg.RebootRequired {
 		h.applySettingChange(key, typedValue)
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "settings.update", Resource: "setting:" + key, Success: true})
 
 	message := "Setting updated successfully"
 	if reg.RebootRequired {
@@ -381,6 +425,8 @@ func (h *Handler) HandleResetDatabase(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "settings.reset_database", Success: true})
+
 	c.JSON(http.StatusOK, ResetDatabaseResponse{
 		Success: true,
 		Message: "Database has been reset to defaults. All user data has been deleted.",
@@ -388,20 +434,36 @@ func (h *Handler) HandleResetDatabase(c *gin.Context) {
 }
 
 // LoadConfigFromDatabase loads settings from the database into viper.
-func LoadConfigFromDatabase(database *db.Database) error {
-	settings, err := database.GetAllSettings()
+// If a SecretManager is provided, encrypted sensitive values are decrypted.
+func LoadConfigFromDatabase(database *db.Database, secrets ...*security.SecretManager) error {
+	allSettings, err := database.GetAllSettings()
 	if err != nil {
 		return fmt.Errorf("failed to get settings from database: %w", err)
 	}
 
-	if len(settings) == 0 {
+	if len(allSettings) == 0 {
 		return nil
 	}
 
+	var sm *security.SecretManager
+	if len(secrets) > 0 {
+		sm = secrets[0]
+	}
+
 	for _, meta := range settingsRegistry {
-		value, exists := settings[meta.Key]
+		value, exists := allSettings[meta.Key]
 		if !exists {
 			continue
+		}
+
+		// Decrypt sensitive values if a secret manager is available
+		if meta.Sensitive && sm != nil && sm.IsEncrypted(value) {
+			decrypted, err := sm.Decrypt(value)
+			if err != nil {
+				log.Warn("Failed to decrypt setting, using raw value", "key", meta.Key, "error", err)
+			} else {
+				value = decrypted
+			}
 		}
 
 		switch meta.Type {

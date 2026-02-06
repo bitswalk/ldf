@@ -33,6 +33,7 @@ type Mount struct {
 // ContainerRunOpts holds options for running a container
 type ContainerRunOpts struct {
 	Image      string // Container image (uses defaultImage if empty)
+	Platform   string // Podman --platform flag, e.g. "linux/arm64" (empty = native)
 	Mounts     []Mount
 	Env        map[string]string
 	Command    []string
@@ -45,6 +46,10 @@ type ContainerRunOpts struct {
 // Run executes a command inside a container with the given options
 func (e *ContainerExecutor) Run(ctx context.Context, opts ContainerRunOpts) error {
 	args := []string{"run", "--rm"}
+
+	if opts.Platform != "" {
+		args = append(args, "--platform", opts.Platform)
+	}
 
 	if opts.Privileged {
 		args = append(args, "--privileged")

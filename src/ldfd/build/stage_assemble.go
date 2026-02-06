@@ -95,6 +95,25 @@ func (s *AssembleStage) Execute(ctx context.Context, sc *StageContext, progress 
 	}
 	progress(50, fmt.Sprintf("Bootloader (%s) installed", bootloaderInstaller.Name()))
 
+	// Step 4.5: Apply board-specific configuration (55%)
+	if sc.BoardProfile != nil {
+		progress(51, "Applying board-specific configuration")
+
+		if err := s.installDeviceTrees(sc); err != nil {
+			return fmt.Errorf("failed to install device trees: %w", err)
+		}
+
+		if err := s.applyBoardBootConfig(sc); err != nil {
+			return fmt.Errorf("failed to apply board boot config: %w", err)
+		}
+
+		if err := s.installBoardFirmware(sc); err != nil {
+			return fmt.Errorf("failed to install board firmware: %w", err)
+		}
+
+		progress(55, fmt.Sprintf("Board configuration applied: %s", sc.BoardProfile.DisplayName))
+	}
+
 	// Step 5: Install filesystem tools (60%)
 	progress(52, "Installing filesystem tools")
 	// Filesystem tools are optional (userspace)
@@ -186,6 +205,122 @@ func (s *AssembleStage) getKernelVersion(components []ResolvedComponent) string 
 		}
 	}
 	return "unknown"
+}
+
+// installDeviceTrees copies compiled DTBs from kernel output to rootfs
+func (s *AssembleStage) installDeviceTrees(sc *StageContext) error {
+	if sc.BoardProfile == nil || len(sc.BoardProfile.Config.DeviceTrees) == 0 {
+		return nil
+	}
+
+	kernelOutputDir := filepath.Join(sc.WorkspacePath, "kernel-output")
+	srcDTBDir := filepath.Join(kernelOutputDir, "boot", "dtbs")
+
+	// Check if DTBs were actually compiled
+	if _, err := os.Stat(srcDTBDir); os.IsNotExist(err) {
+		log.Warn("No compiled DTBs found, skipping DTB installation", "path", srcDTBDir)
+		return nil
+	}
+
+	destDTBDir := filepath.Join(sc.RootfsDir, "boot", "dtbs")
+	if err := os.MkdirAll(destDTBDir, 0755); err != nil {
+		return fmt.Errorf("failed to create DTB directory: %w", err)
+	}
+
+	// Copy all DTB files
+	entries, err := os.ReadDir(srcDTBDir)
+	if err != nil {
+		return fmt.Errorf("failed to read DTB source directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		src := filepath.Join(srcDTBDir, entry.Name())
+		dest := filepath.Join(destDTBDir, entry.Name())
+
+		if entry.IsDir() {
+			// Copy overlay directories recursively
+			if err := copyDir(src, dest); err != nil {
+				return fmt.Errorf("failed to copy DTB directory %s: %w", entry.Name(), err)
+			}
+		} else {
+			if err := copyFile(src, dest); err != nil {
+				return fmt.Errorf("failed to copy DTB %s: %w", entry.Name(), err)
+			}
+		}
+	}
+
+	log.Info("Installed device tree blobs", "count", len(entries), "dest", destDTBDir)
+	return nil
+}
+
+// applyBoardBootConfig writes board-specific boot configuration files
+func (s *AssembleStage) applyBoardBootConfig(sc *StageContext) error {
+	if sc.BoardProfile == nil {
+		return nil
+	}
+
+	bootParams := sc.BoardProfile.Config.BootParams
+
+	// Write config.txt for Raspberry Pi boards
+	if bootParams.ConfigTxt != "" {
+		configTxtPath := filepath.Join(sc.RootfsDir, "boot", "config.txt")
+		if err := os.WriteFile(configTxtPath, []byte(bootParams.ConfigTxt), 0644); err != nil {
+			return fmt.Errorf("failed to write config.txt: %w", err)
+		}
+		log.Info("Wrote board config.txt", "path", configTxtPath)
+	}
+
+	// Write extra files
+	for dest, content := range bootParams.ExtraFiles {
+		fullPath := filepath.Join(sc.RootfsDir, dest)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for %s: %w", dest, err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to write extra file %s: %w", dest, err)
+		}
+		log.Info("Wrote board extra file", "path", fullPath)
+	}
+
+	return nil
+}
+
+// installBoardFirmware installs firmware blobs specified by the board profile
+func (s *AssembleStage) installBoardFirmware(sc *StageContext) error {
+	if sc.BoardProfile == nil || len(sc.BoardProfile.Config.Firmware) == 0 {
+		return nil
+	}
+
+	for _, fw := range sc.BoardProfile.Config.Firmware {
+		if fw.Path == "" {
+			continue
+		}
+		destDir := filepath.Join(sc.RootfsDir, fw.Path)
+		if err := os.MkdirAll(destDir, 0755); err != nil {
+			return fmt.Errorf("failed to create firmware directory %s: %w", fw.Path, err)
+		}
+
+		// If firmware has a ComponentID, look for the resolved component
+		if fw.ComponentID != "" {
+			for _, rc := range sc.Components {
+				if rc.Component.ID == fw.ComponentID && rc.LocalPath != "" {
+					log.Info("Installing firmware from component",
+						"firmware", fw.Name,
+						"component", rc.Component.Name,
+						"dest", destDir)
+					// Copy firmware files from component source to destination
+					if err := copyDir(rc.LocalPath, destDir); err != nil {
+						return fmt.Errorf("failed to install firmware %s: %w", fw.Name, err)
+					}
+					break
+				}
+			}
+		}
+
+		log.Info("Firmware directory prepared", "firmware", fw.Name, "path", destDir)
+	}
+
+	return nil
 }
 
 // validateRootfs performs basic validation of the assembled rootfs

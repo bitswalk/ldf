@@ -518,6 +518,32 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy artifact_cache table
+	if d.tableExistsInDiskDB("artifact_cache") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO artifact_cache
+			SELECT * FROM disk_db.artifact_cache
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("artifact_cache: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("artifact_cache(%d)", rows))
+		}
+	}
+
+	// Copy mirror_configs table
+	if d.tableExistsInDiskDB("mirror_configs") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO mirror_configs
+			SELECT * FROM disk_db.mirror_configs
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("mirror_configs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("mirror_configs(%d)", rows))
+		}
+	}
+
 	// Log what was loaded
 	if len(loadedTables) > 0 {
 		fmt.Fprintf(os.Stderr, "INFO: Loaded from disk: %v\n", loadedTables)

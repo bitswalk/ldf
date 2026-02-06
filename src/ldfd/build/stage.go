@@ -38,6 +38,8 @@ type StageContext struct {
 	ConfigDir      string // Generated configs (kernel .config, fstab, etc.)
 	LogWriter      io.Writer
 	Components     []ResolvedComponent // Populated by resolve stage
+	BoardProfile   *db.BoardProfile    // Populated by resolve stage when board_profile_id is set
+	BuildEnv       *BuildEnvironment   // Populated by worker before pipeline starts
 
 	// Artifact info populated by package stage
 	ArtifactPath     string // Storage key of final artifact

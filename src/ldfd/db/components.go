@@ -25,7 +25,7 @@ func (r *ComponentRepository) List() ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		ORDER BY category ASC, name ASC
 	`
@@ -44,7 +44,7 @@ func (r *ComponentRepository) ListByOwner(ownerID string) ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE owner_id = ?
 		ORDER BY category ASC, name ASC
@@ -64,7 +64,7 @@ func (r *ComponentRepository) ListSystem() ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE is_system = 1
 		ORDER BY category ASC, name ASC
@@ -84,7 +84,7 @@ func (r *ComponentRepository) GetByID(id string) (*Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE id = ?
 	`
@@ -98,7 +98,7 @@ func (r *ComponentRepository) GetByName(name string) (*Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE name = ?
 	`
@@ -115,7 +115,7 @@ func (r *ComponentRepository) GetByCategory(category string) ([]Component, error
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE category = ?
 		   OR category LIKE ?
@@ -141,7 +141,7 @@ func (r *ComponentRepository) GetByCategoryAndNameContains(category, nameContain
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE (category = ? OR category LIKE ? OR category LIKE ? OR category LIKE ?)
 		  AND name LIKE ?
@@ -179,14 +179,15 @@ func (r *ComponentRepository) Create(c *Component) error {
 		INSERT INTO components (id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			default_version, default_version_rule, supported_architectures, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := r.db.DB().Exec(query,
 		c.ID, c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
 		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional, c.IsSystem,
 		c.IsKernelModule, c.IsUserspace, ownerID,
-		c.DefaultVersion, c.DefaultVersionRule, c.CreatedAt, c.UpdatedAt,
+		c.DefaultVersion, c.DefaultVersionRule, joinArchitectures(c.SupportedArchitectures),
+		c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create component: %w", err)
@@ -204,14 +205,15 @@ func (r *ComponentRepository) Update(c *Component) error {
 		SET name = ?, category = ?, display_name = ?, description = ?, artifact_pattern = ?,
 			default_url_template = ?, github_normalized_template = ?, is_optional = ?,
 			is_kernel_module = ?, is_userspace = ?,
-			default_version = ?, default_version_rule = ?, updated_at = ?
+			default_version = ?, default_version_rule = ?, supported_architectures = ?, updated_at = ?
 		WHERE id = ?
 	`
 	result, err := r.db.DB().Exec(query,
 		c.Name, c.Category, c.DisplayName, c.Description, c.ArtifactPattern,
 		c.DefaultURLTemplate, c.GitHubNormalizedTemplate, c.IsOptional,
 		c.IsKernelModule, c.IsUserspace,
-		c.DefaultVersion, c.DefaultVersionRule, c.UpdatedAt, c.ID,
+		c.DefaultVersion, c.DefaultVersionRule, joinArchitectures(c.SupportedArchitectures),
+		c.UpdatedAt, c.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update component: %w", err)
@@ -290,6 +292,34 @@ func (r *ComponentRepository) GetCategories() ([]string, error) {
 	return categories, nil
 }
 
+// parseArchitectures splits a comma-separated architecture string into a typed slice
+func parseArchitectures(raw string) []TargetArch {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	archs := make([]TargetArch, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			archs = append(archs, TargetArch(trimmed))
+		}
+	}
+	return archs
+}
+
+// joinArchitectures converts a typed architecture slice to a comma-separated string
+func joinArchitectures(archs []TargetArch) string {
+	if len(archs) == 0 {
+		return ""
+	}
+	parts := make([]string, len(archs))
+	for i, a := range archs {
+		parts[i] = string(a)
+	}
+	return strings.Join(parts, ",")
+}
+
 // parseCategories splits a comma-separated category string into a slice
 func parseCategories(category string) []string {
 	if category == "" {
@@ -311,13 +341,13 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	var c Component
 	var categoryRaw string
 	var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
-	var defaultVersion, defaultVersionRule sql.NullString
+	var defaultVersion, defaultVersionRule, supportedArchs sql.NullString
 
 	err := row.Scan(
 		&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 		&description, &artifactPattern, &defaultTemplate, &githubTemplate,
 		&c.IsOptional, &c.IsSystem, &c.IsKernelModule, &c.IsUserspace, &ownerID,
-		&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
+		&defaultVersion, &defaultVersionRule, &supportedArchs, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -333,6 +363,7 @@ func (r *ComponentRepository) scanComponent(row *sql.Row) (*Component, error) {
 	c.OwnerID = ownerID.String
 	c.DefaultVersion = defaultVersion.String
 	c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
+	c.SupportedArchitectures = parseArchitectures(supportedArchs.String)
 
 	// Parse categories from comma-separated string
 	c.Categories = parseCategories(categoryRaw)
@@ -354,13 +385,13 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		var c Component
 		var categoryRaw string
 		var description, artifactPattern, defaultTemplate, githubTemplate, ownerID sql.NullString
-		var defaultVersion, defaultVersionRule sql.NullString
+		var defaultVersion, defaultVersionRule, supportedArchs sql.NullString
 
 		if err := rows.Scan(
 			&c.ID, &c.Name, &categoryRaw, &c.DisplayName,
 			&description, &artifactPattern, &defaultTemplate, &githubTemplate,
 			&c.IsOptional, &c.IsSystem, &c.IsKernelModule, &c.IsUserspace, &ownerID,
-			&defaultVersion, &defaultVersionRule, &c.CreatedAt, &c.UpdatedAt,
+			&defaultVersion, &defaultVersionRule, &supportedArchs, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan component: %w", err)
 		}
@@ -372,6 +403,7 @@ func (r *ComponentRepository) scanComponents(rows *sql.Rows) ([]Component, error
 		c.OwnerID = ownerID.String
 		c.DefaultVersion = defaultVersion.String
 		c.DefaultVersionRule = VersionRule(defaultVersionRule.String)
+		c.SupportedArchitectures = parseArchitectures(supportedArchs.String)
 
 		// Parse categories from comma-separated string
 		c.Categories = parseCategories(categoryRaw)
@@ -398,7 +430,7 @@ func (r *ComponentRepository) ListKernelModules() ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE is_kernel_module = 1
 		ORDER BY category ASC, name ASC
@@ -418,7 +450,7 @@ func (r *ComponentRepository) ListUserspace() ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE is_userspace = 1
 		ORDER BY category ASC, name ASC
@@ -438,7 +470,7 @@ func (r *ComponentRepository) ListHybrid() ([]Component, error) {
 		SELECT id, name, category, display_name, description, artifact_pattern,
 			default_url_template, github_normalized_template, is_optional, is_system,
 			is_kernel_module, is_userspace, owner_id,
-			default_version, default_version_rule, created_at, updated_at
+			default_version, default_version_rule, supported_architectures, created_at, updated_at
 		FROM components
 		WHERE is_kernel_module = 1 AND is_userspace = 1
 		ORDER BY category ASC, name ASC

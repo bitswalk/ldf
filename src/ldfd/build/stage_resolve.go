@@ -10,15 +10,17 @@ import (
 
 // ResolveStage resolves the distribution configuration into concrete components and versions
 type ResolveStage struct {
-	componentRepo   *db.ComponentRepository
-	downloadJobRepo *db.DownloadJobRepository
+	componentRepo    *db.ComponentRepository
+	downloadJobRepo  *db.DownloadJobRepository
+	boardProfileRepo *db.BoardProfileRepository
 }
 
 // NewResolveStage creates a new resolve stage
-func NewResolveStage(componentRepo *db.ComponentRepository, downloadJobRepo *db.DownloadJobRepository) *ResolveStage {
+func NewResolveStage(componentRepo *db.ComponentRepository, downloadJobRepo *db.DownloadJobRepository, boardProfileRepo *db.BoardProfileRepository) *ResolveStage {
 	return &ResolveStage{
-		componentRepo:   componentRepo,
-		downloadJobRepo: downloadJobRepo,
+		componentRepo:    componentRepo,
+		downloadJobRepo:  downloadJobRepo,
+		boardProfileRepo: boardProfileRepo,
 	}
 }
 
@@ -41,6 +43,23 @@ func (s *ResolveStage) Validate(ctx context.Context, sc *StageContext) error {
 // Execute resolves components and populates StageContext.Components
 func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
 	progress(0, "Resolving required components")
+
+	// Load board profile if configured
+	if sc.Config.BoardProfileID != "" && s.boardProfileRepo != nil {
+		progress(2, "Loading board profile")
+		profile, err := s.boardProfileRepo.GetByID(sc.Config.BoardProfileID)
+		if err != nil {
+			return fmt.Errorf("failed to load board profile: %w", err)
+		}
+		if profile == nil {
+			return fmt.Errorf("board profile not found: %s", sc.Config.BoardProfileID)
+		}
+		if profile.Arch != sc.TargetArch {
+			return fmt.Errorf("board profile architecture mismatch: profile requires %s but build targets %s", profile.Arch, sc.TargetArch)
+		}
+		sc.BoardProfile = profile
+		progress(5, fmt.Sprintf("Board profile loaded: %s (%s)", profile.DisplayName, profile.Arch))
+	}
 
 	// Get required component names from config
 	componentNames := s.getRequiredComponents(sc.Config)
@@ -68,6 +87,15 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 		}
 		if component == nil {
 			return fmt.Errorf("component not found: %s", name)
+		}
+
+		// Filter out components incompatible with target architecture
+		if !isComponentCompatible(component, sc.TargetArch) {
+			log.Info("Skipping component incompatible with target architecture",
+				"component", component.Name,
+				"target_arch", sc.TargetArch,
+				"supported", component.SupportedArchitectures)
+			continue
 		}
 
 		// Resolve version from config override or component default
@@ -176,6 +204,11 @@ func (s *ResolveStage) getRequiredComponents(config *db.DistributionConfig) []st
 		findComponent("desktop", config.Target.Desktop.Environment)
 	}
 
+	// Board profile firmware components (resolved via board profile on StageContext)
+	// Note: This is handled separately since we need the board profile loaded first.
+	// Firmware with ComponentID references will be resolved during Execute after
+	// the board profile is loaded into StageContext.
+
 	return components
 }
 
@@ -246,6 +279,21 @@ func (s *ResolveStage) getDistributionVersionOverride(config *db.DistributionCon
 	}
 
 	return ""
+}
+
+// isComponentCompatible returns true if the component supports the given target
+// architecture. An empty SupportedArchitectures list means the component supports
+// all architectures (backward compatible default).
+func isComponentCompatible(c *db.Component, arch db.TargetArch) bool {
+	if len(c.SupportedArchitectures) == 0 {
+		return true
+	}
+	for _, a := range c.SupportedArchitectures {
+		if a == arch {
+			return true
+		}
+	}
+	return false
 }
 
 // containsString checks if a slice contains a string

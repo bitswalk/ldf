@@ -89,6 +89,30 @@ func (w *Worker) processJob(ctx context.Context, job *db.DownloadJob) {
 			}
 		}
 
+		// Resolve URL through mirror (if configured)
+		downloadURL := job.ResolvedURL
+		if w.manager.mirror != nil {
+			downloadURL = w.manager.mirror.ResolveURL(downloadURL)
+		}
+
+		// Check local mirror path — skip HTTP verify+download entirely
+		if w.manager.mirror != nil {
+			localPath := w.manager.mirror.ResolveLocalPath(downloadURL, job.SourceID, job.Version)
+			if localPath != "" {
+				if err := w.downloader.DownloadLocal(jobCtx, job, localPath); err != nil {
+					lastErr = err
+					log.Warn("Local mirror download failed",
+						"worker_id", w.id,
+						"job_id", job.ID,
+						"path", localPath,
+						"error", err,
+					)
+					continue
+				}
+				goto success
+			}
+		}
+
 		// Verify URL exists before downloading
 		if err := w.verify(jobCtx, job); err != nil {
 			lastErr = err
@@ -100,8 +124,8 @@ func (w *Worker) processJob(ctx context.Context, job *db.DownloadJob) {
 			continue
 		}
 
-		// Execute download
-		if err := w.download(jobCtx, job); err != nil {
+		// Execute download (using mirror-resolved URL and throttle)
+		if err := w.downloadWithMirror(jobCtx, job, downloadURL); err != nil {
 			lastErr = err
 			log.Warn("Download failed",
 				"worker_id", w.id,
@@ -111,7 +135,19 @@ func (w *Worker) processJob(ctx context.Context, job *db.DownloadJob) {
 			continue
 		}
 
-		// Success
+	success:
+		// Success — store in cache for cross-distribution reuse
+		if w.manager.cache != nil {
+			updatedJob, getErr := w.manager.jobRepo.GetByID(job.ID)
+			if getErr == nil && updatedJob != nil && updatedJob.ArtifactPath != "" {
+				if storeErr := w.manager.cache.Store(jobCtx, job.SourceID, job.Version,
+					updatedJob.ArtifactPath, updatedJob.Checksum, updatedJob.TotalBytes, ""); storeErr != nil {
+					log.Warn("Failed to store artifact in cache",
+						"job_id", job.ID, "error", storeErr)
+				}
+			}
+		}
+
 		log.Info("Download completed successfully",
 			"worker_id", w.id,
 			"job_id", job.ID,
@@ -152,10 +188,15 @@ func (w *Worker) verify(ctx context.Context, job *db.DownloadJob) error {
 	return nil
 }
 
-// download executes the actual download
-func (w *Worker) download(ctx context.Context, job *db.DownloadJob) error {
+// downloadWithMirror executes a download using a mirror-resolved URL with throttling
+func (w *Worker) downloadWithMirror(ctx context.Context, job *db.DownloadJob, resolvedURL string) error {
+	// Build per-worker throttle limiter
+	var perWorkerLimiter *rateLimiter
+	if w.manager.config.Throttle.PerWorkerBytesPerSec > 0 {
+		perWorkerLimiter = newRateLimiter(w.manager.config.Throttle.PerWorkerBytesPerSec)
+	}
+
 	progressCb := func(bytesReceived, totalBytes int64) {
-		// Log progress at intervals
 		if totalBytes > 0 {
 			percent := float64(bytesReceived) / float64(totalBytes) * 100
 			if int(percent)%10 == 0 {
@@ -168,7 +209,7 @@ func (w *Worker) download(ctx context.Context, job *db.DownloadJob) error {
 		}
 	}
 
-	return w.downloader.Download(ctx, job, progressCb)
+	return w.downloader.DownloadHTTPWithOptions(ctx, job, resolvedURL, progressCb, perWorkerLimiter, w.manager.globalThrottle)
 }
 
 // handleFailure marks a job as failed

@@ -76,9 +76,9 @@ func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress P
 		configMode = string(db.KernelConfigModeDefconfig)
 	}
 
-	// Determine cross-compile prefix
-	crossCompile := s.getCrossCompilePrefix(sc.TargetArch)
-	makeArch := s.getMakeArch(sc.TargetArch)
+	// Determine cross-compile prefix from build environment
+	crossCompile := s.getCrossCompilePrefix(sc)
+	makeArch := s.getMakeArch(sc)
 
 	progress(5, fmt.Sprintf("Config mode: %s, arch: %s", configMode, sc.TargetArch))
 
@@ -130,10 +130,19 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 
 	progress(15, "Running kernel compilation in container")
 
+	// Use BuildEnv container image if available, otherwise fall back to default
+	containerImage := s.executor.defaultImage
+	var platformFlag string
+	if sc.BuildEnv != nil {
+		containerImage = sc.BuildEnv.ContainerImage
+		platformFlag = sc.BuildEnv.PodmanPlatformFlag
+	}
+
 	opts := ContainerRunOpts{
-		Image:   s.executor.defaultImage,
-		Mounts:  mounts,
-		WorkDir: "/src/kernel",
+		Image:    containerImage,
+		Mounts:   mounts,
+		WorkDir:  "/src/kernel",
+		Platform: platformFlag,
 		Env: map[string]string{
 			"ARCH":          makeArch,
 			"CROSS_COMPILE": crossCompile,
@@ -148,7 +157,7 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		return fmt.Errorf("kernel compilation failed: %w", err)
 	}
 
-	progress(95, "Verifying build outputs")
+	progress(90, "Verifying build outputs")
 
 	// Verify kernel image was built
 	kernelImage := filepath.Join(outputDir, "boot", "vmlinuz")
@@ -156,8 +165,111 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		return fmt.Errorf("kernel image not found at %s", kernelImage)
 	}
 
+	// Compile device trees if board profile specifies them
+	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.DeviceTrees) > 0 {
+		progress(92, "Compiling device tree blobs")
+		if err := s.compileDeviceTrees(ctx, sc, kernel, outputDir, makeArch, crossCompile, progress); err != nil {
+			return fmt.Errorf("device tree compilation failed: %w", err)
+		}
+	}
+
 	progress(100, "Kernel compilation complete")
 	return nil
+}
+
+// compileDeviceTrees compiles device tree sources specified by the board profile
+func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+	dtbScript := s.generateDTBBuildScript(sc.BoardProfile.Config.DeviceTrees, makeArch, crossCompile)
+	dtbScriptPath := filepath.Join(sc.WorkspacePath, "scripts", "compile-dtbs.sh")
+	if err := os.WriteFile(dtbScriptPath, []byte(dtbScript), 0755); err != nil {
+		return fmt.Errorf("failed to write DTB build script: %w", err)
+	}
+
+	mounts := []Mount{
+		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+		{Source: outputDir, Target: "/output", ReadOnly: false},
+		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
+	}
+
+	logPath := filepath.Join(sc.WorkspacePath, "logs", "dtb-compile.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("failed to create DTB log file: %w", err)
+	}
+	defer logFile.Close()
+
+	// Use BuildEnv container image if available, otherwise fall back to default
+	dtbContainerImage := s.executor.defaultImage
+	var dtbPlatformFlag string
+	if sc.BuildEnv != nil {
+		dtbContainerImage = sc.BuildEnv.ContainerImage
+		dtbPlatformFlag = sc.BuildEnv.PodmanPlatformFlag
+	}
+
+	opts := ContainerRunOpts{
+		Image:    dtbContainerImage,
+		Mounts:   mounts,
+		WorkDir:  "/src/kernel",
+		Platform: dtbPlatformFlag,
+		Env: map[string]string{
+			"ARCH":          makeArch,
+			"CROSS_COMPILE": crossCompile,
+		},
+		Command: []string{"/bin/bash", "/scripts/compile-dtbs.sh"},
+		Stdout:  logFile,
+		Stderr:  logFile,
+	}
+
+	progress(94, fmt.Sprintf("Compiling %d device tree(s)", len(sc.BoardProfile.Config.DeviceTrees)))
+
+	if err := s.executor.Run(ctx, opts); err != nil {
+		return fmt.Errorf("DTB compilation failed: %w", err)
+	}
+
+	progress(97, "Device tree compilation complete")
+	return nil
+}
+
+// generateDTBBuildScript creates a script to compile device tree blobs
+func (s *CompileStage) generateDTBBuildScript(deviceTrees []db.DeviceTreeSpec, makeArch, crossCompile string) string {
+	var sb strings.Builder
+	sb.WriteString(`#!/bin/bash
+set -e
+
+echo "=== LDF Device Tree Build ==="
+cd /src/kernel
+mkdir -p /output/boot/dtbs
+`)
+
+	for _, dt := range deviceTrees {
+		// Compile the main DTB
+		dtbPath := strings.TrimSuffix(dt.Source, ".dts") + ".dtb"
+		sb.WriteString(fmt.Sprintf(`
+echo "Building DTB: %s"
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" %s
+cp %s /output/boot/dtbs/
+`, dt.Source, dtbPath, dtbPath))
+
+		// Compile overlays if specified
+		if len(dt.Overlays) > 0 {
+			sb.WriteString("\nmkdir -p /output/boot/dtbs/overlays\n")
+			for _, overlay := range dt.Overlays {
+				dtboPath := strings.TrimSuffix(overlay, ".dts") + ".dtbo"
+				sb.WriteString(fmt.Sprintf(`
+echo "Building DT overlay: %s"
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" %s
+cp %s /output/boot/dtbs/overlays/
+`, overlay, dtboPath, dtboPath))
+			}
+		}
+	}
+
+	sb.WriteString(`
+echo ""
+echo "=== Device tree build complete ==="
+ls -la /output/boot/dtbs/
+`)
+	return sb.String()
 }
 
 // executeDirect runs compilation directly on the host (fallback)
@@ -331,28 +443,30 @@ func (s *CompileStage) parseConfigMode(configPath string) (string, error) {
 	return "", fmt.Errorf("LDF_CONFIG_MODE not found in config")
 }
 
-// getCrossCompilePrefix returns the cross-compile prefix for target architecture
-func (s *CompileStage) getCrossCompilePrefix(arch db.TargetArch) string {
-	// TODO: This should be configurable based on host arch vs target arch
-	// For now, we assume host is x86_64
-	switch arch {
-	case db.ArchAARCH64:
-		return "aarch64-linux-gnu-"
-	default:
-		return "" // Native compilation
+// getCrossCompilePrefix returns the cross-compile prefix from BuildEnvironment,
+// falling back to toolchain registry lookup if BuildEnv is not populated.
+func (s *CompileStage) getCrossCompilePrefix(sc *StageContext) string {
+	if sc.BuildEnv != nil {
+		return sc.BuildEnv.Toolchain.CrossCompilePrefix
 	}
+	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	if err != nil {
+		return ""
+	}
+	return tc.CrossCompilePrefix
 }
 
-// getMakeArch returns the ARCH value for make
-func (s *CompileStage) getMakeArch(arch db.TargetArch) string {
-	switch arch {
-	case db.ArchX86_64:
-		return "x86"
-	case db.ArchAARCH64:
-		return "arm64"
-	default:
+// getMakeArch returns the ARCH value for make from BuildEnvironment,
+// falling back to toolchain registry lookup if BuildEnv is not populated.
+func (s *CompileStage) getMakeArch(sc *StageContext) string {
+	if sc.BuildEnv != nil {
+		return sc.BuildEnv.Toolchain.MakeArch
+	}
+	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	if err != nil {
 		return "x86"
 	}
+	return tc.MakeArch
 }
 
 // findKernelComponent finds the kernel component in the resolved list
