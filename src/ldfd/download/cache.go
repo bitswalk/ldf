@@ -3,7 +3,7 @@ package download
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"path"
 	"sync"
 
 	"github.com/bitswalk/ldf/src/ldfd/db"
@@ -209,7 +209,7 @@ func (c *Cache) Stats(ctx context.Context) (totalSize int64, entryCount int, err
 // buildCachePath constructs the cache storage key:
 // cache/artifacts/{sourceID}/{version}/{filename}
 func (c *Cache) buildCachePath(sourceID, version, originalPath string) string {
-	filename := filepath.Base(originalPath)
+	filename := path.Base(originalPath)
 	if filename == "" || filename == "." {
 		filename = fmt.Sprintf("%s-%s.tar.gz", sourceID, version)
 	}

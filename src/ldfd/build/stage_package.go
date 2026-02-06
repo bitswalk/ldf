@@ -117,9 +117,9 @@ func (s *PackageStage) Execute(ctx context.Context, sc *StageContext, progress P
 	progress(78, "Uploading to storage")
 
 	// Build storage key
-	// Format: distributions/{owner_id}/{dist_id}/builds/{build_id}/{filename}
+	// Format: distribution/{owner_id}/{dist_id}/builds/{build_id}/{filename}
 	filename := filepath.Base(imagePath)
-	storageKey := fmt.Sprintf("distributions/%s/%s/builds/%s/%s",
+	storageKey := fmt.Sprintf("distribution/%s/%s/builds/%s/%s",
 		sc.OwnerID,
 		sc.DistributionID,
 		sc.BuildID,
