@@ -97,6 +97,18 @@
       "port": {
         "label": "Port",
         "description": "Port d'ecoute du serveur"
+      },
+      "tlsEnabled": {
+        "label": "TLS active",
+        "description": "Activer le support natif HTTPS/TLS"
+      },
+      "tlsCertPath": {
+        "label": "Chemin du certificat TLS",
+        "description": "Chemin vers le fichier de certificat TLS (format PEM)"
+      },
+      "tlsKeyPath": {
+        "label": "Chemin de la cle TLS",
+        "description": "Chemin vers le fichier de cle privee TLS (format PEM)"
       }
     },
     "log": {
@@ -186,6 +198,62 @@
       "workers": {
         "label": "Workers",
         "description": "Nombre de workers de build simultanes"
+      }
+    },
+    "download": {
+      "label": "Telechargements",
+      "description": "Parametres de cache, proxy et bande passante des telechargements",
+      "cacheEnabled": {
+        "label": "Cache active",
+        "description": "Activer la mise en cache des artefacts entre les distributions"
+      },
+      "cacheMaxSize": {
+        "label": "Taille max du cache (Go)",
+        "description": "Taille maximale du cache en Go (0 = illimite)"
+      },
+      "proxyUrl": {
+        "label": "URL du proxy",
+        "description": "URL du proxy HTTP(S) pour tous les telechargements"
+      },
+      "localMirrorPath": {
+        "label": "Chemin du miroir local",
+        "description": "Chemin du repertoire local pour le miroir hors ligne"
+      },
+      "throttlePerWorker": {
+        "label": "Bande passante par worker (Mo/s)",
+        "description": "Limite de bande passante par worker en Mo/s (0 = illimite)"
+      },
+      "throttleGlobal": {
+        "label": "Bande passante globale (Mo/s)",
+        "description": "Limite de bande passante globale en Mo/s pour tous les workers (0 = illimite)"
+      }
+    },
+    "security": {
+      "label": "Securite",
+      "description": "Parametres de limitation de debit, gestion des jetons et chiffrement",
+      "rateLimitEnabled": {
+        "label": "Limitation de debit activee",
+        "description": "Activer la limitation de debit de l'API"
+      },
+      "rateLimitAuthPerMin": {
+        "label": "Requetes d'auth par minute",
+        "description": "Nombre max de requetes d'authentification par minute par IP"
+      },
+      "rateLimitApiPerMin": {
+        "label": "Requetes API par minute",
+        "description": "Nombre max de requetes API par minute par utilisateur/IP"
+      },
+      "rateLimitTrustProxy": {
+        "label": "Faire confiance aux en-tetes proxy",
+        "description": "Faire confiance a l'en-tete X-Forwarded-For pour la detection de l'IP client"
+      },
+      "maxRefreshTokens": {
+        "label": "Jetons de rafraichissement max par utilisateur",
+        "description": "Nombre maximum de jetons de rafraichissement actifs par utilisateur"
+      },
+      "masterKeyPath": {
+        "label": "Chemin de la cle maitre",
+        "description": "Chemin vers le fichier de cle de chiffrement maitre (genere automatiquement si absent)"
       }
     }
   },

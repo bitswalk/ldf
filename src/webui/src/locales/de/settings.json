@@ -97,6 +97,18 @@
       "port": {
         "label": "Port",
         "description": "Port, auf dem der Server lauscht"
+      },
+      "tlsEnabled": {
+        "label": "TLS aktiviert",
+        "description": "Native HTTPS/TLS-Unterstutzung aktivieren"
+      },
+      "tlsCertPath": {
+        "label": "TLS-Zertifikatspfad",
+        "description": "Pfad zur TLS-Zertifikatsdatei (PEM-Format)"
+      },
+      "tlsKeyPath": {
+        "label": "TLS-Schlusselpfad",
+        "description": "Pfad zur privaten TLS-Schlusseldatei (PEM-Format)"
       }
     },
     "log": {
@@ -186,6 +198,62 @@
       "workers": {
         "label": "Worker",
         "description": "Anzahl gleichzeitiger Build-Worker"
+      }
+    },
+    "download": {
+      "label": "Downloads",
+      "description": "Download-Cache-, Proxy- und Bandbreiteneinstellungen",
+      "cacheEnabled": {
+        "label": "Cache aktiviert",
+        "description": "Artefakt-Caching uber Distributionen hinweg aktivieren"
+      },
+      "cacheMaxSize": {
+        "label": "Maximale Cache-Grosse (GB)",
+        "description": "Maximale Cache-Grosse in GB (0 = unbegrenzt)"
+      },
+      "proxyUrl": {
+        "label": "Proxy-URL",
+        "description": "HTTP(S)-Proxy-URL fur alle Downloads"
+      },
+      "localMirrorPath": {
+        "label": "Lokaler Spiegelpfad",
+        "description": "Lokaler Verzeichnispfad fur Offline-Spiegel"
+      },
+      "throttlePerWorker": {
+        "label": "Bandbreite pro Worker (MB/s)",
+        "description": "Bandbreitenlimit pro Worker in MB/s (0 = unbegrenzt)"
+      },
+      "throttleGlobal": {
+        "label": "Globale Bandbreite (MB/s)",
+        "description": "Globales Bandbreitenlimit in MB/s fur alle Worker (0 = unbegrenzt)"
+      }
+    },
+    "security": {
+      "label": "Sicherheit",
+      "description": "Ratenbegrenzung, Token-Verwaltung und Verschlusselungseinstellungen",
+      "rateLimitEnabled": {
+        "label": "Ratenbegrenzung aktiviert",
+        "description": "API-Ratenbegrenzung aktivieren"
+      },
+      "rateLimitAuthPerMin": {
+        "label": "Auth-Anfragen pro Minute",
+        "description": "Max. Authentifizierungsanfragen pro Minute pro IP"
+      },
+      "rateLimitApiPerMin": {
+        "label": "API-Anfragen pro Minute",
+        "description": "Max. API-Anfragen pro Minute pro Benutzer/IP"
+      },
+      "rateLimitTrustProxy": {
+        "label": "Proxy-Header vertrauen",
+        "description": "X-Forwarded-For-Header fur Client-IP-Erkennung vertrauen"
+      },
+      "maxRefreshTokens": {
+        "label": "Max. Aktualisierungstoken pro Benutzer",
+        "description": "Maximale aktive Aktualisierungstoken pro Benutzer"
+      },
+      "masterKeyPath": {
+        "label": "Hauptschlusselpfad",
+        "description": "Pfad zur Hauptverschlusselungs-Schlusseldatei (automatisch generiert wenn fehlend)"
       }
     }
   },

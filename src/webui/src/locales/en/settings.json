@@ -126,6 +126,18 @@
       "port": {
         "label": "Port",
         "description": "Port for the server to listen on"
+      },
+      "tlsEnabled": {
+        "label": "TLS Enabled",
+        "description": "Enable native HTTPS/TLS support"
+      },
+      "tlsCertPath": {
+        "label": "TLS Certificate Path",
+        "description": "Path to TLS certificate file (PEM format)"
+      },
+      "tlsKeyPath": {
+        "label": "TLS Key Path",
+        "description": "Path to TLS private key file (PEM format)"
       }
     },
     "log": {
@@ -215,6 +227,62 @@
       "workers": {
         "label": "Workers",
         "description": "Number of concurrent build workers"
+      }
+    },
+    "download": {
+      "label": "Downloads",
+      "description": "Download cache, proxy, and bandwidth settings",
+      "cacheEnabled": {
+        "label": "Cache Enabled",
+        "description": "Enable artifact caching across distributions"
+      },
+      "cacheMaxSize": {
+        "label": "Cache Max Size (GB)",
+        "description": "Maximum cache size in GB (0 = unlimited)"
+      },
+      "proxyUrl": {
+        "label": "Proxy URL",
+        "description": "HTTP(S) proxy URL for all downloads"
+      },
+      "localMirrorPath": {
+        "label": "Local Mirror Path",
+        "description": "Local directory path for offline mirror"
+      },
+      "throttlePerWorker": {
+        "label": "Per-Worker Bandwidth (MB/s)",
+        "description": "Per-worker bandwidth limit in MB/s (0 = unlimited)"
+      },
+      "throttleGlobal": {
+        "label": "Global Bandwidth (MB/s)",
+        "description": "Global bandwidth limit in MB/s across all workers (0 = unlimited)"
+      }
+    },
+    "security": {
+      "label": "Security",
+      "description": "Rate limiting, token management, and encryption settings",
+      "rateLimitEnabled": {
+        "label": "Rate Limiting Enabled",
+        "description": "Enable API rate limiting"
+      },
+      "rateLimitAuthPerMin": {
+        "label": "Auth Requests Per Minute",
+        "description": "Max auth requests (login/register/refresh) per minute per IP"
+      },
+      "rateLimitApiPerMin": {
+        "label": "API Requests Per Minute",
+        "description": "Max API requests per minute per user/IP"
+      },
+      "rateLimitTrustProxy": {
+        "label": "Trust Proxy Headers",
+        "description": "Trust X-Forwarded-For header for client IP detection"
+      },
+      "maxRefreshTokens": {
+        "label": "Max Refresh Tokens Per User",
+        "description": "Maximum active refresh tokens per user"
+      },
+      "masterKeyPath": {
+        "label": "Master Key Path",
+        "description": "Path to master encryption key file (auto-generated if missing)"
       }
     }
   },

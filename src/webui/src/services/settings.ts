@@ -9,7 +9,16 @@ export interface ServerSetting {
   type: "string" | "int" | "bool";
   description: string;
   rebootRequired: boolean;
-  category: "server" | "log" | "database" | "storage" | "webui";
+  category:
+    | "server"
+    | "log"
+    | "database"
+    | "storage"
+    | "webui"
+    | "sync"
+    | "build"
+    | "download"
+    | "security";
 }
 
 export interface ServerSettingsResponse {
