@@ -7,8 +7,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 	// Root endpoint - API discovery
 	router.GET("/", a.Base.HandleRoot)
 
-	// Auth routes
+	// Auth routes (rate-limited: strict)
 	authGroup := router.Group("/auth")
+	authGroup.Use(a.rateLimitAuth())
 	{
 		authGroup.POST("/create", a.Auth.HandleCreate)
 		authGroup.POST("/login", a.Auth.HandleLogin)
@@ -33,8 +34,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 		rolesAdmin.DELETE("/:id", a.Auth.HandleDeleteRole)
 	}
 
-	// API v1 routes
+	// API v1 routes (rate-limited: lenient)
 	v1 := router.Group("/v1")
+	v1.Use(a.rateLimitAPI())
 	{
 		v1.GET("/health", a.Base.HandleHealth)
 		v1.GET("/version", a.Base.HandleVersion)

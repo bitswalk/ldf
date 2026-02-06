@@ -20,6 +20,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/download"
 	"github.com/bitswalk/ldf/src/ldfd/forge"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
@@ -46,6 +47,7 @@ type API struct {
 
 	// Direct dependencies for middleware
 	jwtService    *auth.JWTService
+	rateLimiter   *RateLimiter
 	storage       storage.Backend
 	forgeRegistry *forge.Registry
 }
@@ -61,6 +63,8 @@ type Config struct {
 	LangPackRepo      *db.LanguagePackRepository
 	BoardProfileRepo  *db.BoardProfileRepository
 	Database          *db.Database
+	RateLimitConfig   RateLimitConfig
+	SecretManager     *security.SecretManager
 	Storage           storage.Backend
 	UserManager       *auth.UserManager
 	JWTService        *auth.JWTService

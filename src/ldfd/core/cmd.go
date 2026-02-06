@@ -86,6 +86,11 @@ func init() {
 	rootCmd.Flags().String("build-workspace", "~/.ldfd/cache/builds", "Base directory for build workspaces")
 	rootCmd.Flags().Int("build-workers", 1, "Number of concurrent build workers")
 
+	// TLS flags
+	rootCmd.Flags().Bool("tls-enabled", false, "Enable native HTTPS/TLS support")
+	rootCmd.Flags().String("tls-cert", "", "Path to TLS certificate file (PEM)")
+	rootCmd.Flags().String("tls-key", "", "Path to TLS private key file (PEM)")
+
 	// S3 Storage flags
 	rootCmd.Flags().String("s3-endpoint", "", "S3-compatible storage endpoint URL")
 	rootCmd.Flags().String("s3-region", "us-east-1", "S3 region")
@@ -108,6 +113,9 @@ func init() {
 	_ = viper.BindPFlag("storage.s3.path_style", rootCmd.Flags().Lookup("s3-path-style"))
 	_ = viper.BindPFlag("build.workspace", rootCmd.Flags().Lookup("build-workspace"))
 	_ = viper.BindPFlag("build.workers", rootCmd.Flags().Lookup("build-workers"))
+	_ = viper.BindPFlag("server.tls.enabled", rootCmd.Flags().Lookup("tls-enabled"))
+	_ = viper.BindPFlag("server.tls.cert_path", rootCmd.Flags().Lookup("tls-cert"))
+	_ = viper.BindPFlag("server.tls.key_path", rootCmd.Flags().Lookup("tls-key"))
 
 	// Set defaults
 	viper.SetDefault("server.port", 8443)
@@ -121,6 +129,19 @@ func init() {
 	viper.SetDefault("build.workspace", "~/.ldfd/cache/builds")
 	viper.SetDefault("build.workers", 1)
 	viper.SetDefault("sync.cache_duration", 60) // 60 minutes default
+
+	// Security defaults
+	viper.SetDefault("security.rate_limit.enabled", true)
+	viper.SetDefault("security.rate_limit.auth_per_min", 10)
+	viper.SetDefault("security.rate_limit.api_per_min", 120)
+	viper.SetDefault("security.rate_limit.trust_proxy", false)
+	viper.SetDefault("security.max_refresh_tokens_per_user", 5)
+	viper.SetDefault("security.master_key_path", "~/.ldfd/master.key")
+
+	// TLS defaults
+	viper.SetDefault("server.tls.enabled", false)
+	viper.SetDefault("server.tls.cert_path", "")
+	viper.SetDefault("server.tls.key_path", "")
 }
 
 // initConfig reads in config file and ENV variables if set

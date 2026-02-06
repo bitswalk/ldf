@@ -136,6 +136,8 @@ func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 		response = append(response, resp)
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "downloads.start", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + distID, Success: true})
+
 	c.JSON(http.StatusAccepted, StartDownloadsResponse{
 		Count: len(response),
 		Jobs:  response,
@@ -382,6 +384,8 @@ func (h *Handler) HandleCancelDownload(c *gin.Context) {
 		return
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "downloads.cancel", UserID: claims.UserID, UserName: claims.UserName, Resource: "job:" + jobID, Success: true})
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -611,6 +615,8 @@ func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 		})
 		return
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "downloads.flush", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + distID, Success: true})
 
 	c.Status(http.StatusNoContent)
 }

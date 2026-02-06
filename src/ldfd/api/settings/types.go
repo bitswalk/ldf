@@ -2,16 +2,19 @@ package settings
 
 import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/security"
 )
 
 // Handler handles settings-related HTTP requests
 type Handler struct {
-	database *db.Database
+	database      *db.Database
+	secretManager *security.SecretManager
 }
 
 // Config contains configuration options for the Handler
 type Config struct {
-	Database *db.Database
+	Database      *db.Database
+	SecretManager *security.SecretManager
 }
 
 // SettingDefinition represents a single server setting with metadata

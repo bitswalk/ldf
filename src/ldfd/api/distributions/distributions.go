@@ -165,6 +165,8 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
 	}
 
+	common.AuditLog(c, common.AuditEvent{Action: "distribution.create", UserID: ownerID, Resource: "distribution:" + dist.ID, Success: true})
+
 	c.JSON(http.StatusCreated, dist)
 }
 
@@ -352,6 +354,8 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	if err := h.distRepo.AddLog(dist.ID, "info", "Distribution updated"); err != nil {
 		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "distribution.update", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + dist.ID, Success: true})
 
 	c.JSON(http.StatusOK, dist)
 }
@@ -584,6 +588,8 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 	if err := h.distRepo.AddLog(id, "info", "Distribution deleted with cascading cleanup"); err != nil {
 		log.Warn("Failed to add distribution log", "dist_id", id, "error", err)
 	}
+
+	common.AuditLog(c, common.AuditEvent{Action: "distribution.delete", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + id, Success: true})
 
 	c.Status(http.StatusNoContent)
 }
