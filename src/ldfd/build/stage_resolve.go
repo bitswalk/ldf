@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
 
 // ResolveStage resolves the distribution configuration into concrete components and versions
@@ -13,14 +14,18 @@ type ResolveStage struct {
 	componentRepo    *db.ComponentRepository
 	downloadJobRepo  *db.DownloadJobRepository
 	boardProfileRepo *db.BoardProfileRepository
+	sourceRepo       *db.SourceRepository
+	storage          storage.Backend
 }
 
 // NewResolveStage creates a new resolve stage
-func NewResolveStage(componentRepo *db.ComponentRepository, downloadJobRepo *db.DownloadJobRepository, boardProfileRepo *db.BoardProfileRepository) *ResolveStage {
+func NewResolveStage(componentRepo *db.ComponentRepository, downloadJobRepo *db.DownloadJobRepository, boardProfileRepo *db.BoardProfileRepository, sourceRepo *db.SourceRepository, storageBackend storage.Backend) *ResolveStage {
 	return &ResolveStage{
 		componentRepo:    componentRepo,
 		downloadJobRepo:  downloadJobRepo,
 		boardProfileRepo: boardProfileRepo,
+		sourceRepo:       sourceRepo,
+		storage:          storageBackend,
 	}
 }
 
@@ -122,6 +127,19 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 		}
 
 		if downloadJob == nil {
+			// Fallback: check if artifact exists directly in storage
+			artifactPath := s.findArtifactInStorage(ctx, sc, component, version)
+			if artifactPath != "" {
+				log.Info("Resolved component from storage (no download job)",
+					"component", name, "version", version, "artifact", artifactPath)
+				resolved = append(resolved, ResolvedComponent{
+					Component:    *component,
+					Version:      version,
+					ArtifactPath: artifactPath,
+					LocalPath:    "",
+				})
+				continue
+			}
 			return fmt.Errorf("no completed download found for component %s version %s", name, version)
 		}
 
@@ -137,6 +155,44 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 	progress(100, fmt.Sprintf("Resolved %d components", len(resolved)))
 
 	return nil
+}
+
+// findArtifactInStorage checks if an artifact exists in the storage backend
+// at the expected distribution path, without requiring a download_jobs record.
+func (s *ResolveStage) findArtifactInStorage(ctx context.Context, sc *StageContext, component *db.Component, version string) string {
+	if s.storage == nil || s.sourceRepo == nil {
+		return ""
+	}
+
+	// Get the effective source for this component to determine sourceID
+	source, err := s.sourceRepo.GetEffectiveSource(component.ID, sc.OwnerID)
+	if err != nil || source == nil {
+		return ""
+	}
+
+	sourceID := source.ID
+
+	// Try both subdirectories: components/ (release) and sources/ (git)
+	subdirs := []string{"components", "sources"}
+	for _, subdir := range subdirs {
+		prefix := fmt.Sprintf("distribution/%s/%s/%s/%s/%s/",
+			sc.OwnerID, sc.DistributionID, subdir, sourceID, version)
+
+		objects, err := s.storage.List(ctx, prefix)
+		if err != nil {
+			log.Warn("Storage list failed during resolve fallback",
+				"prefix", prefix, "error", err)
+			continue
+		}
+
+		for _, obj := range objects {
+			if obj.Size > 0 {
+				return obj.Key
+			}
+		}
+	}
+
+	return ""
 }
 
 // getRequiredComponents returns the list of component names required by the config
