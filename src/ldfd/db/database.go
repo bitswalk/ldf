@@ -47,26 +47,28 @@ func New(cfg Config) (*Database, error) {
 	persistPath := paths.Expand(cfg.PersistPath)
 
 	// Open in-memory database with shared cache mode.
-	// This ensures all connections from the pool share the same in-memory database.
-	// Without this, each connection from sql.DB's pool would get a separate empty database!
+	// Shared cache is required so the single in-memory database survives
+	// connection recycling by Go's database/sql pool.
 	//
-	// DSN parameters (applied to EVERY connection in the pool):
-	//   _foreign_keys=1    - enforce FK constraints on all connections
-	//   _busy_timeout=5000 - wait up to 5s for locks before returning SQLITE_BUSY
-	//   _read_uncommitted=1 - in shared-cache mode, readers don't block on writers
-	//                         (trade-off: dirty reads, acceptable for real-time status)
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000&_foreign_keys=1&_read_uncommitted=1")
+	// DSN parameters applied to the connection:
+	//   _foreign_keys=1    - enforce FK constraints
+	//   _busy_timeout=5000 - wait up to 5s for locks before SQLITE_BUSY
+	//
+	// IMPORTANT: We use exactly ONE connection (MaxOpenConns=1) to avoid
+	// SQLite shared-cache table-level lock contention. With multiple
+	// connections, concurrent readers (SSE polling) and writers (build
+	// worker) deadlock on table locks, causing "database table is locked"
+	// errors that silently drop stage status updates.
+	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000&_foreign_keys=1")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open in-memory database: %w", err)
 	}
 
-	// For in-memory SQLite with shared cache, we need to ensure at least one connection
-	// stays open to prevent the database from being destroyed.
-	// Limit max open connections to avoid table-level lock contention in shared-cache
-	// mode when concurrent readers (SSE polling) and writers (build worker) compete.
-	db.SetMaxOpenConns(4)
-	db.SetMaxIdleConns(4)
-	db.SetConnMaxLifetime(0) // Connections don't expire
+	// Single connection eliminates shared-cache table-level lock contention.
+	// All DB operations are serialized, which is fine for SQLite performance.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0) // Connection doesn't expire
 
 	database := &Database{
 		db:          db,
