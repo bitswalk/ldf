@@ -46,10 +46,16 @@ func New(cfg Config) (*Database, error) {
 	// Expand ~ and env vars in persist path
 	persistPath := paths.Expand(cfg.PersistPath)
 
-	// Open in-memory database with shared cache mode
-	// This ensures all connections from the pool share the same in-memory database
+	// Open in-memory database with shared cache mode.
+	// This ensures all connections from the pool share the same in-memory database.
 	// Without this, each connection from sql.DB's pool would get a separate empty database!
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000")
+	//
+	// DSN parameters (applied to EVERY connection in the pool):
+	//   _foreign_keys=1    - enforce FK constraints on all connections
+	//   _busy_timeout=5000 - wait up to 5s for locks before returning SQLITE_BUSY
+	//   _read_uncommitted=1 - in shared-cache mode, readers don't block on writers
+	//                         (trade-off: dirty reads, acceptable for real-time status)
+	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000&_foreign_keys=1&_read_uncommitted=1")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open in-memory database: %w", err)
 	}
@@ -61,21 +67,6 @@ func New(cfg Config) (*Database, error) {
 	db.SetMaxOpenConns(4)
 	db.SetMaxIdleConns(4)
 	db.SetConnMaxLifetime(0) // Connections don't expire
-
-	// Enable foreign keys
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-
-	// In shared-cache mode, allow readers to proceed without waiting for
-	// write locks. This prevents SSE polling from blocking on build worker
-	// writes and vice versa. The trade-off is dirty reads, which is
-	// acceptable for real-time status display.
-	if _, err := db.Exec("PRAGMA read_uncommitted = ON"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to enable read_uncommitted: %w", err)
-	}
 
 	database := &Database{
 		db:          db,
