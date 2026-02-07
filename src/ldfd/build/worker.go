@@ -49,6 +49,18 @@ func (w *Worker) Run(ctx context.Context) {
 
 // processJob handles a single build job through all pipeline stages
 func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
+	// Recover from panics so the worker goroutine survives and
+	// the build job gets marked as failed instead of hanging forever.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("Build worker recovered from panic",
+				"worker_id", w.id,
+				"build_id", job.ID,
+				"panic", fmt.Sprintf("%v", r),
+			)
+			w.handleFailure(job, fmt.Sprintf("internal error (panic): %v", r), job.CurrentStage)
+		}
+	}()
 	log.Info("Processing build job",
 		"worker_id", w.id,
 		"build_id", job.ID,

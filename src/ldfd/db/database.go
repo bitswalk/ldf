@@ -55,14 +55,26 @@ func New(cfg Config) (*Database, error) {
 	}
 
 	// For in-memory SQLite with shared cache, we need to ensure at least one connection
-	// stays open to prevent the database from being destroyed
-	db.SetMaxIdleConns(1)
+	// stays open to prevent the database from being destroyed.
+	// Limit max open connections to avoid table-level lock contention in shared-cache
+	// mode when concurrent readers (SSE polling) and writers (build worker) compete.
+	db.SetMaxOpenConns(4)
+	db.SetMaxIdleConns(4)
 	db.SetConnMaxLifetime(0) // Connections don't expire
 
 	// Enable foreign keys
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
+	// In shared-cache mode, allow readers to proceed without waiting for
+	// write locks. This prevents SSE polling from blocking on build worker
+	// writes and vice versa. The trade-off is dirty reads, which is
+	// acceptable for real-time status display.
+	if _, err := db.Exec("PRAGMA read_uncommitted = ON"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to enable read_uncommitted: %w", err)
 	}
 
 	database := &Database{
