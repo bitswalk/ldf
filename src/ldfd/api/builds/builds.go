@@ -365,9 +365,10 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 
 	var lastID int64
+	var lastStatus db.BuildJobStatus
+	var lastProgress int
 
 	c.Stream(func(w io.Writer) bool {
-		// Check if build is terminal
 		currentJob, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 		if err != nil || currentJob == nil {
 			return false
@@ -376,6 +377,25 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 		isTerminal := currentJob.Status == db.BuildStatusCompleted ||
 			currentJob.Status == db.BuildStatusFailed ||
 			currentJob.Status == db.BuildStatusCancelled
+
+		// Send status event when status or progress changed
+		if currentJob.Status != lastStatus || currentJob.ProgressPercent != lastProgress {
+			stages, _ := h.buildManager.BuildJobRepo().GetStages(buildID)
+			statusEvent := BuildStatusEvent{
+				Status:          currentJob.Status,
+				CurrentStage:    currentJob.CurrentStage,
+				ProgressPercent: currentJob.ProgressPercent,
+				Stages:          stages,
+				CompletedAt:     currentJob.CompletedAt,
+				ErrorMessage:    currentJob.ErrorMessage,
+				ErrorStage:      currentJob.ErrorStage,
+				ArtifactSize:    currentJob.ArtifactSize,
+			}
+			data, _ := json.Marshal(statusEvent)
+			fmt.Fprintf(w, "event: status\ndata: %s\n\n", data)
+			lastStatus = currentJob.Status
+			lastProgress = currentJob.ProgressPercent
+		}
 
 		// Fetch new logs
 		logs, err := h.buildManager.BuildJobRepo().GetLogsSince(buildID, lastID)
