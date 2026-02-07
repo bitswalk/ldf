@@ -13,6 +13,7 @@ import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
 import { Settings } from "./views/Settings";
 import { BoardProfiles } from "./views/BoardProfiles";
+import { BuildDetail } from "./views/BuildDetail";
 import { Console } from "./components/Console";
 import { Menu, type MenuItem } from "./components/Menu";
 import { logout, ensureValidToken, type UserInfo } from "./services/auth";
@@ -48,6 +49,7 @@ type ViewType =
   | "components"
   | "component-details"
   | "board-profiles"
+  | "build-detail"
   | "login"
   | "register"
   | "settings";
@@ -83,6 +85,9 @@ const App: Component = () => {
   const [selectedComponentId, setSelectedComponentId] = createSignal<
     string | null
   >(null);
+  const [selectedBuildId, setSelectedBuildId] = createSignal<string | null>(
+    null,
+  );
 
   onMount(async () => {
     // Subscribe to auth changes from the API client
@@ -265,6 +270,16 @@ const App: Component = () => {
     setCurrentView("components");
   };
 
+  const handleViewBuild = (buildId: string) => {
+    setSelectedBuildId(buildId);
+    setCurrentView("build-detail");
+  };
+
+  const handleBackFromBuildDetail = () => {
+    setSelectedBuildId(null);
+    setCurrentView("distribution-detail");
+  };
+
   const menuItems = (): MenuItem[] => [
     {
       id: "distribution",
@@ -353,7 +368,16 @@ const App: Component = () => {
                   <DistributionDetail
                     distributionId={selectedDistributionId()!}
                     onBack={handleBackFromDistributionDetail}
+                    onNavigateToBuild={handleViewBuild}
                     user={authState().user}
+                  />
+                </Match>
+                <Match
+                  when={currentView() === "build-detail" && selectedBuildId()}
+                >
+                  <BuildDetail
+                    buildId={selectedBuildId()!}
+                    onBack={handleBackFromBuildDetail}
                   />
                 </Match>
                 <Match when={currentView() === "components"}>

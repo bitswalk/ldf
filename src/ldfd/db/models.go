@@ -104,6 +104,7 @@ const (
 	StatusPending     DistributionStatus = "pending"
 	StatusDownloading DistributionStatus = "downloading"
 	StatusValidating  DistributionStatus = "validating"
+	StatusBuilding    DistributionStatus = "building"
 	StatusReady       DistributionStatus = "ready"
 	StatusFailed      DistributionStatus = "failed"
 	StatusDeleted     DistributionStatus = "deleted"

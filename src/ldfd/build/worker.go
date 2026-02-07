@@ -70,6 +70,11 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		return
 	}
 
+	// Update distribution status to building
+	if err := w.manager.distRepo.UpdateStatus(job.DistributionID, db.StatusBuilding, ""); err != nil {
+		log.Warn("Failed to update distribution status to building", "distribution_id", job.DistributionID, "error", err)
+	}
+
 	// Parse the config snapshot
 	var config db.DistributionConfig
 	if job.ConfigSnapshot != "" {
@@ -241,6 +246,11 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		log.Error("Failed to mark build completed", "build_id", job.ID, "error", err)
 	}
 
+	// Update distribution status to ready
+	if err := w.manager.distRepo.UpdateStatus(job.DistributionID, db.StatusReady, ""); err != nil {
+		log.Warn("Failed to update distribution status to ready", "distribution_id", job.DistributionID, "error", err)
+	}
+
 	if err := w.manager.buildJobRepo.AppendLog(job.ID, "", "info",
 		fmt.Sprintf("Build completed successfully: %s (%d bytes)", sc.ArtifactPath, sc.ArtifactSize)); err != nil {
 		log.Warn("Failed to append build log", "build_id", job.ID, "error", err)
@@ -268,6 +278,11 @@ func (w *Worker) handleFailure(job *db.BuildJob, errorMsg, errorStage string) {
 
 	if err := w.manager.buildJobRepo.MarkFailed(job.ID, errorMsg, errorStage); err != nil {
 		log.Error("Failed to mark build as failed", "build_id", job.ID, "error", err)
+	}
+
+	// Update distribution status to failed
+	if err := w.manager.distRepo.UpdateStatus(job.DistributionID, db.StatusFailed, errorMsg); err != nil {
+		log.Warn("Failed to update distribution status to failed", "distribution_id", job.DistributionID, "error", err)
 	}
 }
 

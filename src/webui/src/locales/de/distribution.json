@@ -46,6 +46,7 @@
     "pending": "Ausstehend",
     "downloading": "Herunterladen",
     "validating": "Validieren",
+    "building": "Erstellen",
     "ready": "Bereit",
     "failed": "Fehlgeschlagen",
     "deleted": "Geloscht"
