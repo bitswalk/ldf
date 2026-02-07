@@ -28,6 +28,12 @@ func GetTokenClaimsFromRequest(c *gin.Context, jwtService *auth.JWTService) *aut
 		}
 	}
 
+	// Fallback to query parameter for SSE/EventSource connections
+	// (browser EventSource API cannot set custom headers)
+	if token == "" {
+		token = c.Query("token")
+	}
+
 	if token == "" {
 		return nil
 	}
