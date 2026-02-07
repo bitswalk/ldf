@@ -69,7 +69,8 @@
     "unknownError": "Une erreur inconnue est survenue. Veuillez reessayer.",
     "notFound": "La ressource demandee est introuvable.",
     "unauthorized": "Vous n'etes pas autorise a effectuer cette action.",
-    "forbidden": "Acces refuse."
+    "forbidden": "Acces refuse.",
+    "loadFailed": "Echec du chargement des donnees"
   },
   "confirm": {
     "delete": "Etes-vous sur de vouloir supprimer cet element ?",

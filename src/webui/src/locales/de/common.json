@@ -69,7 +69,8 @@
     "unknownError": "Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
     "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
     "unauthorized": "Sie sind nicht berechtigt, diese Aktion auszufuhren.",
-    "forbidden": "Zugriff verweigert."
+    "forbidden": "Zugriff verweigert.",
+    "loadFailed": "Daten konnten nicht geladen werden"
   },
   "confirm": {
     "delete": "Sind Sie sicher, dass Sie dieses Element loschen mochten?",
