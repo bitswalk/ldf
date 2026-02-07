@@ -439,7 +439,7 @@ func (m *Manager) createOrReuseJobForComponent(
 				if err := m.jobRepo.Create(job); err != nil {
 					log.Warn("Failed to create cache-hit job", "error", err)
 				} else {
-					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, cacheEntry.Checksum); err != nil {
+					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, cacheEntry.Checksum, cacheEntry.SizeBytes); err != nil {
 						log.Warn("Failed to mark cache-hit job completed", "error", err)
 					}
 					createdJobs[key] = job.ID
@@ -489,7 +489,7 @@ func (m *Manager) createOrReuseJobForComponent(
 				if err := m.jobRepo.Create(job); err != nil {
 					log.Warn("Failed to create cross-dist job", "error", err)
 				} else {
-					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, crossJob.Checksum); err != nil {
+					if err := m.jobRepo.MarkCompleted(job.ID, artifactPath, crossJob.Checksum, crossJob.TotalBytes); err != nil {
 						log.Warn("Failed to mark cross-dist job completed", "error", err)
 					}
 					createdJobs[key] = job.ID
