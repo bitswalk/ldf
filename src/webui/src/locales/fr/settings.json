@@ -78,6 +78,35 @@
         "light": "Clair",
         "dark": "Sombre"
       }
+    },
+    "branding": {
+      "title": "Marque",
+      "description": "Personnaliser la marque de l'application avec votre propre logo et favicon (root uniquement).",
+      "appName": {
+        "title": "Nom de l'application",
+        "description": "Nom personnalise affiche dans l'en-tete et l'onglet du navigateur.",
+        "placeholder": "Linux Distribution Factory",
+        "hint": "32 caracteres maximum. Laissez vide pour utiliser le nom par defaut.",
+        "charCount": "{{ count }}/32"
+      },
+      "logo": {
+        "title": "Logo",
+        "description": "Televersez un logo a afficher dans l'en-tete de l'application.",
+        "formats": "Formats supportes : PNG, JPEG, WebP, SVG",
+        "delete": {
+          "title": "Supprimer le logo",
+          "confirm": "Etes-vous sur de vouloir supprimer le logo ? L'espace reserve par defaut sera affiche a la place."
+        }
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "Televersez un favicon a afficher dans les onglets du navigateur.",
+        "formats": "Formats supportes : PNG, ICO, SVG",
+        "delete": {
+          "title": "Supprimer le favicon",
+          "confirm": "Etes-vous sur de vouloir supprimer le favicon ? L'icone par defaut du navigateur sera affichee a la place."
+        }
+      }
     }
   },
   "serverPanel": {

@@ -46,6 +46,7 @@
     "pending": "En attente",
     "downloading": "Telechargement",
     "validating": "Validation",
+    "building": "Construction",
     "ready": "Pret",
     "failed": "Echoue",
     "deleted": "Supprime"
