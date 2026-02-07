@@ -205,16 +205,12 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		}
 
 		if err := stage.Execute(jobCtx, sc, progressFunc); err != nil {
-			durationMs := time.Since(stageStart).Milliseconds()
 			if logErr := w.manager.buildJobRepo.AppendLog(job.ID, string(stageName), "error",
 				fmt.Sprintf("Stage execution failed: %v", err)); logErr != nil {
 				log.Warn("Failed to append build log", "build_id", job.ID, "error", logErr)
 			}
 			if logErr := w.manager.buildJobRepo.MarkStageFailed(job.ID, stageName, err.Error()); logErr != nil {
 				log.Warn("Failed to mark stage failed", "build_id", job.ID, "stage", stageName, "error", logErr)
-			}
-			if logErr := w.manager.buildJobRepo.MarkStageCompleted(job.ID, stageName, durationMs); logErr != nil {
-				log.Warn("Failed to mark stage completed", "build_id", job.ID, "stage", stageName, "error", logErr)
 			}
 			w.handleFailure(job, fmt.Sprintf("Stage %s failed: %v", stageName, err), string(stageName))
 			w.cleanup(workspacePath)
