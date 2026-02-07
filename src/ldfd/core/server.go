@@ -214,11 +214,14 @@ func (s *Server) Run() error {
 	addr := fmt.Sprintf("%s:%d", bind, port)
 
 	s.httpServer = &http.Server{
-		Addr:         addr,
-		Handler:      s.router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:        addr,
+		Handler:     s.router,
+		ReadTimeout: 30 * time.Second,
+		// WriteTimeout is NOT set (defaults to 0 = no timeout) because
+		// SSE endpoints (build log streaming) are long-lived connections
+		// that can run for minutes. A global WriteTimeout would kill these
+		// streams after the deadline, freezing the client UI.
+		IdleTimeout: 60 * time.Second,
 	}
 
 	// Channel to listen for errors coming from the listener
