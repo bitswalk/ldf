@@ -70,6 +70,7 @@
     "retrievalMethod": "Abrufmethode",
     "urlTemplate": "URL-Vorlage",
     "priority": "Priorität",
+    "defaultVersion": "Standardversion",
     "status": "Status",
     "created": "Erstellt",
     "updated": "Aktualisiert",
@@ -80,38 +81,60 @@
   "form": {
     "name": {
       "label": "Quellenname",
-      "placeholder": "Meine Quelle"
+      "placeholder": "z.B., Linux Kernel Offiziell",
+      "required": "Name ist erforderlich"
     },
     "url": {
-      "label": "Quellen-URL",
-      "placeholder": "https://beispiel.com/releases"
+      "label": "Basis-URL",
+      "placeholder": "https://github.com/torvalds/linux",
+      "required": "URL ist erforderlich",
+      "invalid": "Ungultiges URL-Format"
     },
     "component": {
       "label": "Komponente",
-      "placeholder": "Komponente auswählen..."
+      "placeholder": "-- Komponente auswahlen --",
+      "help": "Wahlen Sie die Komponente, die diese Quelle bereitstellt. Leer lassen fur generische Quellen."
     },
     "retrievalMethod": {
       "label": "Abrufmethode",
-      "options": {
-        "release": "Release",
-        "git": "Git"
-      }
+      "release": "Release-Archiv",
+      "git": "Git-Klon",
+      "help": "Wahlen Sie, wie die Quelle abgerufen wird: ein Release-Archiv herunterladen oder das Git-Repository klonen."
     },
     "urlTemplate": {
-      "label": "URL-Vorlage",
-      "placeholder": "{{ version }}/datei.tar.gz",
-      "help": "Verwenden Sie {{ version }} als Platzhalter für die Versionsnummer"
+      "label": "URL-Vorlage (optional)",
+      "placeholder": "{base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "Benutzerdefinierte URL-Vorlage. Bewegen Sie den Mauszeiger uber das ?-Symbol fur verfugbare Variablen. Leer lassen, um Komponenten-Standardwerte zu verwenden.",
+      "templateHelp": {
+        "title": "Vorlagenvariablen",
+        "description": "Verwenden Sie diese Platzhalter in Ihrer URL-Vorlage. Beispielversion: 6.12.5",
+        "examples": "Beispiele:"
+      }
+    },
+    "urlPreview": {
+      "label": "URL-Vorschau (Beispiel mit Version 6.12.5)"
     },
     "priority": {
-      "label": "Priorität",
-      "help": "Niedrigere Zahlen haben höhere Priorität"
+      "label": "Prioritat",
+      "placeholder": "0",
+      "help": "Niedrigere Werte haben hohere Prioritat. Quellen werden aufsteigend nach Prioritat sortiert."
+    },
+    "defaultVersion": {
+      "label": "Standardversion (optional)",
+      "placeholder": "z.B., 6.12.5",
+      "help": "Empfohlene Version fur diese Quelle. Wird automatisch von der neuesten Release bei der Synchronisierung erkannt, wenn nicht festgelegt."
     },
     "enabled": {
       "label": "Aktiviert"
     },
     "systemSource": {
       "label": "Systemquelle",
-      "help": "Systemquellen sind für alle Benutzer verfügbar und können nur von Administratoren verwaltet werden."
+      "help": "Systemquellen sind fur alle Benutzer verfugbar und konnen nur von Administratoren verwaltet werden."
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "add": "Quelle hinzufugen",
+      "update": "Quelle aktualisieren"
     }
   },
   "retrievalMethod": {

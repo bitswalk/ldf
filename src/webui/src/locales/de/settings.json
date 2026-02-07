@@ -78,6 +78,35 @@
         "light": "Hell",
         "dark": "Dunkel"
       }
+    },
+    "branding": {
+      "title": "Branding",
+      "description": "Passen Sie das Branding der Anwendung mit eigenem Logo und Favicon an (nur Root).",
+      "appName": {
+        "title": "Anwendungsname",
+        "description": "Benutzerdefinierter Name, der in der Kopfzeile und im Browser-Tab angezeigt wird.",
+        "placeholder": "Linux Distribution Factory",
+        "hint": "Maximal 32 Zeichen. Leer lassen, um den Standardnamen zu verwenden.",
+        "charCount": "{{ count }}/32"
+      },
+      "logo": {
+        "title": "Logo",
+        "description": "Laden Sie ein Logo hoch, das in der Kopfzeile der Anwendung angezeigt wird.",
+        "formats": "Unterstutzte Formate: PNG, JPEG, WebP, SVG",
+        "delete": {
+          "title": "Logo loschen",
+          "confirm": "Sind Sie sicher, dass Sie das Logo loschen mochten? Der Standard-Platzhalter wird stattdessen angezeigt."
+        }
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "Laden Sie ein Favicon hoch, das in Browser-Tabs angezeigt wird.",
+        "formats": "Unterstutzte Formate: PNG, ICO, SVG",
+        "delete": {
+          "title": "Favicon loschen",
+          "confirm": "Sind Sie sicher, dass Sie das Favicon loschen mochten? Das Standard-Browser-Symbol wird stattdessen angezeigt."
+        }
+      }
     }
   },
   "serverPanel": {

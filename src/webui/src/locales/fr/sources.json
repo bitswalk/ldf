@@ -70,6 +70,7 @@
     "retrievalMethod": "Méthode de récupération",
     "urlTemplate": "Modèle d'URL",
     "priority": "Priorité",
+    "defaultVersion": "Version par défaut",
     "status": "Statut",
     "created": "Créé",
     "updated": "Mis à jour",
@@ -80,38 +81,60 @@
   "form": {
     "name": {
       "label": "Nom de la source",
-      "placeholder": "Ma source"
+      "placeholder": "ex., Noyau Linux Officiel",
+      "required": "Le nom est requis"
     },
     "url": {
-      "label": "URL de la source",
-      "placeholder": "https://exemple.com/releases"
+      "label": "URL de base",
+      "placeholder": "https://github.com/torvalds/linux",
+      "required": "L'URL est requise",
+      "invalid": "Format d'URL invalide"
     },
     "component": {
       "label": "Composant",
-      "placeholder": "Sélectionnez un composant..."
+      "placeholder": "-- Selectionner un composant --",
+      "help": "Selectionnez le composant fourni par cette source. Laissez vide pour les sources generiques."
     },
     "retrievalMethod": {
-      "label": "Méthode de récupération",
-      "options": {
-        "release": "Release",
-        "git": "Git"
-      }
+      "label": "Methode de recuperation",
+      "release": "Archive de release",
+      "git": "Clone Git",
+      "help": "Choisissez comment recuperer la source : telecharger une archive de release ou cloner le depot git."
     },
     "urlTemplate": {
-      "label": "Modèle d'URL",
-      "placeholder": "{{ version }}/fichier.tar.gz",
-      "help": "Utilisez {{ version }} comme espace réservé pour le numéro de version"
+      "label": "Modele d'URL (optionnel)",
+      "placeholder": "{base_url}/archive/refs/tags/v{version}.tar.gz",
+      "help": "Modele d'URL personnalise. Survolez l'icone ? pour les variables disponibles. Laissez vide pour utiliser les valeurs par defaut du composant.",
+      "templateHelp": {
+        "title": "Variables du modele",
+        "description": "Utilisez ces espaces reserves dans votre modele d'URL. Version d'exemple : 6.12.5",
+        "examples": "Exemples :"
+      }
+    },
+    "urlPreview": {
+      "label": "Apercu de l'URL (exemple avec la version 6.12.5)"
     },
     "priority": {
-      "label": "Priorité",
-      "help": "Les numéros plus bas ont une priorité plus élevée"
+      "label": "Priorite",
+      "placeholder": "0",
+      "help": "Les valeurs plus basses ont une priorite plus elevee. Les sources sont triees par priorite croissante."
+    },
+    "defaultVersion": {
+      "label": "Version par defaut (optionnel)",
+      "placeholder": "ex., 6.12.5",
+      "help": "Version recommandee pour cette source. Detectee automatiquement depuis la derniere release lors de la synchronisation si non definie."
     },
     "enabled": {
-      "label": "Activé"
+      "label": "Active"
     },
     "systemSource": {
-      "label": "Source système",
-      "help": "Les sources système sont disponibles pour tous les utilisateurs et ne peuvent être gérées que par les administrateurs."
+      "label": "Source systeme",
+      "help": "Les sources systeme sont disponibles pour tous les utilisateurs et ne peuvent etre gerees que par les administrateurs."
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "add": "Ajouter la source",
+      "update": "Mettre a jour la source"
     }
   },
   "retrievalMethod": {
