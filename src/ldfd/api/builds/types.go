@@ -1,6 +1,8 @@
 package builds
 
 import (
+	"time"
+
 	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
@@ -40,4 +42,16 @@ type BuildJobsListResponse struct {
 type BuildLogsResponse struct {
 	Count int           `json:"count"`
 	Logs  []db.BuildLog `json:"logs"`
+}
+
+// BuildStatusEvent is sent via SSE to update build status in real-time
+type BuildStatusEvent struct {
+	Status          db.BuildJobStatus `json:"status"`
+	CurrentStage    string            `json:"current_stage"`
+	ProgressPercent int               `json:"progress_percent"`
+	Stages          []db.BuildStage   `json:"stages,omitempty"`
+	CompletedAt     *time.Time        `json:"completed_at,omitempty"`
+	ErrorMessage    string            `json:"error_message,omitempty"`
+	ErrorStage      string            `json:"error_stage,omitempty"`
+	ArtifactSize    int64             `json:"artifact_size,omitempty"`
 }
