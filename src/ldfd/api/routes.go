@@ -70,6 +70,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			distributionsWrite.POST("/:id/downloads", a.Downloads.HandleStartDistributionDownloads)
 			distributionsWrite.DELETE("/:id/downloads", a.Downloads.HandleFlushDistributionDownloads)
 
+			// Kernel config upload (requires auth with write access)
+			distributionsWrite.POST("/:id/kernel-config", a.Distributions.HandleUploadKernelConfig)
+
 			// Artifact write operations (requires auth with write access)
 			if a.HasStorage() {
 				distributionsWrite.POST("/:id/artifacts", a.Artifacts.HandleUpload)

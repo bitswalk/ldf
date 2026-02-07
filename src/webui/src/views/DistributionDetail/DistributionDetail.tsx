@@ -13,6 +13,7 @@ import {
   updateDistribution,
   deleteDistribution,
   getDeletionPreview,
+  uploadKernelConfig,
   type Distribution,
   type DistributionStatus,
   type DistributionConfig,
@@ -126,6 +127,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     createSignal<DeletionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = createSignal(false);
   const [buildDialogOpen, setBuildDialogOpen] = createSignal(false);
+  const [kernelConfigModalOpen, setKernelConfigModalOpen] = createSignal(false);
+  const [uploadingConfig, setUploadingConfig] = createSignal(false);
+  const [uploadProgress, setUploadProgress] = createSignal(0);
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -269,6 +273,30 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
   const cancelDelete = () => {
     setDeleteModalOpen(false);
+  };
+
+  const handleKernelConfigUpload = async (file: File) => {
+    setUploadingConfig(true);
+    setUploadProgress(0);
+
+    const result = await uploadKernelConfig(
+      props.distributionId,
+      file,
+      (progress) => setUploadProgress(progress),
+    );
+
+    setUploadingConfig(false);
+
+    if (result.success) {
+      setKernelConfigModalOpen(false);
+      showNotification(
+        "success",
+        t("distribution.detail.quickActions.uploadKernelConfigSuccess"),
+      );
+      fetchDistribution();
+    } else {
+      showNotification("error", result.message);
+    }
   };
 
   const config = () => distribution()?.config;
@@ -687,6 +715,25 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     </div>
                   </button>
 
+                  <button
+                    class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left"
+                    onClick={() => setKernelConfigModalOpen(true)}
+                  >
+                    <Icon name="gear-six" size="md" class="text-primary" />
+                    <div>
+                      <div class="font-medium">
+                        {t(
+                          "distribution.detail.quickActions.uploadKernelConfig",
+                        )}
+                      </div>
+                      <div class="text-sm text-muted-foreground">
+                        {t(
+                          "distribution.detail.quickActions.uploadKernelConfigDesc",
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
                   <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
                     <Icon
                       name="download-simple"
@@ -902,6 +949,56 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
           props.onNavigateToBuild?.(buildId);
         }}
       />
+
+      {/* Kernel Config Upload Modal */}
+      <Modal
+        isOpen={kernelConfigModalOpen()}
+        onClose={() => setKernelConfigModalOpen(false)}
+        title={t("distribution.detail.quickActions.uploadKernelConfig")}
+      >
+        <section class="flex flex-col gap-4">
+          <p class="text-sm text-muted-foreground">
+            {t("distribution.detail.quickActions.uploadKernelConfigDesc")}
+          </p>
+
+          <label class="flex flex-col gap-2">
+            <input
+              type="file"
+              accept=".config,*"
+              class="block w-full text-sm text-muted-foreground
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-md file:border file:border-border
+                file:text-sm file:font-medium
+                file:bg-muted file:text-foreground
+                hover:file:bg-muted/80 file:cursor-pointer file:transition-colors"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) {
+                  handleKernelConfigUpload(file);
+                }
+              }}
+              disabled={uploadingConfig()}
+            />
+          </label>
+
+          <Show when={uploadingConfig()}>
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <Spinner size="sm" />
+                <span class="text-sm text-muted-foreground">
+                  {uploadProgress()}%
+                </span>
+              </div>
+              <div class="w-full bg-muted rounded-full h-2">
+                <div
+                  class="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${uploadProgress()}%` }}
+                />
+              </div>
+            </div>
+          </Show>
+        </section>
+      </Modal>
     </section>
   );
 };

@@ -3,6 +3,9 @@ package build
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bitswalk/ldf/src/ldfd/db"
@@ -152,7 +155,54 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 	}
 
 	sc.Components = resolved
+
+	// Fetch kernel .config artifact from storage into the workspace
+	progress(95, "Fetching kernel config from storage")
+	kernelConfigKey := KernelConfigArtifactPath(sc.OwnerID, sc.DistributionID)
+	configPath := filepath.Join(sc.ConfigDir, ".config")
+
+	if err := os.MkdirAll(sc.ConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	if resolver, ok := s.storage.(storage.LocalPathResolver); ok {
+		// Symlink for local storage — avoids duplication
+		srcPath := resolver.ResolvePath(kernelConfigKey)
+		if err := os.Symlink(srcPath, configPath); err != nil {
+			// Fallback to copy if symlink fails
+			log.Warn("Symlink failed, falling back to copy", "error", err)
+			if err := s.downloadToFile(ctx, kernelConfigKey, configPath); err != nil {
+				return fmt.Errorf("failed to fetch kernel config artifact: %w", err)
+			}
+		}
+	} else {
+		if err := s.downloadToFile(ctx, kernelConfigKey, configPath); err != nil {
+			return fmt.Errorf("failed to fetch kernel config artifact: %w", err)
+		}
+	}
+
 	progress(100, fmt.Sprintf("Resolved %d components", len(resolved)))
+
+	return nil
+}
+
+// downloadToFile downloads a storage object to a local file.
+func (s *ResolveStage) downloadToFile(ctx context.Context, key, localPath string) error {
+	reader, _, err := s.storage.Download(ctx, key)
+	if err != nil {
+		return fmt.Errorf("failed to download %s: %w", key, err)
+	}
+	defer reader.Close()
+
+	file, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("failed to create %s: %w", localPath, err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		return fmt.Errorf("failed to write %s: %w", localPath, err)
+	}
 
 	return nil
 }
