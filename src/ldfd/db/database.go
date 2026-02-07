@@ -544,6 +544,74 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy board_profiles table (delete seeded profiles first, load all from disk)
+	if d.tableExistsInDiskDB("board_profiles") {
+		if _, err := d.db.Exec(`DELETE FROM board_profiles`); err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("board_profiles delete: %v", err))
+		}
+		result, err := d.db.Exec(`
+			INSERT INTO board_profiles
+			SELECT * FROM disk_db.board_profiles
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("board_profiles: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("board_profiles(%d)", rows))
+		}
+	}
+
+	// Copy build_jobs table
+	if d.tableExistsInDiskDB("build_jobs") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO build_jobs
+			SELECT * FROM disk_db.build_jobs
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("build_jobs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("build_jobs(%d)", rows))
+		}
+	}
+
+	// Copy build_stages table
+	if d.tableExistsInDiskDB("build_stages") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO build_stages
+			SELECT * FROM disk_db.build_stages
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("build_stages: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("build_stages(%d)", rows))
+		}
+	}
+
+	// Copy build_logs table
+	if d.tableExistsInDiskDB("build_logs") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO build_logs
+			SELECT * FROM disk_db.build_logs
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("build_logs: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("build_logs(%d)", rows))
+		}
+	}
+
+	// Copy refresh_tokens table
+	if d.tableExistsInDiskDB("refresh_tokens") {
+		result, err := d.db.Exec(`
+			INSERT OR REPLACE INTO refresh_tokens
+			SELECT * FROM disk_db.refresh_tokens
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("refresh_tokens: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("refresh_tokens(%d)", rows))
+		}
+	}
+
 	// Log what was loaded
 	if len(loadedTables) > 0 {
 		fmt.Fprintf(os.Stderr, "INFO: Loaded from disk: %v\n", loadedTables)
