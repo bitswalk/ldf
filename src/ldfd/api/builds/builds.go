@@ -368,6 +368,9 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 	var lastStatus db.BuildJobStatus
 	var lastProgress int
 
+	// Use request context to detect client disconnection
+	clientGone := c.Request.Context().Done()
+
 	c.Stream(func(w io.Writer) bool {
 		currentJob, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 		if err != nil || currentJob == nil {
@@ -417,9 +420,13 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 			return false
 		}
 
-		// Wait before polling again
-		time.Sleep(1 * time.Second)
-		return true
+		// Wait before polling again, but stop if client disconnects
+		select {
+		case <-clientGone:
+			return false
+		case <-time.After(1 * time.Second):
+			return true
+		}
 	})
 }
 
