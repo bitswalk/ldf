@@ -6,6 +6,7 @@ export type DistributionStatus =
   | "pending"
   | "downloading"
   | "validating"
+  | "building"
   | "ready"
   | "failed"
   | "deleted";

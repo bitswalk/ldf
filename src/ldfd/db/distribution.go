@@ -221,7 +221,7 @@ func (r *DistributionRepository) UpdateStatus(id string, status DistributionStat
 	now := time.Now()
 
 	switch status {
-	case StatusDownloading, StatusValidating:
+	case StatusDownloading, StatusValidating, StatusBuilding:
 		query = `
 			UPDATE distributions
 			SET status = ?, started_at = ?, updated_at = ?, error_message = ?
