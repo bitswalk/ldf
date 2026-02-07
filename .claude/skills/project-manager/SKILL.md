@@ -66,7 +66,9 @@ gh project item-add 9 --owner bitswalk --url "https://github.com/bitswalk/ldf/is
 
 ## Release cycle workflow
 
-When planning a new release:
+### Minor releases (new features, milestones)
+
+When planning a new feature release:
 
 1. Identify the version number, codename, and all work items (milestone subtasks, bugs, fixes)
 2. Create GitHub issues for all items, assign to the appropriate milestone
@@ -76,7 +78,28 @@ When planning a new release:
 6. When all work is done and tested, use `/create-release <version> --finalize` to merge to main and tag
 7. The tag push triggers automated release build and publish via GitHub Actions
 
-Previous releases: Phoenix (1.0.0). Each release must have a unique one-word codename.
+Each minor release must have a unique one-word codename.
+
+### Patch releases (bug fixes, polish)
+
+When bugs or UI issues are discovered after a release:
+
+1. **Create GitHub issues** for each fix with labels (`type: bug`, `priority:`, `component:`)
+2. **Determine patch version**: increment the patch number of the current version (e.g., 1.2.0 -> 1.2.1)
+3. **Create the release branch**: `/create-release <x.y.Z> <same-codename>` (reuse the minor release codename)
+4. **Create bugfix branches** from the release branch: `bugfix/<issue-number>-<short-description>`
+5. **Merge fixes** back into the release branch
+6. **Finalize**: `/create-release <x.y.Z> --finalize`
+
+**IMPORTANT**: Never commit fixes directly to `main`. Even a single bug fix should go through a patch release.
+
+### Release history
+
+| Version | Codename | Type |
+|---------|----------|------|
+| 1.0.0 | Phoenix | Major (initial) |
+| 1.1.0 | Gryphon | Minor (M5.5) |
+| 1.2.0 | Basilisk | Minor (M5.6) |
 
 ## Key references
 

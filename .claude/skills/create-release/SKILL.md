@@ -9,15 +9,18 @@ argument-hint: "<version> <codename> [--finalize]"
 
 Manage the full release lifecycle. Each release has a unique one-word codename.
 
-Previous releases: Phoenix (1.0.0).
+Previous releases: Phoenix (1.0.0), Gryphon (1.1.0), Basilisk (1.2.0).
 
 ## Arguments
 
-- `$ARGUMENTS[0]` -- Version number (e.g., `1.1.0`). Required.
+- `$ARGUMENTS[0]` -- Version number (e.g., `1.1.0` or `1.2.1`). Required.
 - `$ARGUMENTS[1]` -- Release codename (e.g., `Gryphon`). Required when creating; ignored with `--finalize`.
 - `--finalize` -- Finalize an existing release branch (merge to main + tag + push).
 
 Without `--finalize`, creates a new release branch. With `--finalize`, ships the release.
+
+**Patch releases** (e.g., `1.2.1`) reuse the codename of their minor release (e.g., Basilisk).
+**Minor releases** (e.g., `1.3.0`) require a new unique codename.
 
 ---
 

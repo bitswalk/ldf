@@ -42,11 +42,30 @@ Each release has a unique one-word codename (e.g., v1.0.0 = Phoenix).
 6. **Ship**: Use `/create-release <version> --finalize` to merge to `main`, tag `v<version>`, and push.
 7. **Automate**: The `v*` tag push triggers `.github/workflows/release.yml` which builds, packages, and publishes the GitHub release.
 
+### Versioning (SemVer)
+
+- **Major** (`X.0.0`): Breaking changes, major rewrites
+- **Minor** (`x.Y.0`): New features, milestone work (M5, M6, etc.)
+- **Patch** (`x.y.Z`): Bug fixes, UI polish, i18n corrections, missing functionality
+
+### Patch Releases
+
+Bug fixes and non-milestone improvements **must** go through a proper release cycle, never be committed directly to `main`:
+
+1. **Create issues** for each fix on GitHub with appropriate labels
+2. **Create a patch release branch**: `/create-release <x.y.Z> <Codename>` (increment patch version)
+3. **Create bugfix branches** from the release branch: `bugfix/<issue-number>-<short-description>`
+4. **Merge fixes** back into the release branch
+5. **Finalize**: `/create-release <x.y.Z> --finalize`
+
+Patch releases reuse the same codename as their minor release (e.g., v1.2.0 Basilisk -> v1.2.1 Basilisk).
+
 ### General Rules
 
+- **Never commit fixes directly to `main`** -- always use a release branch, even for a single bug fix.
 - When a release branch exists for your milestone, branch from it and merge back to it -- **not** `main`.
-- When no release branch exists (hotfixes, standalone work), branch from and merge to `main` as before.
 - **Never** switch to a new branch without merging or stashing the current one first.
+- Every bugfix/feature branch must reference a GitHub issue.
 
 ## Environment Notes
 
