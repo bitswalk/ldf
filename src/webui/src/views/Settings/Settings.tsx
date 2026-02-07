@@ -520,6 +520,18 @@ export const Settings: Component<SettingsProps> = (props) => {
               />
             </Show>
           </SummaryCategory>
+          <Show when={isRootUser()}>
+            <SummaryCategory
+              id="build-engine"
+              label={t("settings.categories.buildEngine")}
+              icon="engine"
+            >
+              <SummaryNavItem
+                id="build-settings"
+                label={t("settings.buildEngine.settings.title")}
+              />
+            </SummaryCategory>
+          </Show>
           <SummaryCategory
             id="account"
             label={t("settings.categories.account")}
@@ -1072,6 +1084,105 @@ export const Settings: Component<SettingsProps> = (props) => {
             description={t("settings.mirrors.description")}
           >
             <MirrorManager />
+          </SummarySection>
+
+          {/* Build Settings Section (Root users only) */}
+          <SummarySection
+            id="build-settings"
+            title={t("settings.buildEngine.settings.title")}
+            description={t("settings.buildEngine.settings.description")}
+          >
+            <SummaryItem
+              title={t("settings.buildEngine.containerRuntime.title")}
+              description={t(
+                "settings.buildEngine.containerRuntime.description",
+              )}
+            >
+              <SummarySelect
+                value={
+                  (serverSettings().find(
+                    (s) => s.key === "build.container_runtime",
+                  )?.value as string) || "podman"
+                }
+                options={[
+                  {
+                    value: "podman",
+                    label: t("settings.buildEngine.containerRuntime.podman"),
+                  },
+                  {
+                    value: "docker",
+                    label: t("settings.buildEngine.containerRuntime.docker"),
+                  },
+                  {
+                    value: "nerdctl",
+                    label: t("settings.buildEngine.containerRuntime.nerdctl"),
+                  },
+                  {
+                    value: "chroot",
+                    label: t("settings.buildEngine.containerRuntime.chroot"),
+                  },
+                ]}
+                onChange={(value) =>
+                  handleSettingUpdate("build.container_runtime", value)
+                }
+              />
+            </SummaryItem>
+            <SummaryItem
+              title={t("settings.buildEngine.containerImage.title")}
+              description={t("settings.buildEngine.containerImage.description")}
+            >
+              <input
+                type="text"
+                value={
+                  (serverSettings().find(
+                    (s) => s.key === "build.container_image",
+                  )?.value as string) || ""
+                }
+                onChange={(e) =>
+                  handleSettingUpdate(
+                    "build.container_image",
+                    e.currentTarget.value,
+                  )
+                }
+                class="px-3 py-1.5 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+              />
+            </SummaryItem>
+            <SummaryItem
+              title={t("settings.buildEngine.workspace.title")}
+              description={t("settings.buildEngine.workspace.description")}
+            >
+              <input
+                type="text"
+                value={
+                  (serverSettings().find((s) => s.key === "build.workspace")
+                    ?.value as string) || ""
+                }
+                onChange={(e) =>
+                  handleSettingUpdate("build.workspace", e.currentTarget.value)
+                }
+                class="px-3 py-1.5 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+              />
+            </SummaryItem>
+            <SummaryItem
+              title={t("settings.buildEngine.workers.title")}
+              description={t("settings.buildEngine.workers.description")}
+            >
+              <input
+                type="number"
+                min="1"
+                value={
+                  (serverSettings().find((s) => s.key === "build.workers")
+                    ?.value as number) || 1
+                }
+                onChange={(e) =>
+                  handleSettingUpdate(
+                    "build.workers",
+                    parseInt(e.currentTarget.value, 10) || 1,
+                  )
+                }
+                class="px-3 py-1.5 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-24"
+              />
+            </SummaryItem>
           </SummarySection>
 
           {/* Profile Section */}

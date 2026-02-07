@@ -244,27 +244,6 @@ const getSettingsStructure = (): SettingGroupConfig[] => [
     ],
   },
   {
-    key: "build",
-    label: t("settings.serverPanel.build.label"),
-    description: t("settings.serverPanel.build.description"),
-    icon: "hammer",
-    required: false,
-    children: [
-      {
-        key: "build.workspace",
-        label: t("settings.serverPanel.build.workspace.label"),
-        description: t("settings.serverPanel.build.workspace.description"),
-        type: "string",
-      },
-      {
-        key: "build.workers",
-        label: t("settings.serverPanel.build.workers.label"),
-        description: t("settings.serverPanel.build.workers.description"),
-        type: "int",
-      },
-    ],
-  },
-  {
     key: "download",
     label: t("settings.serverPanel.download.label"),
     description: t("settings.serverPanel.download.description"),

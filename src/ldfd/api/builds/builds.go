@@ -123,7 +123,8 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 	}
 
 	// Pre-flight: validate build environment for the requested architecture
-	if _, err := build.ValidateBuildEnvironment(h.buildManager.GetConfig().ContainerImage, arch); err != nil {
+	runtime := build.RuntimeType(h.buildManager.GetConfig().ContainerRuntime)
+	if _, err := build.ValidateBuildEnvironment(runtime, h.buildManager.GetConfig().ContainerImage, arch); err != nil {
 		c.JSON(http.StatusBadRequest, common.ErrorResponse{
 			Error:   "Build environment not available",
 			Code:    http.StatusBadRequest,

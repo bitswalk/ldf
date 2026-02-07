@@ -24,21 +24,23 @@ func SetLogger(l *logs.Logger) {
 
 // Config holds configuration for the build manager
 type Config struct {
-	Workers        int           // Number of concurrent build workers
-	WorkspaceBase  string        // Base directory for build workspaces
-	ContainerImage string        // Container image for build environment
-	RetryDelay     time.Duration // Base delay between retries
-	MaxRetries     int           // Default max retries per job
+	Workers          int           // Number of concurrent build workers
+	WorkspaceBase    string        // Base directory for build workspaces
+	ContainerImage   string        // Container image for build environment (or sysroot path for chroot)
+	ContainerRuntime string        // Container runtime: podman, docker, nerdctl, or chroot
+	RetryDelay       time.Duration // Base delay between retries
+	MaxRetries       int           // Default max retries per job
 }
 
 // DefaultConfig returns sensible default configuration
 func DefaultConfig() Config {
 	return Config{
-		Workers:        1,
-		WorkspaceBase:  "~/.ldfd/cache/builds",
-		ContainerImage: "ldf-builder:latest",
-		RetryDelay:     30 * time.Second,
-		MaxRetries:     1,
+		Workers:          1,
+		WorkspaceBase:    "~/.ldfd/cache/builds",
+		ContainerImage:   "ldf-builder:latest",
+		ContainerRuntime: "podman",
+		RetryDelay:       30 * time.Second,
+		MaxRetries:       1,
 	}
 }
 
@@ -79,6 +81,9 @@ func NewManager(database *db.Database, storageBackend storage.Backend,
 	if cfg.ContainerImage == "" {
 		cfg.ContainerImage = DefaultConfig().ContainerImage
 	}
+	if cfg.ContainerRuntime == "" {
+		cfg.ContainerRuntime = DefaultConfig().ContainerRuntime
+	}
 	if cfg.RetryDelay <= 0 {
 		cfg.RetryDelay = DefaultConfig().RetryDelay
 	}
@@ -111,7 +116,13 @@ func (m *Manager) RegisterStages(stages []Stage) {
 
 // RegisterDefaultStages sets up the default build pipeline stages
 func (m *Manager) RegisterDefaultStages() {
-	executor := NewContainerExecutor(m.config.ContainerImage, nil)
+	runtime := RuntimeType(m.config.ContainerRuntime)
+	executor, err := NewExecutor(runtime, m.config.ContainerImage, nil)
+	if err != nil {
+		log.Error("Failed to create build executor, falling back to podman",
+			"runtime", m.config.ContainerRuntime, "error", err)
+		executor = NewContainerRuntime("podman", m.config.ContainerImage, nil)
+	}
 
 	m.stages = []Stage{
 		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo, m.sourceRepo, m.storage),
@@ -124,6 +135,7 @@ func (m *Manager) RegisterDefaultStages() {
 
 	log.Info("Registered default build stages",
 		"count", len(m.stages),
+		"runtime", m.config.ContainerRuntime,
 		"stages", []string{"resolve", "download", "prepare", "compile", "assemble", "package"})
 }
 

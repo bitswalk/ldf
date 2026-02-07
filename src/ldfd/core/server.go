@@ -122,6 +122,12 @@ func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr 
 	if workers := viper.GetInt("build.workers"); workers > 0 {
 		buildCfg.Workers = workers
 	}
+	if runtime := viper.GetString("build.container_runtime"); runtime != "" {
+		buildCfg.ContainerRuntime = runtime
+	}
+	if image := viper.GetString("build.container_image"); image != "" {
+		buildCfg.ContainerImage = image
+	}
 	buildManager := build.NewManager(database, storageBackend, downloadManager, buildCfg)
 	buildManager.RegisterDefaultStages()
 

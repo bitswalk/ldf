@@ -45,14 +45,14 @@ type QEMUSupport struct {
 // BuildEnvironment is the validated result of pre-flight checks,
 // carried forward into StageContext for use by all stages
 type BuildEnvironment struct {
-	HostArch           HostArch
-	TargetArch         db.TargetArch
-	IsNative           bool
-	Toolchain          ToolchainInfo
-	ContainerImage     string // resolved image name (arch-specific or default)
-	UseQEMUEmulation   bool   // true if running foreign-arch container via --platform
-	QEMUSupport        QEMUSupport
-	PodmanPlatformFlag string // e.g. "linux/arm64" for --platform, empty if native
+	HostArch              HostArch
+	TargetArch            db.TargetArch
+	IsNative              bool
+	Toolchain             ToolchainInfo
+	ContainerImage        string // resolved image name (arch-specific or default)
+	UseQEMUEmulation      bool   // true if running foreign-arch container via --platform
+	QEMUSupport           QEMUSupport
+	ContainerPlatformFlag string // e.g. "linux/arm64" for --platform, empty if native
 }
 
 // toolchainRegistry maps host→target pairs to their toolchain configuration.
@@ -74,8 +74,8 @@ var toolchainRegistry = map[ArchPair]ToolchainInfo{
 	},
 }
 
-// podmanPlatforms maps target architectures to Podman --platform values
-var podmanPlatforms = map[db.TargetArch]string{
+// containerPlatforms maps target architectures to OCI --platform values
+var containerPlatforms = map[db.TargetArch]string{
 	db.ArchX86_64:  "linux/amd64",
 	db.ArchAARCH64: "linux/arm64",
 }
@@ -160,7 +160,8 @@ func DetectQEMUSupport(target db.TargetArch) QEMUSupport {
 
 // ContainerImageForArch returns an architecture-tagged container image name
 // if it exists locally, otherwise falls back to the base image with :latest tag.
-func ContainerImageForArch(baseImage string, target db.TargetArch) string {
+// The binaryName parameter specifies which runtime to query (e.g. "podman", "docker").
+func ContainerImageForArch(binaryName, baseImage string, target db.TargetArch) string {
 	// Strip any existing tag from the base image
 	base := baseImage
 	if idx := strings.LastIndex(baseImage, ":"); idx > 0 {
@@ -169,7 +170,7 @@ func ContainerImageForArch(baseImage string, target db.TargetArch) string {
 
 	// Try architecture-specific image
 	archImage := fmt.Sprintf("%s:%s", base, string(target))
-	cmd := exec.CommandContext(context.Background(), "podman", "image", "exists", archImage)
+	cmd := exec.CommandContext(context.Background(), binaryName, "image", "exists", archImage)
 	if cmd.Run() == nil {
 		return archImage
 	}
@@ -184,7 +185,7 @@ func ContainerImageForArch(baseImage string, target db.TargetArch) string {
 // ValidateBuildEnvironment performs pre-flight checks for a build.
 // Strategy priority: native > cross-compile > QEMU emulation.
 // Returns a BuildEnvironment summary or an error explaining what is missing.
-func ValidateBuildEnvironment(baseImage string, target db.TargetArch) (*BuildEnvironment, error) {
+func ValidateBuildEnvironment(runtime RuntimeType, baseImage string, target db.TargetArch) (*BuildEnvironment, error) {
 	host := DetectHostArch()
 
 	env := &BuildEnvironment{
@@ -200,8 +201,13 @@ func ValidateBuildEnvironment(baseImage string, target db.TargetArch) (*BuildEnv
 	}
 	env.Toolchain = tc
 
-	// Resolve container image
-	env.ContainerImage = ContainerImageForArch(baseImage, target)
+	// For container runtimes, resolve the container image
+	if runtime.IsContainerRuntime() {
+		env.ContainerImage = ContainerImageForArch(string(runtime), baseImage, target)
+	} else {
+		// Chroot mode: baseImage is the sysroot path (or empty for direct host)
+		env.ContainerImage = baseImage
+	}
 
 	// For native builds, we're done
 	if env.IsNative {
@@ -216,11 +222,11 @@ func ValidateBuildEnvironment(baseImage string, target db.TargetArch) (*BuildEnv
 	// Also check QEMU support as fallback metadata
 	env.QEMUSupport = DetectQEMUSupport(target)
 
-	// If QEMU binfmt is registered, we can use --platform for
-	// running foreign-arch containers as an alternative strategy
-	if env.QEMUSupport.BinfmtRegistered {
-		if platform, ok := podmanPlatforms[target]; ok {
-			env.PodmanPlatformFlag = platform
+	// If QEMU binfmt is registered and we're using a container runtime,
+	// we can use --platform for running foreign-arch containers
+	if runtime.IsContainerRuntime() && env.QEMUSupport.BinfmtRegistered {
+		if platform, ok := containerPlatforms[target]; ok {
+			env.ContainerPlatformFlag = platform
 			env.UseQEMUEmulation = true
 		}
 	}

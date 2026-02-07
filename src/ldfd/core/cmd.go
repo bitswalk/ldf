@@ -128,6 +128,8 @@ func init() {
 	viper.SetDefault("storage.s3.path_style", true)
 	viper.SetDefault("build.workspace", "~/.ldfd/cache/builds")
 	viper.SetDefault("build.workers", 1)
+	viper.SetDefault("build.container_runtime", "podman")
+	viper.SetDefault("build.container_image", "ldf-builder:latest")
 	viper.SetDefault("sync.cache_duration", 60) // 60 minutes default
 
 	// Security defaults

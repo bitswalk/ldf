@@ -5,6 +5,7 @@
     "general": "General",
     "appearance": "Apparence",
     "server": "Serveur",
+    "buildEngine": "Moteur de build",
     "account": "Compte"
   },
   "general": {
@@ -366,6 +367,32 @@
           "resetting": "Reinitialisation..."
         }
       }
+    }
+  },
+  "buildEngine": {
+    "settings": {
+      "title": "Parametres de build",
+      "description": "Configurer le moteur d'execution et les ressources du pipeline de build"
+    },
+    "containerRuntime": {
+      "title": "Moteur de conteneurs",
+      "description": "Environnement d'execution utilise pour l'isolation des builds. Podman, Docker et nerdctl utilisent des conteneurs OCI. Chroot s'execute directement sur l'hote.",
+      "podman": "Podman",
+      "docker": "Docker",
+      "nerdctl": "nerdctl (containerd)",
+      "chroot": "Chroot (hote direct)"
+    },
+    "containerImage": {
+      "title": "Image de build",
+      "description": "Image de conteneur pour l'environnement de build (ou chemin sysroot en mode chroot)"
+    },
+    "workspace": {
+      "title": "Espace de travail",
+      "description": "Repertoire de base pour les espaces de travail de build (supporte ~ pour le repertoire personnel)"
+    },
+    "workers": {
+      "title": "Workers de build",
+      "description": "Nombre de workers de build simultanes"
     }
   },
   "account": {

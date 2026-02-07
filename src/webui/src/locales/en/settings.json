@@ -5,6 +5,7 @@
     "general": "General",
     "appearance": "Appearance",
     "server": "Server",
+    "buildEngine": "Build Engine",
     "account": "Account"
   },
   "general": {
@@ -366,6 +367,32 @@
           "resetting": "Resetting..."
         }
       }
+    }
+  },
+  "buildEngine": {
+    "settings": {
+      "title": "Build Settings",
+      "description": "Configure the build pipeline runtime and resources"
+    },
+    "containerRuntime": {
+      "title": "Container Runtime",
+      "description": "Runtime used for build isolation. Podman, Docker, and nerdctl use OCI containers. Chroot runs directly on the host.",
+      "podman": "Podman",
+      "docker": "Docker",
+      "nerdctl": "nerdctl (containerd)",
+      "chroot": "Chroot (direct host)"
+    },
+    "containerImage": {
+      "title": "Builder Image",
+      "description": "Container image for the build environment (or sysroot path when using chroot mode)"
+    },
+    "workspace": {
+      "title": "Build Workspace",
+      "description": "Base directory for build workspaces (supports ~ for home directory)"
+    },
+    "workers": {
+      "title": "Build Workers",
+      "description": "Number of concurrent build workers"
     }
   },
   "account": {

@@ -123,7 +123,7 @@ func TestValidateBuildEnvironment_Native(t *testing.T) {
 		target = db.ArchAARCH64
 	}
 
-	env, err := ValidateBuildEnvironment("ldf-builder:latest", target)
+	env, err := ValidateBuildEnvironment(RuntimePodman, "ldf-builder:latest", target)
 	if err != nil {
 		t.Fatalf("unexpected error for native build: %v", err)
 	}
@@ -133,8 +133,8 @@ func TestValidateBuildEnvironment_Native(t *testing.T) {
 	if env.Toolchain.CrossCompilePrefix != "" {
 		t.Errorf("expected empty CrossCompilePrefix for native build, got %q", env.Toolchain.CrossCompilePrefix)
 	}
-	if env.PodmanPlatformFlag != "" {
-		t.Errorf("expected empty PodmanPlatformFlag for native build, got %q", env.PodmanPlatformFlag)
+	if env.ContainerPlatformFlag != "" {
+		t.Errorf("expected empty ContainerPlatformFlag for native build, got %q", env.ContainerPlatformFlag)
 	}
 	if env.UseQEMUEmulation {
 		t.Error("expected UseQEMUEmulation=false for native build")
@@ -155,18 +155,18 @@ func TestBuildEnvironmentPlatformFlag(t *testing.T) {
 		t.Errorf("expected MakeArch=arm64, got %q", tc.MakeArch)
 	}
 
-	// Check the podman platform mapping
-	platform, ok := podmanPlatforms[db.ArchAARCH64]
+	// Check the container platform mapping
+	platform, ok := containerPlatforms[db.ArchAARCH64]
 	if !ok {
-		t.Fatal("expected podmanPlatforms entry for aarch64")
+		t.Fatal("expected containerPlatforms entry for aarch64")
 	}
 	if platform != "linux/arm64" {
 		t.Errorf("expected linux/arm64, got %q", platform)
 	}
 
-	platform, ok = podmanPlatforms[db.ArchX86_64]
+	platform, ok = containerPlatforms[db.ArchX86_64]
 	if !ok {
-		t.Fatal("expected podmanPlatforms entry for x86_64")
+		t.Fatal("expected containerPlatforms entry for x86_64")
 	}
 	if platform != "linux/amd64" {
 		t.Errorf("expected linux/amd64, got %q", platform)

@@ -29,12 +29,12 @@ type ImageGenerator interface {
 
 // RawImageGenerator creates raw disk images
 type RawImageGenerator struct {
-	executor *ContainerExecutor
+	executor Executor
 	sizeGB   int // Image size in GB (default: 4)
 }
 
 // NewRawImageGenerator creates a new raw image generator
-func NewRawImageGenerator(executor *ContainerExecutor, sizeGB int) *RawImageGenerator {
+func NewRawImageGenerator(executor Executor, sizeGB int) *RawImageGenerator {
 	if sizeGB <= 0 {
 		sizeGB = 4
 	}
@@ -313,7 +313,7 @@ type QCOW2ImageGenerator struct {
 }
 
 // NewQCOW2ImageGenerator creates a new QCOW2 image generator
-func NewQCOW2ImageGenerator(executor *ContainerExecutor, sizeGB int, compression bool) *QCOW2ImageGenerator {
+func NewQCOW2ImageGenerator(executor Executor, sizeGB int, compression bool) *QCOW2ImageGenerator {
 	return &QCOW2ImageGenerator{
 		rawGenerator: NewRawImageGenerator(executor, sizeGB),
 		compression:  compression,
@@ -371,13 +371,13 @@ func (g *QCOW2ImageGenerator) Generate(ctx context.Context, sc *StageContext, pr
 
 // ISOImageGenerator creates bootable ISO images
 type ISOImageGenerator struct {
-	executor  *ContainerExecutor
+	executor  Executor
 	volumeID  string
 	publisher string
 }
 
 // NewISOImageGenerator creates a new ISO image generator
-func NewISOImageGenerator(executor *ContainerExecutor, volumeID, publisher string) *ISOImageGenerator {
+func NewISOImageGenerator(executor Executor, volumeID, publisher string) *ISOImageGenerator {
 	if volumeID == "" {
 		volumeID = "LDF_LINUX"
 	}
@@ -650,7 +650,7 @@ func (g *ISOImageGenerator) generateISO(ctx context.Context, isoStaging, outputP
 }
 
 // GetImageGenerator returns the appropriate image generator for the format
-func GetImageGenerator(format db.ImageFormat, executor *ContainerExecutor, sizeGB int) ImageGenerator {
+func GetImageGenerator(format db.ImageFormat, executor Executor, sizeGB int) ImageGenerator {
 	switch format {
 	case db.ImageFormatQCOW2:
 		return NewQCOW2ImageGenerator(executor, sizeGB, true)

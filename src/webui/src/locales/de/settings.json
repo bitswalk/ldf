@@ -5,6 +5,7 @@
     "general": "Allgemein",
     "appearance": "Erscheinungsbild",
     "server": "Server",
+    "buildEngine": "Build-Engine",
     "account": "Konto"
   },
   "general": {
@@ -366,6 +367,32 @@
           "resetting": "Wird zuruckgesetzt..."
         }
       }
+    }
+  },
+  "buildEngine": {
+    "settings": {
+      "title": "Build-Einstellungen",
+      "description": "Build-Pipeline-Laufzeitumgebung und Ressourcen konfigurieren"
+    },
+    "containerRuntime": {
+      "title": "Container-Laufzeitumgebung",
+      "description": "Laufzeitumgebung fur die Build-Isolation. Podman, Docker und nerdctl verwenden OCI-Container. Chroot wird direkt auf dem Host ausgefuhrt.",
+      "podman": "Podman",
+      "docker": "Docker",
+      "nerdctl": "nerdctl (containerd)",
+      "chroot": "Chroot (direkter Host)"
+    },
+    "containerImage": {
+      "title": "Builder-Image",
+      "description": "Container-Image fur die Build-Umgebung (oder Sysroot-Pfad im Chroot-Modus)"
+    },
+    "workspace": {
+      "title": "Build-Arbeitsverzeichnis",
+      "description": "Basisverzeichnis fur Build-Arbeitsbereiche (unterstutzt ~ fur das Home-Verzeichnis)"
+    },
+    "workers": {
+      "title": "Build-Workers",
+      "description": "Anzahl gleichzeitiger Build-Workers"
     }
   },
   "account": {

@@ -14,13 +14,13 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
-// CompileStage compiles the kernel inside a container
+// CompileStage compiles the kernel inside a container or via chroot
 type CompileStage struct {
-	executor *ContainerExecutor
+	executor Executor
 }
 
 // NewCompileStage creates a new compile stage
-func NewCompileStage(executor *ContainerExecutor) *CompileStage {
+func NewCompileStage(executor Executor) *CompileStage {
 	return &CompileStage{executor: executor}
 }
 
@@ -82,13 +82,16 @@ func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress P
 
 	progress(5, fmt.Sprintf("Config mode: %s, arch: %s", configMode, sc.TargetArch))
 
-	// Check if we're using containers or direct execution
-	if s.executor != nil && s.executor.IsAvailable() {
+	// Check if executor is available
+	if s.executor == nil || !s.executor.IsAvailable() {
+		return fmt.Errorf("build executor not available - please install %s", s.executor.RuntimeType())
+	}
+
+	// Route to appropriate execution method based on runtime type
+	if s.executor.RuntimeType().IsContainerRuntime() {
 		return s.executeInContainer(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
 	}
 
-	// Fall back to direct execution (with warning)
-	log.Warn("Podman not available, falling back to direct execution")
 	return s.executeDirect(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
 }
 
@@ -131,11 +134,11 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 	progress(15, "Running kernel compilation in container")
 
 	// Use BuildEnv container image if available, otherwise fall back to default
-	containerImage := s.executor.defaultImage
+	containerImage := s.executor.DefaultImage()
 	var platformFlag string
 	if sc.BuildEnv != nil {
 		containerImage = sc.BuildEnv.ContainerImage
-		platformFlag = sc.BuildEnv.PodmanPlatformFlag
+		platformFlag = sc.BuildEnv.ContainerPlatformFlag
 	}
 
 	opts := ContainerRunOpts{
@@ -199,11 +202,11 @@ func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext,
 	defer logFile.Close()
 
 	// Use BuildEnv container image if available, otherwise fall back to default
-	dtbContainerImage := s.executor.defaultImage
+	dtbContainerImage := s.executor.DefaultImage()
 	var dtbPlatformFlag string
 	if sc.BuildEnv != nil {
 		dtbContainerImage = sc.BuildEnv.ContainerImage
-		dtbPlatformFlag = sc.BuildEnv.PodmanPlatformFlag
+		dtbPlatformFlag = sc.BuildEnv.ContainerPlatformFlag
 	}
 
 	opts := ContainerRunOpts{
@@ -272,11 +275,121 @@ ls -la /output/boot/dtbs/
 	return sb.String()
 }
 
-// executeDirect runs compilation directly on the host (fallback)
+// executeDirect runs compilation directly on the host via chroot executor
 func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
-	// For direct execution, we'll just log a warning for now
-	// Full direct execution would require running make commands directly
-	return fmt.Errorf("direct kernel compilation not implemented - please install Podman")
+	progress(10, "Preparing direct build environment")
+
+	// Generate the build script
+	buildScript := s.generateBuildScript(configMode, makeArch, crossCompile)
+	buildScriptPath := filepath.Join(sc.WorkspacePath, "scripts", "compile-kernel.sh")
+	if err := os.WriteFile(buildScriptPath, []byte(buildScript), 0755); err != nil {
+		return fmt.Errorf("failed to write build script: %w", err)
+	}
+
+	// Create a log file for build output
+	logPath := filepath.Join(sc.WorkspacePath, "logs", "kernel-compile.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+	defer logFile.Close()
+
+	progressWriter := &buildProgressWriter{
+		progress:    progress,
+		basePercent: 10,
+		maxPercent:  95,
+		logFile:     logFile,
+		logWriter:   sc.LogWriter,
+	}
+
+	progress(15, "Running kernel compilation directly on host")
+
+	// Set up mounts and environment for the chroot executor
+	mounts := []Mount{
+		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+		{Source: configPath, Target: "/config/.config", ReadOnly: true},
+		{Source: outputDir, Target: "/output", ReadOnly: false},
+		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
+	}
+
+	opts := ContainerRunOpts{
+		Mounts:  mounts,
+		WorkDir: kernel.LocalPath,
+		Env: map[string]string{
+			"ARCH":          makeArch,
+			"CROSS_COMPILE": crossCompile,
+			"NPROC":         "0",
+		},
+		Command: []string{"/bin/bash", buildScriptPath},
+		Stdout:  progressWriter,
+		Stderr:  progressWriter,
+	}
+
+	if err := s.executor.Run(ctx, opts); err != nil {
+		return fmt.Errorf("kernel compilation failed: %w", err)
+	}
+
+	progress(90, "Verifying build outputs")
+
+	// Verify kernel image was built
+	kernelImage := filepath.Join(outputDir, "boot", "vmlinuz")
+	if _, err := os.Stat(kernelImage); os.IsNotExist(err) {
+		return fmt.Errorf("kernel image not found at %s", kernelImage)
+	}
+
+	// Compile device trees if board profile specifies them
+	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.DeviceTrees) > 0 {
+		progress(92, "Compiling device tree blobs")
+		if err := s.compileDeviceTreesDirect(ctx, sc, kernel, outputDir, makeArch, crossCompile, progress); err != nil {
+			return fmt.Errorf("device tree compilation failed: %w", err)
+		}
+	}
+
+	progress(100, "Kernel compilation complete")
+	return nil
+}
+
+// compileDeviceTreesDirect compiles device trees directly on the host
+func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+	dtbScript := s.generateDTBBuildScript(sc.BoardProfile.Config.DeviceTrees, makeArch, crossCompile)
+	dtbScriptPath := filepath.Join(sc.WorkspacePath, "scripts", "compile-dtbs.sh")
+	if err := os.WriteFile(dtbScriptPath, []byte(dtbScript), 0755); err != nil {
+		return fmt.Errorf("failed to write DTB build script: %w", err)
+	}
+
+	logPath := filepath.Join(sc.WorkspacePath, "logs", "dtb-compile.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("failed to create DTB log file: %w", err)
+	}
+	defer logFile.Close()
+
+	mounts := []Mount{
+		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+		{Source: outputDir, Target: "/output", ReadOnly: false},
+		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
+	}
+
+	progress(94, fmt.Sprintf("Compiling %d device tree(s)", len(sc.BoardProfile.Config.DeviceTrees)))
+
+	opts := ContainerRunOpts{
+		Mounts:  mounts,
+		WorkDir: kernel.LocalPath,
+		Env: map[string]string{
+			"ARCH":          makeArch,
+			"CROSS_COMPILE": crossCompile,
+		},
+		Command: []string{"/bin/bash", dtbScriptPath},
+		Stdout:  logFile,
+		Stderr:  logFile,
+	}
+
+	if err := s.executor.Run(ctx, opts); err != nil {
+		return fmt.Errorf("DTB compilation failed: %w", err)
+	}
+
+	progress(97, "Device tree compilation complete")
+	return nil
 }
 
 // generateBuildScript creates the kernel build script for container execution

@@ -85,13 +85,15 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 	}
 
 	// Validate build environment (architecture, toolchain, container image)
-	buildEnv, err := ValidateBuildEnvironment(w.manager.config.ContainerImage, job.TargetArch)
+	runtime := RuntimeType(w.manager.config.ContainerRuntime)
+	buildEnv, err := ValidateBuildEnvironment(runtime, w.manager.config.ContainerImage, job.TargetArch)
 	if err != nil {
 		w.handleFailure(job, fmt.Sprintf("Build environment validation failed: %v", err), "")
 		return
 	}
 
 	log.Info("Build environment validated",
+		"runtime", runtime,
 		"host_arch", buildEnv.HostArch,
 		"target_arch", buildEnv.TargetArch,
 		"native", buildEnv.IsNative,

@@ -9,15 +9,18 @@ import (
 	"strings"
 )
 
-// ContainerExecutor wraps Podman operations for build isolation
-type ContainerExecutor struct {
+// ContainerRuntime wraps OCI container runtime operations (podman, docker, nerdctl)
+// for build isolation
+type ContainerRuntime struct {
+	binaryName   string // "podman", "docker", or "nerdctl"
 	defaultImage string
 	logger       io.Writer
 }
 
-// NewContainerExecutor creates a new container executor
-func NewContainerExecutor(defaultImage string, logger io.Writer) *ContainerExecutor {
-	return &ContainerExecutor{
+// NewContainerRuntime creates a new container runtime executor
+func NewContainerRuntime(binaryName, defaultImage string, logger io.Writer) *ContainerRuntime {
+	return &ContainerRuntime{
+		binaryName:   binaryName,
 		defaultImage: defaultImage,
 		logger:       logger,
 	}
@@ -33,7 +36,7 @@ type Mount struct {
 // ContainerRunOpts holds options for running a container
 type ContainerRunOpts struct {
 	Image      string // Container image (uses defaultImage if empty)
-	Platform   string // Podman --platform flag, e.g. "linux/arm64" (empty = native)
+	Platform   string // --platform flag, e.g. "linux/arm64" (empty = native)
 	Mounts     []Mount
 	Env        map[string]string
 	Command    []string
@@ -44,7 +47,7 @@ type ContainerRunOpts struct {
 }
 
 // Run executes a command inside a container with the given options
-func (e *ContainerExecutor) Run(ctx context.Context, opts ContainerRunOpts) error {
+func (e *ContainerRuntime) Run(ctx context.Context, opts ContainerRunOpts) error {
 	args := []string{"run", "--rm"}
 
 	if opts.Platform != "" {
@@ -84,7 +87,7 @@ func (e *ContainerExecutor) Run(ctx context.Context, opts ContainerRunOpts) erro
 	args = append(args, image)
 	args = append(args, opts.Command...)
 
-	cmd := exec.CommandContext(ctx, "podman", args...)
+	cmd := exec.CommandContext(ctx, e.binaryName, args...)
 
 	// Set up output streams
 	var stderr bytes.Buffer
@@ -111,19 +114,24 @@ func (e *ContainerExecutor) Run(ctx context.Context, opts ContainerRunOpts) erro
 	return nil
 }
 
-// IsAvailable checks if podman is installed and accessible
-func (e *ContainerExecutor) IsAvailable() bool {
-	cmd := exec.Command("podman", "version")
+// IsAvailable checks if the container runtime is installed and accessible
+func (e *ContainerRuntime) IsAvailable() bool {
+	cmd := exec.Command(e.binaryName, "version")
 	return cmd.Run() == nil
 }
 
 // BuilderImageExists checks if the builder image exists locally
-func (e *ContainerExecutor) BuilderImageExists(ctx context.Context) bool {
-	cmd := exec.CommandContext(ctx, "podman", "image", "exists", e.defaultImage)
+func (e *ContainerRuntime) BuilderImageExists(ctx context.Context) bool {
+	cmd := exec.CommandContext(ctx, e.binaryName, "image", "exists", e.defaultImage)
 	return cmd.Run() == nil
 }
 
 // DefaultImage returns the default container image
-func (e *ContainerExecutor) DefaultImage() string {
+func (e *ContainerRuntime) DefaultImage() string {
 	return e.defaultImage
+}
+
+// RuntimeType returns the type of this executor
+func (e *ContainerRuntime) RuntimeType() RuntimeType {
+	return RuntimeType(e.binaryName)
 }
