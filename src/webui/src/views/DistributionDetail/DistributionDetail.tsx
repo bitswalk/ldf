@@ -4,7 +4,10 @@ import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
-import { DownloadStatus } from "../../components/DownloadStatus";
+import {
+  DownloadStatus,
+  type DownloadActions,
+} from "../../components/DownloadStatus";
 import { DistributionEditForm } from "../../components/DistributionEditForm";
 import { BuildStartDialog } from "../../components/BuildStartDialog";
 import { BuildsList } from "../../components/BuildsList";
@@ -134,6 +137,8 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const [clearingBuilds, setClearingBuilds] = createSignal(false);
   const [clearBuildsModalOpen, setClearBuildsModalOpen] = createSignal(false);
   let refetchBuilds: (() => void) | undefined;
+  const [downloadActions, setDownloadActions] =
+    createSignal<DownloadActions | null>(null);
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -811,12 +816,60 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               <Card
                 header={{
                   title: t("distribution.detail.componentDownloads.title"),
+                  actions: (
+                    <div class="flex items-center gap-2">
+                      <Show when={downloadActions()?.hasJobs()}>
+                        <button
+                          onClick={() => downloadActions()?.flush()}
+                          disabled={downloadActions()?.flushing()}
+                          class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Show
+                            when={!downloadActions()?.flushing()}
+                            fallback={
+                              <Icon
+                                name="spinner-gap"
+                                size="sm"
+                                class="animate-spin"
+                              />
+                            }
+                          >
+                            <Icon name="trash" size="sm" />
+                          </Show>
+                          <span>{t("common.downloads.clear")}</span>
+                        </button>
+                      </Show>
+                      <button
+                        onClick={() => downloadActions()?.start()}
+                        disabled={
+                          downloadActions()?.starting() ||
+                          downloadActions()?.hasActiveJobs()
+                        }
+                        class="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Show
+                          when={!downloadActions()?.starting()}
+                          fallback={
+                            <Icon
+                              name="spinner-gap"
+                              size="sm"
+                              class="animate-spin"
+                            />
+                          }
+                        >
+                          <Icon name="cloud-arrow-down" size="sm" />
+                        </Show>
+                        <span>{t("common.downloads.startButton")}</span>
+                      </button>
+                    </div>
+                  ),
                 }}
               >
                 <DownloadStatus
                   distributionId={props.distributionId}
                   onSuccess={handleDownloadSuccess}
                   onError={handleDownloadError}
+                  onActions={setDownloadActions}
                   pollInterval={3000}
                 />
               </Card>
