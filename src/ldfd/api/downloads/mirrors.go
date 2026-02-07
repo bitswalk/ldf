@@ -103,7 +103,13 @@ func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 		return
 	}
 
-	common.AuditLog(c, common.AuditEvent{Action: "mirror.create", Resource: "mirror:" + entry.ID, Detail: entry.Name, Success: true})
+	claims := common.GetClaimsFromContext(c)
+	auditEvent := common.AuditEvent{Action: "mirror.create", Resource: "mirror:" + entry.ID, Detail: entry.Name, Success: true}
+	if claims != nil {
+		auditEvent.UserID = claims.UserID
+		auditEvent.UserName = claims.UserName
+	}
+	common.AuditLog(c, auditEvent)
 
 	c.JSON(http.StatusCreated, mirrorToResponse(*entry))
 }
@@ -188,7 +194,13 @@ func (h *MirrorHandler) HandleUpdateMirror(c *gin.Context) {
 		return
 	}
 
-	common.AuditLog(c, common.AuditEvent{Action: "mirror.update", Resource: "mirror:" + id, Success: true})
+	claims := common.GetClaimsFromContext(c)
+	auditEvent := common.AuditEvent{Action: "mirror.update", Resource: "mirror:" + id, Success: true}
+	if claims != nil {
+		auditEvent.UserID = claims.UserID
+		auditEvent.UserName = claims.UserName
+	}
+	common.AuditLog(c, auditEvent)
 
 	c.JSON(http.StatusOK, mirrorToResponse(*existing))
 }
@@ -226,7 +238,13 @@ func (h *MirrorHandler) HandleDeleteMirror(c *gin.Context) {
 		return
 	}
 
-	common.AuditLog(c, common.AuditEvent{Action: "mirror.delete", Resource: "mirror:" + id, Success: true})
+	claims := common.GetClaimsFromContext(c)
+	auditEvent := common.AuditEvent{Action: "mirror.delete", Resource: "mirror:" + id, Success: true}
+	if claims != nil {
+		auditEvent.UserID = claims.UserID
+		auditEvent.UserName = claims.UserName
+	}
+	common.AuditLog(c, auditEvent)
 
 	c.Status(http.StatusNoContent)
 }

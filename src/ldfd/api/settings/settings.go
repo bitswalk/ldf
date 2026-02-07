@@ -351,7 +351,13 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 		h.applySettingChange(key, typedValue)
 	}
 
-	common.AuditLog(c, common.AuditEvent{Action: "settings.update", Resource: "setting:" + key, Success: true})
+	claims := common.GetClaimsFromContext(c)
+	auditEvent := common.AuditEvent{Action: "settings.update", Resource: "setting:" + key, Success: true}
+	if claims != nil {
+		auditEvent.UserID = claims.UserID
+		auditEvent.UserName = claims.UserName
+	}
+	common.AuditLog(c, auditEvent)
 
 	message := "Setting updated successfully"
 	if reg.RebootRequired {
@@ -425,7 +431,13 @@ func (h *Handler) HandleResetDatabase(c *gin.Context) {
 		return
 	}
 
-	common.AuditLog(c, common.AuditEvent{Action: "settings.reset_database", Success: true})
+	claims := common.GetClaimsFromContext(c)
+	auditEvent := common.AuditEvent{Action: "settings.reset_database", Success: true}
+	if claims != nil {
+		auditEvent.UserID = claims.UserID
+		auditEvent.UserName = claims.UserName
+	}
+	common.AuditLog(c, auditEvent)
 
 	c.JSON(http.StatusOK, ResetDatabaseResponse{
 		Success: true,
