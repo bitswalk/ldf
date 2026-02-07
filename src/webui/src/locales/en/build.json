@@ -19,7 +19,11 @@
   },
   "list": {
     "title": "Recent Builds",
-    "empty": "No builds yet"
+    "empty": "No builds yet",
+    "clear": "Clear",
+    "clearConfirm": "Clear all build history for this distribution?",
+    "clearSuccess": "Build history cleared",
+    "page": "Page {{ current }} of {{ total }}"
   },
   "detail": {
     "title": "Build Details",

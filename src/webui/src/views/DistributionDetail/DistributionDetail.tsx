@@ -20,6 +20,7 @@ import {
   type UpdateDistributionRequest,
   type DeletionPreview,
 } from "../../services/distribution";
+import { clearDistributionBuilds } from "../../services/builds";
 import { t } from "../../services/i18n";
 
 interface UserInfo {
@@ -130,6 +131,9 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const [kernelConfigModalOpen, setKernelConfigModalOpen] = createSignal(false);
   const [uploadingConfig, setUploadingConfig] = createSignal(false);
   const [uploadProgress, setUploadProgress] = createSignal(0);
+  const [clearingBuilds, setClearingBuilds] = createSignal(false);
+  const [clearBuildsModalOpen, setClearBuildsModalOpen] = createSignal(false);
+  let refetchBuilds: (() => void) | undefined;
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -273,6 +277,20 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
   const cancelDelete = () => {
     setDeleteModalOpen(false);
+  };
+
+  const confirmClearBuilds = async () => {
+    setClearingBuilds(true);
+    const result = await clearDistributionBuilds(props.distributionId);
+    setClearingBuilds(false);
+    setClearBuildsModalOpen(false);
+
+    if (result.success) {
+      showNotification("success", t("build.list.clearSuccess"));
+      refetchBuilds?.();
+    } else {
+      showNotification("error", result.message);
+    }
   };
 
   const handleKernelConfigUpload = async (file: File) => {
@@ -756,11 +774,35 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               <Card
                 header={{
                   title: t("build.list.title"),
+                  actions: (
+                    <button
+                      onClick={() => setClearBuildsModalOpen(true)}
+                      disabled={clearingBuilds()}
+                      class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Show
+                        when={!clearingBuilds()}
+                        fallback={
+                          <Icon
+                            name="spinner-gap"
+                            size="sm"
+                            class="animate-spin"
+                          />
+                        }
+                      >
+                        <Icon name="trash" size="sm" />
+                      </Show>
+                      <span>{t("build.list.clear")}</span>
+                    </button>
+                  ),
                 }}
               >
                 <BuildsList
                   distributionId={props.distributionId}
                   onBuildClick={(buildId) => props.onNavigateToBuild?.(buildId)}
+                  onRefetch={(fn) => {
+                    refetchBuilds = fn;
+                  }}
                   limit={5}
                 />
               </Card>
@@ -997,6 +1039,42 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               </div>
             </div>
           </Show>
+        </section>
+      </Modal>
+
+      {/* Clear Builds Confirmation Modal */}
+      <Modal
+        isOpen={clearBuildsModalOpen()}
+        onClose={() => setClearBuildsModalOpen(false)}
+        title={t("build.list.clear")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">{t("build.list.clearConfirm")}</p>
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setClearBuildsModalOpen(false)}
+              disabled={clearingBuilds()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmClearBuilds}
+              disabled={clearingBuilds()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={clearingBuilds()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {clearingBuilds()
+                  ? t("distribution.delete.deleting")
+                  : t("build.list.clear")}
+              </span>
+            </button>
+          </nav>
         </section>
       </Modal>
     </section>

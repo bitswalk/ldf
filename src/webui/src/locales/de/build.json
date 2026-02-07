@@ -19,7 +19,11 @@
   },
   "list": {
     "title": "Aktuelle Builds",
-    "empty": "Noch keine Builds"
+    "empty": "Noch keine Builds",
+    "clear": "Loschen",
+    "clearConfirm": "Gesamten Build-Verlauf fur diese Distribution loschen?",
+    "clearSuccess": "Build-Verlauf geloscht",
+    "page": "Seite {{ current }} von {{ total }}"
   },
   "detail": {
     "title": "Build-Details",

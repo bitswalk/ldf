@@ -248,8 +248,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			distBuildsRead.GET("", a.Builds.HandleListDistributionBuilds)
 		}
 
-		// Build trigger - write access (registered alongside distribution write routes)
+		// Build trigger and management - write access (registered alongside distribution write routes)
 		distributionsWrite.POST("/:id/build", a.Builds.HandleStartBuild)
+		distributionsWrite.DELETE("/:id/builds", a.Builds.HandleClearDistributionBuilds)
 
 		// Build job routes - read (auth required)
 		buildsRead := v1.Group("/builds")

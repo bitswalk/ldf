@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal, onMount, Show, For } from "solid-js";
+import { createSignal, createMemo, onMount, Show, For } from "solid-js";
 import { Icon } from "../Icon";
 import { Label } from "../Label";
 import type { LabelVariant } from "../Label";
@@ -16,6 +16,8 @@ import {
   isBuildActive,
 } from "../../services/builds";
 import { t } from "../../services/i18n";
+
+const PAGE_SIZE = 5;
 
 const getStatusLabelVariant = (status: BuildJobStatus): LabelVariant => {
   const color = getStatusColor(status);
@@ -36,6 +38,7 @@ const getStatusLabelVariant = (status: BuildJobStatus): LabelVariant => {
 interface BuildsListProps {
   distributionId: string;
   onBuildClick?: (buildId: string) => void;
+  onRefetch?: (refetch: () => void) => void;
   limit?: number;
 }
 
@@ -43,28 +46,58 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
   const [builds, setBuilds] = createSignal<BuildJob[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
+  const [currentPage, setCurrentPage] = createSignal(1);
+  const [totalCount, setTotalCount] = createSignal(0);
 
-  const fetchBuilds = async () => {
+  const pageSize = () => props.limit || PAGE_SIZE;
+  const totalPages = createMemo(() =>
+    Math.max(1, Math.ceil(totalCount() / pageSize())),
+  );
+
+  const fetchBuilds = async (page?: number) => {
+    const p = page ?? currentPage();
     setLoading(true);
     setError(null);
 
+    const offset = (p - 1) * pageSize();
     const result = await listDistributionBuilds(
       props.distributionId,
-      props.limit || 5,
+      pageSize(),
+      offset,
     );
 
     setLoading(false);
 
     if (result.success) {
       setBuilds(result.builds);
+      setTotalCount(result.count);
+      setCurrentPage(p);
     } else {
       setError(result.message);
     }
   };
 
+  const refetch = () => {
+    setCurrentPage(1);
+    fetchBuilds(1);
+  };
+
   onMount(() => {
-    fetchBuilds();
+    fetchBuilds(1);
+    props.onRefetch?.(refetch);
   });
+
+  const handlePrevious = () => {
+    if (currentPage() > 1) {
+      fetchBuilds(currentPage() - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage() < totalPages()) {
+      fetchBuilds(currentPage() + 1);
+    }
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -98,7 +131,7 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
           <p class="text-sm">{error()}</p>
           <button
             class="mt-2 text-sm text-primary hover:underline"
-            onClick={fetchBuilds}
+            onClick={() => fetchBuilds()}
           >
             {t("common.actions.retry")}
           </button>
@@ -192,6 +225,34 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
               )}
             </For>
           </div>
+
+          {/* Pagination */}
+          <Show when={totalPages() > 1}>
+            <nav class="flex items-center justify-center gap-1 pt-2">
+              <button
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={handlePrevious}
+                disabled={currentPage() <= 1}
+                aria-label={t("common.pagination.previous")}
+              >
+                <Icon name="caret-left" size="sm" />
+              </button>
+              <span class="text-xs text-muted-foreground px-2">
+                {t("build.list.page", {
+                  current: currentPage().toString(),
+                  total: totalPages().toString(),
+                })}
+              </span>
+              <button
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={handleNext}
+                disabled={currentPage() >= totalPages()}
+                aria-label={t("common.pagination.next")}
+              >
+                <Icon name="caret-right" size="sm" />
+              </button>
+            </nav>
+          </Show>
         </Show>
       </Show>
     </div>
