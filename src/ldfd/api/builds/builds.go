@@ -367,9 +367,20 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 	var lastID int64
 	var lastStatus db.BuildJobStatus
 	var lastProgress int
+	var lastStageSignature string // tracks stage status changes
 
 	// Use request context to detect client disconnection
 	clientGone := c.Request.Context().Done()
+
+	// buildStageSignature creates a compact string representing stage statuses
+	// so we can detect when any stage changes state (e.g., running → completed).
+	buildStageSignature := func(stages []db.BuildStage) string {
+		sig := ""
+		for _, s := range stages {
+			sig += string(s.Name) + ":" + s.Status + ";"
+		}
+		return sig
+	}
 
 	c.Stream(func(w io.Writer) bool {
 		currentJob, err := h.buildManager.BuildJobRepo().GetByID(buildID)
@@ -381,9 +392,12 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 			currentJob.Status == db.BuildStatusFailed ||
 			currentJob.Status == db.BuildStatusCancelled
 
-		// Send status event when status or progress changed
-		if currentJob.Status != lastStatus || currentJob.ProgressPercent != lastProgress {
-			stages, _ := h.buildManager.BuildJobRepo().GetStages(buildID)
+		// Always fetch stages to detect stage-level changes
+		stages, _ := h.buildManager.BuildJobRepo().GetStages(buildID)
+		stageSig := buildStageSignature(stages)
+
+		// Send status event when job status, progress, or stage statuses changed
+		if currentJob.Status != lastStatus || currentJob.ProgressPercent != lastProgress || stageSig != lastStageSignature {
 			statusEvent := BuildStatusEvent{
 				Status:          currentJob.Status,
 				CurrentStage:    currentJob.CurrentStage,
@@ -398,6 +412,7 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 			fmt.Fprintf(w, "event: status\ndata: %s\n\n", data)
 			lastStatus = currentJob.Status
 			lastProgress = currentJob.ProgressPercent
+			lastStageSignature = stageSig
 		}
 
 		// Fetch new logs
@@ -414,9 +429,20 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 			}
 		}
 
-		// If terminal and no more logs, close
+		// If terminal and no more logs, send final status and close
 		if isTerminal && len(logs) == 0 {
-			fmt.Fprintf(w, "event: done\ndata: {\"status\":\"%s\"}\n\n", currentJob.Status)
+			statusEvent := BuildStatusEvent{
+				Status:          currentJob.Status,
+				CurrentStage:    currentJob.CurrentStage,
+				ProgressPercent: currentJob.ProgressPercent,
+				Stages:          stages,
+				CompletedAt:     currentJob.CompletedAt,
+				ErrorMessage:    currentJob.ErrorMessage,
+				ErrorStage:      currentJob.ErrorStage,
+				ArtifactSize:    currentJob.ArtifactSize,
+			}
+			data, _ := json.Marshal(statusEvent)
+			fmt.Fprintf(w, "event: done\ndata: %s\n\n", data)
 			return false
 		}
 
