@@ -66,8 +66,8 @@ var settingsRegistry = []SettingMeta{
 	// Build settings
 	{"build.workspace", "string", "Base directory for build workspaces (supports ~ for home directory)", true, "build", false},
 	{"build.workers", "int", "Number of concurrent build workers", true, "build", false},
-	{"build.container_runtime", "string", "Container runtime for build isolation: podman, docker, nerdctl, or chroot", true, "build", false},
-	{"build.container_image", "string", "Container image for build environment (or sysroot path for chroot mode)", true, "build", false},
+	{"build.container_runtime", "string", "Container runtime for build isolation: podman, docker, nerdctl, or chroot", false, "build", false},
+	{"build.container_image", "string", "Container image for build environment (ignored for chroot: sysroot is auto-resolved from build workspace)", false, "build", false},
 
 	// Download cache settings
 	{"download.cache.enabled", "bool", "Enable artifact caching across distributions", false, "download", false},

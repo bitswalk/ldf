@@ -40,6 +40,7 @@ type StageContext struct {
 	Components     []ResolvedComponent // Populated by resolve stage
 	BoardProfile   *db.BoardProfile    // Populated by resolve stage when board_profile_id is set
 	BuildEnv       *BuildEnvironment   // Populated by worker before pipeline starts
+	Executor       Executor            // Populated by worker before pipeline starts
 
 	// Artifact info populated by package stage
 	ArtifactPath     string // Storage key of final artifact

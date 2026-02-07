@@ -384,7 +384,12 @@
     },
     "containerImage": {
       "title": "Builder-Image",
-      "description": "Container-Image fur die Build-Umgebung (oder Sysroot-Pfad im Chroot-Modus)"
+      "description": "Container-Image fur die Build-Umgebung"
+    },
+    "chrootSysroot": {
+      "title": "Build-Sysroot",
+      "description": "Im Chroot-Modus wird der Sysroot automatisch auf das rootfs-Verzeichnis jedes Builds im Arbeitsbereich aufgelost.",
+      "autoResolved": "Automatisch aus dem Build-Arbeitsbereich aufgelost"
     },
     "workspace": {
       "title": "Build-Arbeitsverzeichnis",

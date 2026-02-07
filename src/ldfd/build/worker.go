@@ -10,6 +10,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/paths"
 	"github.com/bitswalk/ldf/src/ldfd/db"
+	"github.com/spf13/viper"
 )
 
 // Worker processes build jobs from the queue
@@ -85,8 +86,17 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 	}
 
 	// Validate build environment (architecture, toolchain, container image)
-	runtime := RuntimeType(w.manager.config.ContainerRuntime)
-	buildEnv, err := ValidateBuildEnvironment(runtime, w.manager.config.ContainerImage, job.TargetArch)
+	// Read live config from viper so Settings changes take effect without restart
+	liveRuntime := viper.GetString("build.container_runtime")
+	if liveRuntime == "" {
+		liveRuntime = w.manager.config.ContainerRuntime
+	}
+	liveImage := viper.GetString("build.container_image")
+	if liveImage == "" {
+		liveImage = w.manager.config.ContainerImage
+	}
+	runtime := RuntimeType(liveRuntime)
+	buildEnv, err := ValidateBuildEnvironment(runtime, liveImage, job.TargetArch)
 	if err != nil {
 		w.handleFailure(job, fmt.Sprintf("Build environment validation failed: %v", err), "")
 		return
@@ -118,6 +128,37 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		}
 	}
 
+	// Create executor from current config (reads live viper values so
+	// runtime changes via the Settings API take effect immediately)
+	runtimeName := viper.GetString("build.container_runtime")
+	if runtimeName == "" {
+		runtimeName = w.manager.config.ContainerRuntime
+	}
+	containerImage := viper.GetString("build.container_image")
+	if containerImage == "" {
+		containerImage = w.manager.config.ContainerImage
+	}
+
+	execRuntime := RuntimeType(runtimeName)
+
+	// For chroot mode, use direct host execution (empty sysroot).
+	// The compile and package stages handle path translation internally.
+	if execRuntime == RuntimeChroot {
+		containerImage = ""
+	}
+
+	executor, err := NewExecutor(execRuntime, containerImage, nil)
+	if err != nil {
+		w.handleFailure(job, fmt.Sprintf("Failed to create build executor: %v", err), "")
+		return
+	}
+
+	log.Info("Build executor created from live config",
+		"runtime", execRuntime,
+		"image", containerImage,
+		"build_id", job.ID,
+	)
+
 	// Create stage context
 	sc := &StageContext{
 		BuildID:        job.ID,
@@ -132,6 +173,7 @@ func (w *Worker) processJob(ctx context.Context, job *db.BuildJob) {
 		OutputDir:      outputDir,
 		ConfigDir:      configDir,
 		BuildEnv:       buildEnv,
+		Executor:       executor,
 	}
 
 	// Create stage records in database
