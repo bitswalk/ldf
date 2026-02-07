@@ -10,7 +10,6 @@ import {
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
-import { Badge } from "../../components/Badge";
 import {
   getBuild,
   getBuildLogs,
@@ -203,6 +202,22 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
     }
   };
 
+  const getStatusBadgeClass = (status: BuildJobStatus): string => {
+    const color = getStatusColor(status);
+    switch (color) {
+      case "success":
+        return "text-green-500";
+      case "danger":
+        return "text-red-500";
+      case "warning":
+        return "text-yellow-500";
+      case "primary":
+        return "text-primary";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
   return (
     <section class="h-full w-full relative">
       <section class="h-full flex flex-col p-8 gap-6 overflow-auto">
@@ -219,9 +234,11 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
             <div class="flex items-center gap-3">
               <h1 class="text-4xl font-bold">{t("build.detail.title")}</h1>
               <Show when={build()}>
-                <Badge variant={getStatusColor(build()!.status)}>
+                <span
+                  class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build()!.status)} bg-current/10`}
+                >
                   {getStatusDisplayText(build()!.status)}
-                </Badge>
+                </span>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                   {build()!.target_arch}
                 </span>
@@ -230,9 +247,7 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
                 </span>
               </Show>
             </div>
-            <p class="text-muted-foreground mt-1">
-              {props.buildId.slice(0, 8)}...
-            </p>
+            <p class="text-muted-foreground mt-1">{props.buildId}</p>
           </div>
           <Show when={build()}>
             <div class="flex items-center gap-2">
@@ -312,9 +327,11 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
                     <span class="text-muted-foreground text-sm">
                       {t("build.detail.info.status")}
                     </span>
-                    <Badge variant={getStatusColor(build()!.status)}>
+                    <span
+                      class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build()!.status)} bg-current/10`}
+                    >
                       {getStatusDisplayText(build()!.status)}
-                    </Badge>
+                    </span>
                   </article>
 
                   <article class="flex items-center justify-between py-2">

@@ -1,7 +1,6 @@
 import type { Component } from "solid-js";
 import { createSignal, onMount, Show, For } from "solid-js";
 import { Icon } from "../Icon";
-import { Badge } from "../Badge";
 import { Spinner } from "../Spinner";
 import {
   listDistributionBuilds,
@@ -9,11 +8,28 @@ import {
   type BuildJobStatus,
   getStatusColor,
   getStatusDisplayText,
+  getFormatDisplayText,
   formatBytes,
   formatDuration,
   isBuildActive,
 } from "../../services/builds";
 import { t } from "../../services/i18n";
+
+const getStatusBadgeClass = (status: BuildJobStatus): string => {
+  const color = getStatusColor(status);
+  switch (color) {
+    case "success":
+      return "text-green-500";
+    case "danger":
+      return "text-red-500";
+    case "warning":
+      return "text-yellow-500";
+    case "primary":
+      return "text-primary";
+    default:
+      return "text-muted-foreground";
+  }
+};
 
 interface BuildsListProps {
   distributionId: string;
@@ -32,7 +48,7 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
 
     const result = await listDistributionBuilds(
       props.distributionId,
-      props.limit || 5
+      props.limit || 5,
     );
 
     setLoading(false);
@@ -64,13 +80,6 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
       default:
         return "spinner-gap";
     }
-  };
-
-  const getBadgeVariant = (
-    status: BuildJobStatus
-  ): "default" | "primary" | "success" | "warning" | "danger" => {
-    const color = getStatusColor(status);
-    return color;
   };
 
   return (
@@ -128,25 +137,41 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-medium truncate">
-                        {build.target_arch} / {build.image_format}
+                      <span class="font-medium truncate font-mono text-sm">
+                        {build.id}
                       </span>
-                      <Badge variant={getBadgeVariant(build.status)}>
+                      <span
+                        class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build.status)} bg-current/10`}
+                      >
                         {getStatusDisplayText(build.status)}
-                      </Badge>
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {build.target_arch}
+                      </span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {getFormatDisplayText(build.image_format)}
+                      </span>
                     </div>
                     <div class="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                       <span>{formatDate(build.created_at)}</span>
                       <Show when={build.completed_at && build.started_at}>
                         <span class="text-xs">
-                          ({formatDuration(
+                          (
+                          {formatDuration(
                             new Date(build.completed_at!).getTime() -
-                              new Date(build.started_at!).getTime()
-                          )})
+                              new Date(build.started_at!).getTime(),
+                          )}
+                          )
                         </span>
                       </Show>
                     </div>
-                    <Show when={build.status === "completed" && build.artifact_size > 0}>
+                    <Show
+                      when={
+                        build.status === "completed" && build.artifact_size > 0
+                      }
+                    >
                       <div class="text-xs text-muted-foreground mt-1">
                         {formatBytes(build.artifact_size)}
                       </div>
