@@ -114,7 +114,7 @@ func (m *Manager) RegisterDefaultStages() {
 	executor := NewContainerExecutor(m.config.ContainerImage, nil)
 
 	m.stages = []Stage{
-		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo),
+		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo, m.sourceRepo, m.storage),
 		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
 		NewPrepareStage(m.storage),
 		NewCompileStage(executor),
