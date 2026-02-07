@@ -46,6 +46,7 @@
     "pending": "Pending",
     "downloading": "Downloading",
     "validating": "Validating",
+    "building": "Building",
     "ready": "Ready",
     "failed": "Failed",
     "deleted": "Deleted"

@@ -168,6 +168,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
       case "pending":
       case "downloading":
       case "validating":
+      case "building":
         return "spinner-gap";
       case "failed":
         return "x-circle";
@@ -185,6 +186,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
       case "pending":
       case "downloading":
       case "validating":
+      case "building":
         return "text-primary";
       case "failed":
         return "text-red-500";
@@ -417,9 +419,12 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       name={getStatusIcon(distribution()!.status)}
                       size="sm"
                       class={
-                        ["pending", "downloading", "validating"].includes(
-                          distribution()!.status,
-                        )
+                        [
+                          "pending",
+                          "downloading",
+                          "validating",
+                          "building",
+                        ].includes(distribution()!.status)
                           ? "animate-spin"
                           : ""
                       }

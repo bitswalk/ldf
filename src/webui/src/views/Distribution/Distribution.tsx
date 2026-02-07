@@ -258,6 +258,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
         case "pending":
         case "downloading":
         case "validating":
+        case "building":
           return "text-muted-foreground";
         case "failed":
           return "text-destructive";
@@ -269,7 +270,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
     const isInProgress =
       status === "pending" ||
       status === "downloading" ||
-      status === "validating";
+      status === "validating" ||
+      status === "building";
 
     return (
       <span class={`flex items-center gap-2 ${getStatusColor()}`}>
