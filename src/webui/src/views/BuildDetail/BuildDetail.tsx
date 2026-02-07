@@ -100,8 +100,12 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
       },
       () => {
         setIsStreaming(false);
-        // Refresh build status when stream ends
+        // Final refresh to get complete build data
         fetchBuild();
+      },
+      (statusUpdate) => {
+        // Merge status fields into current build for real-time updates
+        setBuild((prev) => (prev ? { ...prev, ...statusUpdate } : prev));
       },
     );
   };

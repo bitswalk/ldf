@@ -7,7 +7,7 @@ vars:
   WEBUI_DIR: src/webui
   # Version components
   RELEASE_NAME: Basilisk
-  RELEASE_VERSION: 1.2.1
+  RELEASE_VERSION: 1.2.2
   RELEASE_DATE:
     sh: date -u +"%Y.%m"
   GIT_COMMIT:

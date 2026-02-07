@@ -532,6 +532,7 @@ export function streamBuildLogs(
   onLog: (log: BuildLog) => void,
   onError?: (error: Error) => void,
   onComplete?: () => void,
+  onStatus?: (status: Partial<BuildJob>) => void,
 ): () => void {
   const serverUrl = getServerUrl();
   if (!serverUrl) {
@@ -556,8 +557,31 @@ export function streamBuildLogs(
     }
   };
 
-  eventSource.onerror = (event) => {
-    // SSE connection closed - could be complete or error
+  eventSource.addEventListener("status", (event) => {
+    try {
+      const status = JSON.parse(
+        (event as MessageEvent).data,
+      ) as Partial<BuildJob>;
+      onStatus?.(status);
+    } catch (err) {
+      console.error("Failed to parse SSE status:", err);
+    }
+  });
+
+  eventSource.addEventListener("done", (event) => {
+    try {
+      const status = JSON.parse(
+        (event as MessageEvent).data,
+      ) as Partial<BuildJob>;
+      onStatus?.(status);
+    } catch {
+      // done event may have minimal payload
+    }
+    eventSource.close();
+    onComplete?.();
+  });
+
+  eventSource.onerror = () => {
     if (eventSource.readyState === EventSource.CLOSED) {
       onComplete?.();
     } else {
