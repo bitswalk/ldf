@@ -114,28 +114,21 @@ func (m *Manager) RegisterStages(stages []Stage) {
 	m.stages = stages
 }
 
-// RegisterDefaultStages sets up the default build pipeline stages
+// RegisterDefaultStages sets up the default build pipeline stages.
+// The executor is created per-build in the worker from current config,
+// not at registration time, so runtime changes take effect immediately.
 func (m *Manager) RegisterDefaultStages() {
-	runtime := RuntimeType(m.config.ContainerRuntime)
-	executor, err := NewExecutor(runtime, m.config.ContainerImage, nil)
-	if err != nil {
-		log.Error("Failed to create build executor, falling back to podman",
-			"runtime", m.config.ContainerRuntime, "error", err)
-		executor = NewContainerRuntime("podman", m.config.ContainerImage, nil)
-	}
-
 	m.stages = []Stage{
 		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo, m.sourceRepo, m.storage),
 		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
 		NewPrepareStage(m.storage),
-		NewCompileStage(executor),
+		NewCompileStage(),
 		NewAssembleStage(),
-		NewPackageStage(executor, m.storage, 4), // 4GB default image size
+		NewPackageStage(m.storage, 4), // 4GB default image size
 	}
 
 	log.Info("Registered default build stages",
 		"count", len(m.stages),
-		"runtime", m.config.ContainerRuntime,
 		"stages", []string{"resolve", "download", "prepare", "compile", "assemble", "package"})
 }
 

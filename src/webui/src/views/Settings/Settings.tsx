@@ -1127,26 +1127,54 @@ export const Settings: Component<SettingsProps> = (props) => {
                 }
               />
             </SummaryItem>
-            <SummaryItem
-              title={t("settings.buildEngine.containerImage.title")}
-              description={t("settings.buildEngine.containerImage.description")}
+            <Show
+              when={
+                (serverSettings().find(
+                  (s) => s.key === "build.container_runtime",
+                )?.value as string) !== "chroot"
+              }
             >
-              <input
-                type="text"
-                value={
-                  (serverSettings().find(
-                    (s) => s.key === "build.container_image",
-                  )?.value as string) || ""
-                }
-                onChange={(e) =>
-                  handleSettingUpdate(
-                    "build.container_image",
-                    e.currentTarget.value,
-                  )
-                }
-                class="px-3 py-1.5 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
-              />
-            </SummaryItem>
+              <SummaryItem
+                title={t("settings.buildEngine.containerImage.title")}
+                description={t(
+                  "settings.buildEngine.containerImage.description",
+                )}
+              >
+                <input
+                  type="text"
+                  value={
+                    (serverSettings().find(
+                      (s) => s.key === "build.container_image",
+                    )?.value as string) || ""
+                  }
+                  onChange={(e) =>
+                    handleSettingUpdate(
+                      "build.container_image",
+                      e.currentTarget.value,
+                    )
+                  }
+                  class="px-3 py-1.5 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
+                />
+              </SummaryItem>
+            </Show>
+            <Show
+              when={
+                (serverSettings().find(
+                  (s) => s.key === "build.container_runtime",
+                )?.value as string) === "chroot"
+              }
+            >
+              <SummaryItem
+                title={t("settings.buildEngine.chrootSysroot.title")}
+                description={t(
+                  "settings.buildEngine.chrootSysroot.description",
+                )}
+              >
+                <span class="text-sm text-muted-foreground italic">
+                  {t("settings.buildEngine.chrootSysroot.autoResolved")}
+                </span>
+              </SummaryItem>
+            </Show>
             <SummaryItem
               title={t("settings.buildEngine.workspace.title")}
               description={t("settings.buildEngine.workspace.description")}

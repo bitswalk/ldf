@@ -199,14 +199,23 @@ LDF_TARGET_ARCH=%s
 	return nil
 }
 
-// getDefconfigName returns the defconfig target name for an architecture,
-// using the board profile's defconfig if available
+// getDefconfigName returns the defconfig target name from the StageContext.
 func (g *KernelConfigGenerator) getDefconfigName(sc *StageContext) string {
-	// Board-specific defconfig takes priority
-	if sc.BoardProfile != nil && sc.BoardProfile.Config.KernelDefconfig != "" {
-		return sc.BoardProfile.Config.KernelDefconfig
+	return GetDefconfigName(sc.BoardProfile, sc.TargetArch)
+}
+
+// getRecommendedOptions returns recommended kernel options from the StageContext.
+func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[string]string {
+	return GetRecommendedKernelOptions(sc.Config, sc.TargetArch)
+}
+
+// GetDefconfigName returns the defconfig target name for an architecture,
+// using the board profile's defconfig if available.
+func GetDefconfigName(profile *db.BoardProfile, arch db.TargetArch) string {
+	if profile != nil && profile.Config.KernelDefconfig != "" {
+		return profile.Config.KernelDefconfig
 	}
-	switch sc.TargetArch {
+	switch arch {
 	case db.ArchX86_64:
 		return "x86_64"
 	case db.ArchAARCH64:
@@ -216,9 +225,14 @@ func (g *KernelConfigGenerator) getDefconfigName(sc *StageContext) string {
 	}
 }
 
-// getRecommendedOptions returns recommended kernel options based on distribution config
-func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[string]string {
+// GetRecommendedKernelOptions returns recommended kernel CONFIG_ options
+// based on a distribution's configuration and target architecture.
+func GetRecommendedKernelOptions(config *db.DistributionConfig, arch db.TargetArch) map[string]string {
 	options := make(map[string]string)
+
+	if config == nil {
+		return options
+	}
 
 	// Basic system options
 	options["CONFIG_PRINTK"] = "y"
@@ -231,7 +245,7 @@ func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[stri
 	options["CONFIG_DEVTMPFS_MOUNT"] = "y"
 
 	// Filesystem options based on config
-	fsType := sc.Config.System.Filesystem.Type
+	fsType := config.System.Filesystem.Type
 	switch strings.ToLower(fsType) {
 	case "ext4":
 		options["CONFIG_EXT4_FS"] = "y"
@@ -251,7 +265,7 @@ func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[stri
 	options["CONFIG_ISO9660_FS"] = "m"
 
 	// Init system options
-	initSystem := sc.Config.System.Init
+	initSystem := config.System.Init
 	switch strings.ToLower(initSystem) {
 	case "systemd":
 		options["CONFIG_CGROUPS"] = "y"
@@ -278,7 +292,7 @@ func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[stri
 	}
 
 	// Security options
-	secSystem := sc.Config.Security.System
+	secSystem := config.Security.System
 	switch strings.ToLower(secSystem) {
 	case "selinux":
 		options["CONFIG_SECURITY"] = "y"
@@ -296,19 +310,19 @@ func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[stri
 	}
 
 	// Virtualization options
-	virtSystem := sc.Config.Runtime.Virtualization
+	virtSystem := config.Runtime.Virtualization
 	switch strings.ToLower(virtSystem) {
 	case "kvm":
 		options["CONFIG_VIRTUALIZATION"] = "y"
 		options["CONFIG_KVM"] = "m"
-		if sc.TargetArch == db.ArchX86_64 {
+		if arch == db.ArchX86_64 {
 			options["CONFIG_KVM_INTEL"] = "m"
 			options["CONFIG_KVM_AMD"] = "m"
 		}
 	}
 
 	// Container options
-	containerSystem := sc.Config.Runtime.Container
+	containerSystem := config.Runtime.Container
 	if containerSystem != "" {
 		options["CONFIG_NAMESPACES"] = "y"
 		options["CONFIG_USER_NS"] = "y"

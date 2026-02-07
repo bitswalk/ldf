@@ -70,6 +70,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			distributionsWrite.POST("/:id/downloads", a.Downloads.HandleStartDistributionDownloads)
 			distributionsWrite.DELETE("/:id/downloads", a.Downloads.HandleFlushDistributionDownloads)
 
+			// Kernel config upload (requires auth with write access)
+			distributionsWrite.POST("/:id/kernel-config", a.Distributions.HandleUploadKernelConfig)
+
 			// Artifact write operations (requires auth with write access)
 			if a.HasStorage() {
 				distributionsWrite.POST("/:id/artifacts", a.Artifacts.HandleUpload)
@@ -245,8 +248,9 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			distBuildsRead.GET("", a.Builds.HandleListDistributionBuilds)
 		}
 
-		// Build trigger - write access (registered alongside distribution write routes)
+		// Build trigger and management - write access (registered alongside distribution write routes)
 		distributionsWrite.POST("/:id/build", a.Builds.HandleStartBuild)
+		distributionsWrite.DELETE("/:id/builds", a.Builds.HandleClearDistributionBuilds)
 
 		// Build job routes - read (auth required)
 		buildsRead := v1.Group("/builds")

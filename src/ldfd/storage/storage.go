@@ -47,6 +47,14 @@ type Backend interface {
 	Location() string
 }
 
+// LocalPathResolver is optionally implemented by backends that store objects
+// on the local filesystem (e.g., LocalBackend). It allows callers to create
+// symlinks to storage objects instead of copying them.
+type LocalPathResolver interface {
+	// ResolvePath returns the absolute filesystem path for a storage key.
+	ResolvePath(key string) string
+}
+
 // ObjectInfo holds metadata about a storage object
 type ObjectInfo struct {
 	Key          string    `json:"key"`

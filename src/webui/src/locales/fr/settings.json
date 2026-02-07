@@ -384,7 +384,12 @@
     },
     "containerImage": {
       "title": "Image de build",
-      "description": "Image de conteneur pour l'environnement de build (ou chemin sysroot en mode chroot)"
+      "description": "Image de conteneur pour l'environnement de build"
+    },
+    "chrootSysroot": {
+      "title": "Sysroot de build",
+      "description": "En mode chroot, le sysroot est automatiquement resolu vers le repertoire rootfs de chaque build dans l'espace de travail.",
+      "autoResolved": "Resolution automatique depuis l'espace de travail"
     },
     "workspace": {
       "title": "Espace de travail",

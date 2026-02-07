@@ -19,15 +19,13 @@ import (
 
 // PrepareStage creates the build workspace and extracts component sources
 type PrepareStage struct {
-	storage      storage.Backend
-	kernelConfig *KernelConfigGenerator
+	storage storage.Backend
 }
 
 // NewPrepareStage creates a new prepare stage
 func NewPrepareStage(storage storage.Backend) *PrepareStage {
 	return &PrepareStage{
-		storage:      storage,
-		kernelConfig: NewKernelConfigGenerator(storage),
+		storage: storage,
 	}
 }
 
@@ -112,31 +110,7 @@ func (s *PrepareStage) Execute(ctx context.Context, sc *StageContext, progress P
 			"path", sourceDir)
 	}
 
-	progress(80, "Generating kernel configuration")
-
-	// Generate kernel .config
-	kernelComponent := s.findKernelComponent(sc.Components)
-	if kernelComponent != nil {
-		configPath := filepath.Join(sc.ConfigDir, ".config")
-		if err := s.kernelConfig.Generate(ctx, sc, kernelComponent, configPath); err != nil {
-			return fmt.Errorf("failed to generate kernel config: %w", err)
-		}
-
-		// Merge board profile kernel overlay options on top of generated config
-		if sc.BoardProfile != nil && len(sc.BoardProfile.Config.KernelOverlay) > 0 {
-			log.Info("Applying board profile kernel overlay",
-				"board", sc.BoardProfile.Name,
-				"options", len(sc.BoardProfile.Config.KernelOverlay))
-			overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
-			if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
-				return fmt.Errorf("failed to generate board kernel overlay: %w", err)
-			}
-		}
-
-		log.Info("Generated kernel config", "path", configPath)
-	}
-
-	progress(90, "Generating build scripts")
+	progress(85, "Generating build scripts")
 
 	// Generate build scripts for container execution
 	if err := s.generateBuildScripts(sc); err != nil {
@@ -290,16 +264,6 @@ func (s *PrepareStage) findSourceDir(extractDir string) (string, error) {
 
 	// Otherwise, the extract dir itself is the source dir
 	return extractDir, nil
-}
-
-// findKernelComponent finds the kernel component in the resolved list
-func (s *PrepareStage) findKernelComponent(components []ResolvedComponent) *ResolvedComponent {
-	for i := range components {
-		if strings.Contains(strings.ToLower(components[i].Component.Name), "kernel") {
-			return &components[i]
-		}
-	}
-	return nil
 }
 
 // generateBuildScripts creates shell scripts for container execution

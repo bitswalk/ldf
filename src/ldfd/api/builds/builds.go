@@ -558,6 +558,58 @@ func (h *Handler) HandleRetryBuild(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
+// HandleClearDistributionBuilds removes all build jobs for a distribution
+func (h *Handler) HandleClearDistributionBuilds(c *gin.Context) {
+	distID := c.Param("id")
+	if distID == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(distID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "Access denied",
+		})
+		return
+	}
+
+	if err := h.buildManager.BuildJobRepo().DeleteByDistribution(distID); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Build history cleared"})
+}
+
 // HandleListActiveBuilds lists all active builds (admin only)
 func (h *Handler) HandleListActiveBuilds(c *gin.Context) {
 	jobs, err := h.buildManager.BuildJobRepo().ListActive()

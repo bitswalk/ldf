@@ -12,20 +12,18 @@ import (
 
 // PackageStage creates the final distributable image
 type PackageStage struct {
-	executor Executor
-	storage  storage.Backend
-	sizeGB   int
+	storage storage.Backend
+	sizeGB  int
 }
 
 // NewPackageStage creates a new package stage
-func NewPackageStage(executor Executor, storage storage.Backend, sizeGB int) *PackageStage {
+func NewPackageStage(storage storage.Backend, sizeGB int) *PackageStage {
 	if sizeGB <= 0 {
 		sizeGB = 4
 	}
 	return &PackageStage{
-		executor: executor,
-		storage:  storage,
-		sizeGB:   sizeGB,
+		storage: storage,
+		sizeGB:  sizeGB,
 	}
 }
 
@@ -70,7 +68,7 @@ func (s *PackageStage) Execute(ctx context.Context, sc *StageContext, progress P
 	}
 
 	// Get the appropriate image generator
-	generator := GetImageGenerator(sc.ImageFormat, s.executor, s.sizeGB)
+	generator := GetImageGenerator(sc.ImageFormat, sc.Executor, s.sizeGB)
 	log.Info("Using image generator",
 		"format", sc.ImageFormat,
 		"generator", generator.Name(),
