@@ -168,7 +168,7 @@ func (d *Downloader) downloadHTTP(ctx context.Context, job *db.DownloadJob, prog
 	}
 
 	// Mark job as completed
-	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum, stat.Size()); err != nil {
 		return fmt.Errorf("failed to mark job completed: %w", err)
 	}
 
@@ -214,7 +214,7 @@ func (d *Downloader) DownloadLocal(ctx context.Context, job *db.DownloadJob, loc
 		log.Warn("Failed to update progress for local download", "job_id", job.ID, "error", err)
 	}
 
-	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum, stat.Size()); err != nil {
 		return fmt.Errorf("failed to mark job completed: %w", err)
 	}
 
@@ -322,7 +322,7 @@ func (d *Downloader) DownloadHTTPWithOptions(ctx context.Context, job *db.Downlo
 		return fmt.Errorf("failed to upload to storage: %w", err)
 	}
 
-	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum, stat.Size()); err != nil {
 		return fmt.Errorf("failed to mark job completed: %w", err)
 	}
 
@@ -406,7 +406,7 @@ func (d *Downloader) downloadGit(ctx context.Context, job *db.DownloadJob, progr
 	}
 
 	// Mark job as completed
-	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum); err != nil {
+	if err := d.jobRepo.MarkCompleted(job.ID, artifactPath, checksum, stat.Size()); err != nil {
 		return fmt.Errorf("failed to mark job completed: %w", err)
 	}
 

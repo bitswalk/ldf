@@ -224,15 +224,15 @@ func (r *DownloadJobRepository) MarkVerifying(id string) error {
 	return nil
 }
 
-// MarkCompleted marks a job as completed with artifact path and checksum
-func (r *DownloadJobRepository) MarkCompleted(id, artifactPath, checksum string) error {
+// MarkCompleted marks a job as completed with artifact path, checksum and final size
+func (r *DownloadJobRepository) MarkCompleted(id, artifactPath, checksum string, totalBytes int64) error {
 	now := time.Now()
 	query := `
 		UPDATE download_jobs
-		SET status = ?, completed_at = ?, artifact_path = ?, checksum = ?, error_message = ''
+		SET status = ?, completed_at = ?, artifact_path = ?, checksum = ?, total_bytes = ?, error_message = ''
 		WHERE id = ?
 	`
-	result, err := r.db.DB().Exec(query, JobStatusCompleted, now, artifactPath, checksum, id)
+	result, err := r.db.DB().Exec(query, JobStatusCompleted, now, artifactPath, checksum, totalBytes, id)
 	if err != nil {
 		return fmt.Errorf("failed to mark job completed: %w", err)
 	}
