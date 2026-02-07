@@ -24,10 +24,20 @@ import {
   formatBytes,
 } from "../../services/downloads";
 
+export interface DownloadActions {
+  start: () => void;
+  flush: () => void;
+  starting: () => boolean;
+  flushing: () => boolean;
+  hasActiveJobs: () => boolean;
+  hasJobs: () => boolean;
+}
+
 interface DownloadStatusProps {
   distributionId: string;
   onError?: (message: string) => void;
   onSuccess?: (message: string) => void;
+  onActions?: (actions: DownloadActions) => void;
   pollInterval?: number;
 }
 
@@ -45,14 +55,6 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
 
   const hasActiveJobs = createMemo(() =>
     jobs().some((job) => isJobActive(job.status)),
-  );
-
-  const completedCount = createMemo(
-    () => jobs().filter((job) => job.status === "completed").length,
-  );
-
-  const failedCount = createMemo(
-    () => jobs().filter((job) => job.status === "failed").length,
   );
 
   const fetchJobs = async () => {
@@ -129,6 +131,16 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
     setFlushing(false);
   };
 
+  // Expose actions to parent for Card header rendering
+  props.onActions?.({
+    start: handleStartDownloads,
+    flush: handleFlush,
+    starting,
+    flushing,
+    hasActiveJobs,
+    hasJobs: () => jobs().length > 0,
+  });
+
   const getStatusIcon = (status: DownloadJobStatus): string => {
     switch (status) {
       case "pending":
@@ -170,64 +182,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
   };
 
   return (
-    <div class="space-y-4">
-      {/* Header with Start button */}
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <Icon name="cloud-arrow-down" size="lg" class="text-primary" />
-          <h3 class="text-lg font-semibold">{t("common.downloads.title")}</h3>
-          <Show when={jobs().length > 0}>
-            <span class="text-sm text-muted-foreground">
-              ({completedCount()}/{jobs().length} completed
-              <Show when={failedCount() > 0}>, {failedCount()} failed</Show>)
-            </span>
-          </Show>
-        </div>
-        <div class="flex items-center gap-2">
-          <Show when={jobs().length > 0}>
-            <button
-              onClick={handleFlush}
-              disabled={flushing() || hasActiveJobs()}
-              class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title={t("common.downloads.clearHistory")}
-            >
-              <Show
-                when={!flushing()}
-                fallback={
-                  <Icon name="spinner-gap" size="sm" class="animate-spin" />
-                }
-              >
-                <Icon name="trash" size="sm" />
-              </Show>
-              <span>
-                {flushing()
-                  ? t("common.downloads.clearing")
-                  : t("common.downloads.clear")}
-              </span>
-            </button>
-          </Show>
-          <button
-            onClick={handleStartDownloads}
-            disabled={starting() || hasActiveJobs()}
-            class="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Show
-              when={!starting()}
-              fallback={
-                <Icon name="spinner-gap" size="sm" class="animate-spin" />
-              }
-            >
-              <Icon name="download" size="sm" />
-            </Show>
-            <span>
-              {starting()
-                ? t("common.downloads.starting")
-                : t("common.downloads.startButton")}
-            </span>
-          </button>
-        </div>
-      </div>
-
+    <div class="space-y-3">
       {/* Loading state */}
       <Show when={loading()}>
         <div class="flex items-center justify-center py-8">
@@ -267,7 +222,7 @@ export const DownloadStatus: Component<DownloadStatusProps> = (props) => {
         <div class="space-y-3">
           <For each={jobs()}>
             {(job) => (
-              <div class="bg-card border border-border rounded-lg p-4">
+              <div class="border border-border rounded-lg p-4">
                 <div class="flex items-start justify-between gap-4">
                   {/* Job info */}
                   <div class="flex-1 min-w-0">

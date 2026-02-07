@@ -109,10 +109,18 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		return fmt.Errorf("failed to write build script: %w", err)
 	}
 
-	// Setup container mounts
+	// Generate board profile kernel overlay file if present (for container to consume)
+	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.KernelOverlay) > 0 {
+		overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
+		if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
+			return fmt.Errorf("failed to generate board kernel overlay: %w", err)
+		}
+	}
+
+	// Setup container mounts — mount the entire config dir so overlay files are accessible
 	mounts := []Mount{
 		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
-		{Source: configPath, Target: "/config/.config", ReadOnly: true},
+		{Source: sc.ConfigDir, Target: "/config", ReadOnly: true},
 		{Source: outputDir, Target: "/output", ReadOnly: false},
 		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
 	}
@@ -326,33 +334,39 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 	archFlag := fmt.Sprintf("ARCH=%s", makeArch)
 	crossFlag := fmt.Sprintf("CROSS_COMPILE=%s", crossCompile)
 
-	switch configMode {
-	case string(db.KernelConfigModeDefconfig):
-		defconfigTarget := "defconfig"
-		if makeArch == "x86" || makeArch == "x86_64" {
-			defconfigTarget = "x86_64_defconfig"
-		}
-		if err := runMake(archFlag, crossFlag, defconfigTarget); err != nil {
-			return fmt.Errorf("defconfig generation failed: %w", err)
-		}
-
-	case string(db.KernelConfigModeOptions):
-		defconfigTarget := "defconfig"
-		if makeArch == "x86" || makeArch == "x86_64" {
-			defconfigTarget = "x86_64_defconfig"
-		}
-		if err := runMake(archFlag, crossFlag, defconfigTarget); err != nil {
-			return fmt.Errorf("defconfig generation failed: %w", err)
-		}
-		// Apply custom options using the kernel's scripts/config tool
-		if err := s.applyKconfigOptions(kernelDir, configPath); err != nil {
-			return fmt.Errorf("failed to apply kconfig options: %w", err)
-		}
-
-	case string(db.KernelConfigModeCustom):
-		// Copy the user config directly, stripping LDF metadata
+	if configMode == string(db.KernelConfigModeCustom) {
+		// Full config: copy directly, stripping LDF metadata headers
 		if err := s.copyCustomConfig(kernelDir, configPath); err != nil {
 			return fmt.Errorf("failed to copy custom config: %w", err)
+		}
+	} else {
+		// Fragment (defconfig or options): run defconfig then merge fragment on top
+		defconfigName := GetDefconfigName(sc.BoardProfile, sc.TargetArch)
+		defconfigTarget := defconfigName
+		if defconfigName != "defconfig" {
+			defconfigTarget = defconfigName + "_defconfig"
+		}
+		if err := runMake(archFlag, crossFlag, defconfigTarget); err != nil {
+			return fmt.Errorf("defconfig generation failed: %w", err)
+		}
+
+		// Merge the stored config fragment (recommended + user options)
+		if err := s.applyKconfigOptions(kernelDir, configPath); err != nil {
+			return fmt.Errorf("failed to apply config fragment: %w", err)
+		}
+
+		// Apply board profile kernel overlay on top (if present)
+		if sc.BoardProfile != nil && len(sc.BoardProfile.Config.KernelOverlay) > 0 {
+			log.Info("Applying board profile kernel overlay",
+				"board", sc.BoardProfile.Name,
+				"options", len(sc.BoardProfile.Config.KernelOverlay))
+			overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
+			if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
+				return fmt.Errorf("failed to generate board kernel overlay: %w", err)
+			}
+			if err := s.applyKconfigOptions(kernelDir, overlayPath); err != nil {
+				return fmt.Errorf("failed to apply board kernel overlay: %w", err)
+			}
 		}
 	}
 
@@ -638,34 +652,16 @@ echo "Using ${NPROC} parallel jobs"
 
 `
 
-	// Add config handling based on mode
-	switch configMode {
-	case string(db.KernelConfigModeDefconfig):
+	// Config handling: two paths — custom (full config) vs fragment (defconfig/options)
+	if configMode == string(db.KernelConfigModeCustom) {
 		script += `
-# Generate default config for architecture
-echo "Generating defconfig for ${ARCH}..."
-if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
-    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" x86_64_defconfig
-else
-    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" defconfig
-fi
-
-# Apply recommended options from LDF config if present
-if grep -q "^# Recommended options" /config/.config 2>/dev/null; then
-    echo "Applying recommended options..."
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^#[[:space:]]*(CONFIG_[A-Z0-9_]+)=(.*)$ ]]; then
-            KEY="${BASH_REMATCH[1]}"
-            VALUE="${BASH_REMATCH[2]}"
-            ./scripts/config --set-val "$KEY" "$VALUE" || true
-        fi
-    done < /config/.config
-fi
+# Custom mode: copy user-provided full config, stripping LDF metadata
+echo "Using custom kernel config..."
+grep -v "^# LDF" /config/.config | grep -v "^LDF_" > .config || true
 `
-
-	case string(db.KernelConfigModeOptions):
+	} else {
 		script += `
-# Generate default config first
+# Fragment mode: run defconfig then merge stored config fragment
 echo "Generating defconfig for ${ARCH}..."
 if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
     make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" x86_64_defconfig
@@ -673,20 +669,17 @@ else
     make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" defconfig
 fi
 
-# Apply custom options from config file
-echo "Applying custom options..."
+# Merge config fragment (recommended + user options) on top of defconfig
+echo "Applying config fragment..."
 while IFS= read -r line; do
-    # Skip comments and empty lines
+    # Skip comments, empty lines, and LDF metadata
     [[ "$line" =~ ^# ]] && continue
     [[ -z "$line" ]] && continue
-
-    # Skip LDF metadata
     [[ "$line" =~ ^LDF_ ]] && continue
 
     if [[ "$line" =~ ^(CONFIG_[A-Z0-9_]+)=(.*)$ ]]; then
         KEY="${BASH_REMATCH[1]}"
         VALUE="${BASH_REMATCH[2]}"
-        # Remove quotes if present
         VALUE="${VALUE%\"}"
         VALUE="${VALUE#\"}"
 
@@ -701,13 +694,32 @@ while IFS= read -r line; do
         ./scripts/config --disable "$KEY"
     fi
 done < /config/.config
-`
 
-	case string(db.KernelConfigModeCustom):
-		script += `
-# Copy user-provided config (skip header comments)
-echo "Using custom kernel config..."
-grep -v "^# LDF" /config/.config | grep -v "^LDF_" > .config || true
+# Apply board profile kernel overlay if present
+if [ -f /config/.config.board-overlay ]; then
+    echo "Applying board profile kernel overlay..."
+    while IFS= read -r line; do
+        [[ "$line" =~ ^# ]] && continue
+        [[ -z "$line" ]] && continue
+
+        if [[ "$line" =~ ^(CONFIG_[A-Z0-9_]+)=(.*)$ ]]; then
+            KEY="${BASH_REMATCH[1]}"
+            VALUE="${BASH_REMATCH[2]}"
+            VALUE="${VALUE%\"}"
+            VALUE="${VALUE#\"}"
+
+            case "$VALUE" in
+                y) ./scripts/config --enable "$KEY" ;;
+                m) ./scripts/config --module "$KEY" ;;
+                n) ./scripts/config --disable "$KEY" ;;
+                *) ./scripts/config --set-str "$KEY" "$VALUE" ;;
+            esac
+        elif [[ "$line" =~ ^"# "(CONFIG_[A-Z0-9_]+)" is not set"$ ]]; then
+            KEY="${BASH_REMATCH[1]}"
+            ./scripts/config --disable "$KEY"
+        fi
+    done < /config/.config.board-overlay
+fi
 `
 	}
 

@@ -67,6 +67,12 @@ func (b *LocalBackend) fullPath(key string) string {
 	return fullPath
 }
 
+// ResolvePath returns the absolute filesystem path for a storage key.
+// This implements the LocalPathResolver interface.
+func (b *LocalBackend) ResolvePath(key string) string {
+	return b.fullPath(key)
+}
+
 // Upload uploads data to local filesystem
 func (b *LocalBackend) Upload(ctx context.Context, key string, reader io.Reader, size int64, contentType string) error {
 	fullPath := b.fullPath(key)

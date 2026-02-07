@@ -4,7 +4,10 @@ import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
-import { DownloadStatus } from "../../components/DownloadStatus";
+import {
+  DownloadStatus,
+  type DownloadActions,
+} from "../../components/DownloadStatus";
 import { DistributionEditForm } from "../../components/DistributionEditForm";
 import { BuildStartDialog } from "../../components/BuildStartDialog";
 import { BuildsList } from "../../components/BuildsList";
@@ -13,12 +16,14 @@ import {
   updateDistribution,
   deleteDistribution,
   getDeletionPreview,
+  uploadKernelConfig,
   type Distribution,
   type DistributionStatus,
   type DistributionConfig,
   type UpdateDistributionRequest,
   type DeletionPreview,
 } from "../../services/distribution";
+import { clearDistributionBuilds } from "../../services/builds";
 import { t } from "../../services/i18n";
 
 interface UserInfo {
@@ -126,6 +131,14 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     createSignal<DeletionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = createSignal(false);
   const [buildDialogOpen, setBuildDialogOpen] = createSignal(false);
+  const [kernelConfigModalOpen, setKernelConfigModalOpen] = createSignal(false);
+  const [uploadingConfig, setUploadingConfig] = createSignal(false);
+  const [uploadProgress, setUploadProgress] = createSignal(0);
+  const [clearingBuilds, setClearingBuilds] = createSignal(false);
+  const [clearBuildsModalOpen, setClearBuildsModalOpen] = createSignal(false);
+  let refetchBuilds: (() => void) | undefined;
+  const [downloadActions, setDownloadActions] =
+    createSignal<DownloadActions | null>(null);
 
   const isAdmin = () => props.user?.role === "root";
 
@@ -269,6 +282,44 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
   const cancelDelete = () => {
     setDeleteModalOpen(false);
+  };
+
+  const confirmClearBuilds = async () => {
+    setClearingBuilds(true);
+    const result = await clearDistributionBuilds(props.distributionId);
+    setClearingBuilds(false);
+    setClearBuildsModalOpen(false);
+
+    if (result.success) {
+      showNotification("success", t("build.list.clearSuccess"));
+      refetchBuilds?.();
+    } else {
+      showNotification("error", result.message);
+    }
+  };
+
+  const handleKernelConfigUpload = async (file: File) => {
+    setUploadingConfig(true);
+    setUploadProgress(0);
+
+    const result = await uploadKernelConfig(
+      props.distributionId,
+      file,
+      (progress) => setUploadProgress(progress),
+    );
+
+    setUploadingConfig(false);
+
+    if (result.success) {
+      setKernelConfigModalOpen(false);
+      showNotification(
+        "success",
+        t("distribution.detail.quickActions.uploadKernelConfigSuccess"),
+      );
+      fetchDistribution();
+    } else {
+      showNotification("error", result.message);
+    }
   };
 
   const config = () => distribution()?.config;
@@ -687,6 +738,25 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                     </div>
                   </button>
 
+                  <button
+                    class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left"
+                    onClick={() => setKernelConfigModalOpen(true)}
+                  >
+                    <Icon name="gear-six" size="md" class="text-primary" />
+                    <div>
+                      <div class="font-medium">
+                        {t(
+                          "distribution.detail.quickActions.uploadKernelConfig",
+                        )}
+                      </div>
+                      <div class="text-sm text-muted-foreground">
+                        {t(
+                          "distribution.detail.quickActions.uploadKernelConfigDesc",
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
                   <button class="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-muted transition-colors text-left opacity-50 cursor-not-allowed">
                     <Icon
                       name="download-simple"
@@ -709,11 +779,35 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               <Card
                 header={{
                   title: t("build.list.title"),
+                  actions: (
+                    <button
+                      onClick={() => setClearBuildsModalOpen(true)}
+                      disabled={clearingBuilds()}
+                      class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Show
+                        when={!clearingBuilds()}
+                        fallback={
+                          <Icon
+                            name="spinner-gap"
+                            size="sm"
+                            class="animate-spin"
+                          />
+                        }
+                      >
+                        <Icon name="trash" size="sm" />
+                      </Show>
+                      <span>{t("build.list.clear")}</span>
+                    </button>
+                  ),
                 }}
               >
                 <BuildsList
                   distributionId={props.distributionId}
                   onBuildClick={(buildId) => props.onNavigateToBuild?.(buildId)}
+                  onRefetch={(fn) => {
+                    refetchBuilds = fn;
+                  }}
                   limit={5}
                 />
               </Card>
@@ -722,12 +816,60 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               <Card
                 header={{
                   title: t("distribution.detail.componentDownloads.title"),
+                  actions: (
+                    <div class="flex items-center gap-2">
+                      <Show when={downloadActions()?.hasJobs()}>
+                        <button
+                          onClick={() => downloadActions()?.flush()}
+                          disabled={downloadActions()?.flushing()}
+                          class="flex items-center gap-2 px-3 py-2 border border-border text-muted-foreground rounded-md hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Show
+                            when={!downloadActions()?.flushing()}
+                            fallback={
+                              <Icon
+                                name="spinner-gap"
+                                size="sm"
+                                class="animate-spin"
+                              />
+                            }
+                          >
+                            <Icon name="trash" size="sm" />
+                          </Show>
+                          <span>{t("common.downloads.clear")}</span>
+                        </button>
+                      </Show>
+                      <button
+                        onClick={() => downloadActions()?.start()}
+                        disabled={
+                          downloadActions()?.starting() ||
+                          downloadActions()?.hasActiveJobs()
+                        }
+                        class="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Show
+                          when={!downloadActions()?.starting()}
+                          fallback={
+                            <Icon
+                              name="spinner-gap"
+                              size="sm"
+                              class="animate-spin"
+                            />
+                          }
+                        >
+                          <Icon name="cloud-arrow-down" size="sm" />
+                        </Show>
+                        <span>{t("common.downloads.startButton")}</span>
+                      </button>
+                    </div>
+                  ),
                 }}
               >
                 <DownloadStatus
                   distributionId={props.distributionId}
                   onSuccess={handleDownloadSuccess}
                   onError={handleDownloadError}
+                  onActions={setDownloadActions}
                   pollInterval={3000}
                 />
               </Card>
@@ -902,6 +1044,92 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
           props.onNavigateToBuild?.(buildId);
         }}
       />
+
+      {/* Kernel Config Upload Modal */}
+      <Modal
+        isOpen={kernelConfigModalOpen()}
+        onClose={() => setKernelConfigModalOpen(false)}
+        title={t("distribution.detail.quickActions.uploadKernelConfig")}
+      >
+        <section class="flex flex-col gap-4">
+          <p class="text-sm text-muted-foreground">
+            {t("distribution.detail.quickActions.uploadKernelConfigDesc")}
+          </p>
+
+          <label class="flex flex-col gap-2">
+            <input
+              type="file"
+              accept=".config,*"
+              class="block w-full text-sm text-muted-foreground
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-md file:border file:border-border
+                file:text-sm file:font-medium
+                file:bg-muted file:text-foreground
+                hover:file:bg-muted/80 file:cursor-pointer file:transition-colors"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) {
+                  handleKernelConfigUpload(file);
+                }
+              }}
+              disabled={uploadingConfig()}
+            />
+          </label>
+
+          <Show when={uploadingConfig()}>
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <Spinner size="sm" />
+                <span class="text-sm text-muted-foreground">
+                  {uploadProgress()}%
+                </span>
+              </div>
+              <div class="w-full bg-muted rounded-full h-2">
+                <div
+                  class="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${uploadProgress()}%` }}
+                />
+              </div>
+            </div>
+          </Show>
+        </section>
+      </Modal>
+
+      {/* Clear Builds Confirmation Modal */}
+      <Modal
+        isOpen={clearBuildsModalOpen()}
+        onClose={() => setClearBuildsModalOpen(false)}
+        title={t("build.list.clear")}
+      >
+        <section class="flex flex-col gap-6">
+          <p class="text-muted-foreground">{t("build.list.clearConfirm")}</p>
+          <nav class="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setClearBuildsModalOpen(false)}
+              disabled={clearingBuilds()}
+              class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              {t("common.actions.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={confirmClearBuilds}
+              disabled={clearingBuilds()}
+              class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Show when={clearingBuilds()}>
+                <Spinner size="sm" />
+              </Show>
+              <span>
+                {clearingBuilds()
+                  ? t("distribution.delete.deleting")
+                  : t("build.list.clear")}
+              </span>
+            </button>
+          </nav>
+        </section>
+      </Modal>
     </section>
   );
 };

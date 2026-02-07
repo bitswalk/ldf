@@ -178,6 +178,20 @@ export type UpdateResult =
       message: string;
     };
 
+export type UploadKernelConfigResult =
+  | { success: true }
+  | {
+      success: false;
+      error:
+        | "not_found"
+        | "unauthorized"
+        | "bad_request"
+        | "network_error"
+        | "not_configured"
+        | "internal_error";
+      message: string;
+    };
+
 function getApiUrl(path: string): string | null {
   const serverUrl = getServerUrl();
   if (!serverUrl) return null;
@@ -233,6 +247,137 @@ export async function listDistributions(): Promise<ListResult> {
       success: false,
       error: "internal_error",
       message: "Failed to fetch distributions",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "network_error",
+      message:
+        err instanceof Error ? err.message : "Failed to connect to server",
+    };
+  }
+}
+
+export async function uploadKernelConfig(
+  distributionId: string,
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<UploadKernelConfigResult> {
+  const url = getApiUrl(`/distributions/${distributionId}/kernel-config`);
+
+  if (!url) {
+    return {
+      success: false,
+      error: "not_configured",
+      message: "Server connection not configured",
+    };
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const token = getAuthToken();
+
+  if (onProgress) {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status === 200 || xhr.status === 201) {
+          resolve({ success: true });
+        } else if (xhr.status === 400) {
+          resolve({
+            success: false,
+            error: "bad_request",
+            message: "Invalid kernel config file",
+          });
+        } else if (xhr.status === 401) {
+          resolve({
+            success: false,
+            error: "unauthorized",
+            message: "Authentication required",
+          });
+        } else if (xhr.status === 404) {
+          resolve({
+            success: false,
+            error: "not_found",
+            message: "Distribution not found",
+          });
+        } else {
+          resolve({
+            success: false,
+            error: "internal_error",
+            message: `Upload failed (${xhr.status})`,
+          });
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        resolve({
+          success: false,
+          error: "network_error",
+          message: "Failed to connect to server",
+        });
+      });
+
+      xhr.open("POST", url);
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+      xhr.send(formData);
+    });
+  }
+
+  try {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (response.ok) {
+      return { success: true };
+    }
+
+    if (response.status === 400) {
+      return {
+        success: false,
+        error: "bad_request",
+        message: "Invalid kernel config file",
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: "unauthorized",
+        message: "Authentication required",
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        success: false,
+        error: "not_found",
+        message: "Distribution not found",
+      };
+    }
+
+    return {
+      success: false,
+      error: "internal_error",
+      message: "Failed to upload kernel config",
     };
   } catch (err) {
     return {

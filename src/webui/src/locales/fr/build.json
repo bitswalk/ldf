@@ -19,7 +19,11 @@
   },
   "list": {
     "title": "Constructions recentes",
-    "empty": "Aucune construction"
+    "empty": "Aucune construction",
+    "clear": "Effacer",
+    "clearConfirm": "Effacer tout l'historique de construction de cette distribution ?",
+    "clearSuccess": "Historique de construction efface",
+    "page": "Page {{ current }} sur {{ total }}"
   },
   "detail": {
     "title": "Details de la construction",

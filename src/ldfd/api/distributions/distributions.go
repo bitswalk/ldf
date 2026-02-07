@@ -1,11 +1,14 @@
 package distributions
 
 import (
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +30,7 @@ func NewHandler(cfg Config) *Handler {
 		sourceRepo:      cfg.SourceRepo,
 		jwtService:      cfg.JWTService,
 		storageManager:  cfg.StorageManager,
+		kernelConfigSvc: cfg.KernelConfigSvc,
 	}
 }
 
@@ -163,6 +167,17 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 
 	if err := h.distRepo.AddLog(dist.ID, "info", "Distribution created"); err != nil {
 		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+	}
+
+	// Generate and store kernel config artifact
+	if dist.Config != nil && h.kernelConfigSvc != nil {
+		if err := h.kernelConfigSvc.GenerateAndStore(c.Request.Context(), dist); err != nil {
+			log.Warn("Failed to generate kernel config artifact", "dist_id", dist.ID, "error", err)
+		} else {
+			if err := h.distRepo.AddLog(dist.ID, "info", "Kernel config artifact generated"); err != nil {
+				log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+			}
+		}
 	}
 
 	common.AuditLog(c, common.AuditEvent{Action: "distribution.create", UserID: ownerID, Resource: "distribution:" + dist.ID, Success: true})
@@ -353,6 +368,17 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 
 	if err := h.distRepo.AddLog(dist.ID, "info", "Distribution updated"); err != nil {
 		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+	}
+
+	// Regenerate kernel config artifact if config was updated
+	if req.Config != nil && dist.Config != nil && h.kernelConfigSvc != nil {
+		if err := h.kernelConfigSvc.GenerateAndStore(c.Request.Context(), dist); err != nil {
+			log.Warn("Failed to regenerate kernel config artifact", "dist_id", dist.ID, "error", err)
+		} else {
+			if err := h.distRepo.AddLog(dist.ID, "info", "Kernel config artifact regenerated"); err != nil {
+				log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+			}
+		}
 	}
 
 	common.AuditLog(c, common.AuditEvent{Action: "distribution.update", UserID: claims.UserID, UserName: claims.UserName, Resource: "distribution:" + dist.ID, Success: true})
@@ -694,5 +720,147 @@ func (h *Handler) HandleGetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, DistributionStatsResponse{
 		Total: total,
 		Stats: stats,
+	})
+}
+
+// HandleUploadKernelConfig replaces the kernel .config artifact with a user-provided file
+// @Summary      Upload kernel config
+// @Description  Replaces the generated kernel .config with a user-provided configuration file
+// @Tags         Distributions
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id    path      string  true  "Distribution ID"
+// @Param        file  formData  file    true  "Kernel .config file"
+// @Success      200   {object}  map[string]string
+// @Failure      400   {object}  common.ErrorResponse
+// @Failure      401   {object}  common.ErrorResponse
+// @Failure      403   {object}  common.ErrorResponse
+// @Failure      404   {object}  common.ErrorResponse
+// @Failure      500   {object}  common.ErrorResponse
+// @Security     BearerAuth
+// @Router       /v1/distributions/{id}/kernel-config [post]
+func (h *Handler) HandleUploadKernelConfig(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "Distribution ID required",
+		})
+		return
+	}
+
+	claims := common.GetClaimsFromContext(c)
+	if claims == nil {
+		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
+			Error:   "Unauthorized",
+			Code:    http.StatusUnauthorized,
+			Message: "Authentication required",
+		})
+		return
+	}
+
+	dist, err := h.distRepo.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		})
+		return
+	}
+	if dist == nil {
+		c.JSON(http.StatusNotFound, common.ErrorResponse{
+			Error:   "Not found",
+			Code:    http.StatusNotFound,
+			Message: "Distribution not found",
+		})
+		return
+	}
+
+	// Check ownership or admin access
+	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
+		c.JSON(http.StatusForbidden, common.ErrorResponse{
+			Error:   "Forbidden",
+			Code:    http.StatusForbidden,
+			Message: "You don't have permission to modify this distribution",
+		})
+		return
+	}
+
+	// Read uploaded file
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "File upload required (field: file)",
+		})
+		return
+	}
+	defer file.Close()
+
+	configData, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to read uploaded file",
+		})
+		return
+	}
+
+	// Basic validation: file should contain at least one CONFIG_ line
+	if !strings.Contains(string(configData), "CONFIG_") {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse{
+			Error:   "Bad request",
+			Code:    http.StatusBadRequest,
+			Message: "File does not appear to be a valid kernel .config (no CONFIG_ entries found)",
+		})
+		return
+	}
+
+	if h.kernelConfigSvc == nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: "Kernel config service not available",
+		})
+		return
+	}
+
+	// Store the custom config
+	if err := h.kernelConfigSvc.StoreCustomConfig(c.Request.Context(), dist, configData); err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
+			Error:   "Internal server error",
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to store kernel config: " + err.Error(),
+		})
+		return
+	}
+
+	// Update distribution config mode to custom
+	if dist.Config != nil {
+		dist.Config.Core.Kernel.ConfigMode = db.KernelConfigModeCustom
+		if err := h.distRepo.Update(dist); err != nil {
+			log.Warn("Failed to update distribution config mode", "dist_id", dist.ID, "error", err)
+		}
+	}
+
+	if err := h.distRepo.AddLog(dist.ID, "info", "Custom kernel config uploaded"); err != nil {
+		log.Warn("Failed to add distribution log", "dist_id", dist.ID, "error", err)
+	}
+
+	common.AuditLog(c, common.AuditEvent{
+		Action:   "distribution.kernel_config.upload",
+		UserID:   claims.UserID,
+		UserName: claims.UserName,
+		Resource: "distribution:" + dist.ID,
+		Success:  true,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Kernel configuration uploaded successfully",
+		"key":     build.KernelConfigArtifactPath(dist.OwnerID, dist.ID),
 	})
 }
