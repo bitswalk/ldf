@@ -1,6 +1,8 @@
 import type { Component } from "solid-js";
 import { createSignal, onMount, Show, For } from "solid-js";
 import { Icon } from "../Icon";
+import { Label } from "../Label";
+import type { LabelVariant } from "../Label";
 import { Spinner } from "../Spinner";
 import {
   listDistributionBuilds,
@@ -15,19 +17,19 @@ import {
 } from "../../services/builds";
 import { t } from "../../services/i18n";
 
-const getStatusBadgeClass = (status: BuildJobStatus): string => {
+const getStatusLabelVariant = (status: BuildJobStatus): LabelVariant => {
   const color = getStatusColor(status);
   switch (color) {
     case "success":
-      return "text-green-500";
+      return "success";
     case "danger":
-      return "text-red-500";
+      return "danger";
     case "warning":
-      return "text-yellow-500";
+      return "warning";
     case "primary":
-      return "text-primary";
+      return "primary";
     default:
-      return "text-muted-foreground";
+      return "muted";
   }
 };
 
@@ -136,23 +138,15 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
                     />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                       <span class="font-medium truncate font-mono text-sm">
                         {build.id}
                       </span>
-                      <span
-                        class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build.status)} bg-current/10`}
-                      >
+                      <Label variant={getStatusLabelVariant(build.status)}>
                         {getStatusDisplayText(build.status)}
-                      </span>
-                    </div>
-                    <div class="flex items-center gap-2 mt-1">
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {build.target_arch}
-                      </span>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {getFormatDisplayText(build.image_format)}
-                      </span>
+                      </Label>
+                      <Label>{build.target_arch}</Label>
+                      <Label>{getFormatDisplayText(build.image_format)}</Label>
                     </div>
                     <div class="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                       <span>{formatDate(build.created_at)}</span>

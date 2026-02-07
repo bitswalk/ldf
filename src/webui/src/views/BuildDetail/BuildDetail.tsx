@@ -10,6 +10,8 @@ import {
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Label } from "../../components/Label";
+import type { LabelVariant } from "../../components/Label";
 import {
   getBuild,
   getBuildLogs,
@@ -202,19 +204,19 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
     }
   };
 
-  const getStatusBadgeClass = (status: BuildJobStatus): string => {
+  const getStatusLabelVariant = (status: BuildJobStatus): LabelVariant => {
     const color = getStatusColor(status);
     switch (color) {
       case "success":
-        return "text-green-500";
+        return "success";
       case "danger":
-        return "text-red-500";
+        return "danger";
       case "warning":
-        return "text-yellow-500";
+        return "warning";
       case "primary":
-        return "text-primary";
+        return "primary";
       default:
-        return "text-muted-foreground";
+        return "muted";
     }
   };
 
@@ -234,17 +236,11 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
             <div class="flex items-center gap-3">
               <h1 class="text-4xl font-bold">{t("build.detail.title")}</h1>
               <Show when={build()}>
-                <span
-                  class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build()!.status)} bg-current/10`}
-                >
+                <Label variant={getStatusLabelVariant(build()!.status)}>
                   {getStatusDisplayText(build()!.status)}
-                </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                  {build()!.target_arch}
-                </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                  {getFormatDisplayText(build()!.image_format)}
-                </span>
+                </Label>
+                <Label>{build()!.target_arch}</Label>
+                <Label>{getFormatDisplayText(build()!.image_format)}</Label>
               </Show>
             </div>
             <p class="text-muted-foreground mt-1">{props.buildId}</p>
@@ -327,11 +323,9 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
                     <span class="text-muted-foreground text-sm">
                       {t("build.detail.info.status")}
                     </span>
-                    <span
-                      class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(build()!.status)} bg-current/10`}
-                    >
+                    <Label variant={getStatusLabelVariant(build()!.status)}>
                       {getStatusDisplayText(build()!.status)}
-                    </span>
+                    </Label>
                   </article>
 
                   <article class="flex items-center justify-between py-2">
