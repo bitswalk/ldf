@@ -549,7 +549,7 @@ func (h *Handler) HandleListDefaultVersions(c *gin.Context) {
 		return
 	}
 
-	limit, offset := common.GetPaginationParams(c, 500)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, "default", limit, offset, versionType)
@@ -601,7 +601,7 @@ func (h *Handler) HandleListUserVersions(c *gin.Context) {
 		return
 	}
 
-	limit, offset := common.GetPaginationParams(c, 500)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, "user", limit, offset, versionType)
@@ -1153,7 +1153,7 @@ func (h *Handler) HandleListVersions(c *gin.Context) {
 	}
 
 	sourceType := db.GetSourceType(source)
-	limit, offset := common.GetPaginationParams(c, 500)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListBySourcePaginated(id, sourceType, limit, offset, versionType)

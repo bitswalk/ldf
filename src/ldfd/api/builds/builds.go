@@ -136,7 +136,7 @@ func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 		}
 	}
 
-	limit, offset := common.GetPaginationParams(c, 100)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 
 	jobs, total, err := h.buildManager.BuildJobRepo().ListByDistribution(distID, limit, offset)
 	if err != nil {
