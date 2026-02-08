@@ -106,6 +106,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr 
 	mirrorResolver := download.NewMirrorResolver(enabledMirrors, mirrorCfg)
 
 	downloadManager := download.NewManager(database, storageBackend, downloadCfg, artifactCache, mirrorResolver)
+	downloadManager.SetBoardProfileRepo(db.NewBoardProfileRepository(database))
 
 	// Initialize source version repository and discovery service
 	sourceVersionRepo := db.NewSourceVersionRepository(database)

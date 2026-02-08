@@ -125,6 +125,15 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
 	}
 
+	// Mount downloaded toolchain if available
+	if sc.ToolchainDir != "" {
+		mounts = append(mounts, Mount{
+			Source:   filepath.Dir(sc.ToolchainDir), // parent of bin/
+			Target:   "/opt/toolchain",
+			ReadOnly: true,
+		})
+	}
+
 	// Create a log file for build output
 	logPath := filepath.Join(sc.WorkspacePath, "logs", "kernel-compile.log")
 	logFile, err := os.Create(logPath)
@@ -159,6 +168,11 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 	envVars["NPROC"] = "0" // 0 means auto-detect
 	if _, ok := envVars["CROSS_COMPILE"]; !ok && crossCompile != "" {
 		envVars["CROSS_COMPILE"] = crossCompile
+	}
+
+	// Prepend downloaded toolchain to PATH if mounted
+	if sc.ToolchainDir != "" {
+		envVars["TOOLCHAIN_PATH"] = "/opt/toolchain/bin"
 	}
 
 	opts := ContainerRunOpts{
@@ -310,6 +324,11 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 	makeEnv["ARCH"] = makeArch
 	if _, ok := makeEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
 		makeEnv["CROSS_COMPILE"] = crossCompile
+	}
+
+	// Prepend downloaded toolchain to PATH if available
+	if sc.ToolchainDir != "" {
+		makeEnv["PATH"] = sc.ToolchainDir + ":" + os.Getenv("PATH")
 	}
 
 	// Create a log file for build output
@@ -649,6 +668,12 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 func (s *CompileStage) generateBuildScript(configMode, makeArch, crossCompile string) string {
 	script := `#!/bin/bash
 set -e
+
+# Prepend downloaded toolchain to PATH if available
+if [ -n "${TOOLCHAIN_PATH}" ]; then
+    export PATH="${TOOLCHAIN_PATH}:${PATH}"
+    echo "Toolchain PATH: ${TOOLCHAIN_PATH}"
+fi
 
 echo "=== LDF Kernel Build ==="
 echo "Architecture: ${ARCH:-x86}"
