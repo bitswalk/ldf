@@ -350,15 +350,6 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
                     </span>
                   </article>
 
-                  <article class="flex items-center justify-between py-2">
-                    <span class="text-muted-foreground text-sm">
-                      {t("build.detail.info.progress")}
-                    </span>
-                    <span class="text-sm font-medium">
-                      {build()!.progress_percent}%
-                    </span>
-                  </article>
-
                   <div class="border-t border-border pt-2 mt-2">
                     <article class="flex items-center justify-between py-2">
                       <span class="text-muted-foreground text-sm">
@@ -475,11 +466,6 @@ export const BuildDetail: Component<BuildDetailProps> = (props) => {
                               </div>
                             </Show>
                           </div>
-                          <Show when={stage.status === "running"}>
-                            <span class="text-xs text-muted-foreground">
-                              {stage.progress_percent}%
-                            </span>
-                          </Show>
                         </button>
                       )}
                     </For>
