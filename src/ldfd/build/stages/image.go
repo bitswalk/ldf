@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -24,17 +25,17 @@ type ImageGenerator interface {
 
 	// Generate creates the image from the assembled rootfs
 	// Returns the path to the generated image
-	Generate(ctx context.Context, sc *StageContext, progress ProgressFunc) (string, error)
+	Generate(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) (string, error)
 }
 
 // RawImageGenerator creates raw disk images
 type RawImageGenerator struct {
-	executor Executor
+	executor build.Executor
 	sizeGB   int // Image size in GB (default: 4)
 }
 
 // NewRawImageGenerator creates a new raw image generator
-func NewRawImageGenerator(executor Executor, sizeGB int) *RawImageGenerator {
+func NewRawImageGenerator(executor build.Executor, sizeGB int) *RawImageGenerator {
 	if sizeGB <= 0 {
 		sizeGB = 4
 	}
@@ -55,7 +56,7 @@ func (g *RawImageGenerator) Format() db.ImageFormat {
 }
 
 // Generate creates a raw disk image
-func (g *RawImageGenerator) Generate(ctx context.Context, sc *StageContext, progress ProgressFunc) (string, error) {
+func (g *RawImageGenerator) Generate(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) (string, error) {
 	imagePath := filepath.Join(sc.OutputDir, "disk.img")
 	sizeMB := g.sizeGB * 1024
 
@@ -279,7 +280,7 @@ func (g *RawImageGenerator) copyRootfs(ctx context.Context, srcDir, dstDir strin
 }
 
 // installBootloader installs the bootloader to the disk image
-func (g *RawImageGenerator) installBootloader(ctx context.Context, sc *StageContext, loopDev, mountPoint string) error {
+func (g *RawImageGenerator) installBootloader(ctx context.Context, sc *build.StageContext, loopDev, mountPoint string) error {
 	bootloader := GetBootloaderInstaller(sc.Config.Core.Bootloader, "LDF Linux", "1.0")
 	commands := bootloader.GetInstallCommands(loopDev, sc.TargetArch)
 
@@ -313,7 +314,7 @@ type QCOW2ImageGenerator struct {
 }
 
 // NewQCOW2ImageGenerator creates a new QCOW2 image generator
-func NewQCOW2ImageGenerator(executor Executor, sizeGB int, compression bool) *QCOW2ImageGenerator {
+func NewQCOW2ImageGenerator(executor build.Executor, sizeGB int, compression bool) *QCOW2ImageGenerator {
 	return &QCOW2ImageGenerator{
 		rawGenerator: NewRawImageGenerator(executor, sizeGB),
 		compression:  compression,
@@ -331,7 +332,7 @@ func (g *QCOW2ImageGenerator) Format() db.ImageFormat {
 }
 
 // Generate creates a QCOW2 image by first generating raw, then converting
-func (g *QCOW2ImageGenerator) Generate(ctx context.Context, sc *StageContext, progress ProgressFunc) (string, error) {
+func (g *QCOW2ImageGenerator) Generate(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) (string, error) {
 	// Generate raw image first (scaled progress 0-80%)
 	rawProgress := func(percent int, msg string) {
 		scaledPercent := int(float64(percent) * 0.8)
@@ -371,13 +372,13 @@ func (g *QCOW2ImageGenerator) Generate(ctx context.Context, sc *StageContext, pr
 
 // ISOImageGenerator creates bootable ISO images
 type ISOImageGenerator struct {
-	executor  Executor
+	executor  build.Executor
 	volumeID  string
 	publisher string
 }
 
 // NewISOImageGenerator creates a new ISO image generator
-func NewISOImageGenerator(executor Executor, volumeID, publisher string) *ISOImageGenerator {
+func NewISOImageGenerator(executor build.Executor, volumeID, publisher string) *ISOImageGenerator {
 	if volumeID == "" {
 		volumeID = "LDF_LINUX"
 	}
@@ -402,7 +403,7 @@ func (g *ISOImageGenerator) Format() db.ImageFormat {
 }
 
 // Generate creates a bootable ISO image
-func (g *ISOImageGenerator) Generate(ctx context.Context, sc *StageContext, progress ProgressFunc) (string, error) {
+func (g *ISOImageGenerator) Generate(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) (string, error) {
 	isoPath := filepath.Join(sc.OutputDir, "ldf-linux.iso")
 
 	progress(5, "Preparing ISO filesystem structure")
@@ -536,7 +537,7 @@ menuentry "LDF Linux (Live, Debug)" {
 }
 
 // createEFIImage creates an EFI boot image for the ISO
-func (g *ISOImageGenerator) createEFIImage(ctx context.Context, sc *StageContext, outputPath string) error {
+func (g *ISOImageGenerator) createEFIImage(ctx context.Context, sc *build.StageContext, outputPath string) error {
 	// Create a small FAT image for EFI boot
 	sizeMB := 64
 
@@ -650,7 +651,7 @@ func (g *ISOImageGenerator) generateISO(ctx context.Context, isoStaging, outputP
 }
 
 // GetImageGenerator returns the appropriate image generator for the format
-func GetImageGenerator(format db.ImageFormat, executor Executor, sizeGB int) ImageGenerator {
+func GetImageGenerator(format db.ImageFormat, executor build.Executor, sizeGB int) ImageGenerator {
 	switch format {
 	case db.ImageFormatQCOW2:
 		return NewQCOW2ImageGenerator(executor, sizeGB, true)

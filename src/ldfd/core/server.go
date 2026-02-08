@@ -12,6 +12,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/stages"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/db/migrations"
 	_ "github.com/bitswalk/ldf/src/ldfd/docs"
@@ -130,7 +131,13 @@ func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr 
 		buildCfg.ContainerImage = image
 	}
 	buildManager := build.NewManager(database, storageBackend, downloadManager, buildCfg)
-	buildManager.RegisterDefaultStages()
+	buildManager.RegisterStages(stages.DefaultStages(
+		buildManager.ComponentRepo(),
+		buildManager.DownloadJobRepo(),
+		buildManager.BoardProfileRepo(),
+		buildManager.SourceRepo(),
+		buildManager.Storage(),
+	))
 
 	// Initialize forge registry for source detection and defaults
 	forgeRegistry := forge.NewRegistry()

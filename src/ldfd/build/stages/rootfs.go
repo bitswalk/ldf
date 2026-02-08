@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"fmt"
@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
+
+var log = logs.NewDefault()
 
 // RootfsBuilder handles root filesystem assembly operations
 type RootfsBuilder struct {
@@ -276,7 +279,6 @@ nameserver 9.9.9.9
 	}
 
 	// Create basic network interface configuration
-	// This varies by init system, so we create a generic one
 	interfacesDir := filepath.Join(b.rootfsPath, "etc", "network")
 	if err := os.MkdirAll(interfacesDir, 0755); err != nil {
 		return fmt.Errorf("failed to create network dir: %w", err)
@@ -322,7 +324,6 @@ nobody:x:65534:
 	}
 
 	// Create /etc/shadow with locked root password
-	// The '!' means the account is locked - user should set password on first boot
 	shadow := `root:!:19000:0:99999:7:::
 nobody:!:19000:0:99999:7:::
 `
@@ -346,14 +347,9 @@ nobody:::
 }
 
 // CreateDeviceNodes creates essential device nodes in /dev
-// Note: Most device nodes are created by devtmpfs at runtime,
-// but we create a few essential ones for the initial boot
 func (b *RootfsBuilder) CreateDeviceNodes() error {
 	devPath := filepath.Join(b.rootfsPath, "dev")
 
-	// Create essential device nodes
-	// These are created with mknod in the container during build
-	// For now, we just ensure the directory structure exists
 	dirs := []string{
 		filepath.Join(devPath, "pts"),
 		filepath.Join(devPath, "shm"),
@@ -365,8 +361,6 @@ func (b *RootfsBuilder) CreateDeviceNodes() error {
 		}
 	}
 
-	// Create console and null as regular files (will be replaced at boot)
-	// This allows some scripts to run during build
 	touch := func(path string, mode os.FileMode) error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, mode)
 		if err != nil {

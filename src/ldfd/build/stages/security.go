@@ -1,10 +1,12 @@
-package build
+package stages
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bitswalk/ldf/src/ldfd/build"
 )
 
 // SecuritySetup defines the interface for security framework setup
@@ -12,7 +14,7 @@ type SecuritySetup interface {
 	// Name returns the security framework name
 	Name() string
 	// Install installs the security framework files
-	Install(rootfsPath string, component *ResolvedComponent) error
+	Install(rootfsPath string, component *build.ResolvedComponent) error
 	// Configure configures the security framework
 	Configure(rootfsPath string) error
 	// GetKernelParams returns kernel command line parameters for this framework
@@ -33,7 +35,7 @@ func (s *SELinuxSetup) Name() string {
 }
 
 // Install installs SELinux files
-func (s *SELinuxSetup) Install(rootfsPath string, component *ResolvedComponent) error {
+func (s *SELinuxSetup) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	// Create SELinux directories
 	dirs := []string{
 		"/etc/selinux",
@@ -139,7 +141,7 @@ func (a *AppArmorSetup) Name() string {
 }
 
 // Install installs AppArmor files
-func (a *AppArmorSetup) Install(rootfsPath string, component *ResolvedComponent) error {
+func (a *AppArmorSetup) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	// Create AppArmor directories
 	dirs := []string{
 		"/etc/apparmor",
@@ -247,7 +249,7 @@ func (n *NoSecuritySetup) Name() string {
 }
 
 // Install does nothing
-func (n *NoSecuritySetup) Install(rootfsPath string, component *ResolvedComponent) error {
+func (n *NoSecuritySetup) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	log.Info("No security framework selected")
 	return nil
 }

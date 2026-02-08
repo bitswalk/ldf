@@ -1,10 +1,12 @@
-package build
+package stages
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bitswalk/ldf/src/ldfd/build"
 )
 
 // InitInstaller defines the interface for init system installers
@@ -12,7 +14,7 @@ type InitInstaller interface {
 	// Name returns the init system name
 	Name() string
 	// Install installs the init system to the rootfs
-	Install(rootfsPath string, component *ResolvedComponent) error
+	Install(rootfsPath string, component *build.ResolvedComponent) error
 	// Configure configures the init system
 	Configure(rootfsPath string) error
 	// EnableService enables a service to start at boot
@@ -33,8 +35,7 @@ func (i *SystemdInstaller) Name() string {
 }
 
 // Install installs systemd to the rootfs
-func (i *SystemdInstaller) Install(rootfsPath string, component *ResolvedComponent) error {
-	// Create systemd directories
+func (i *SystemdInstaller) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	dirs := []string{
 		"/etc/systemd",
 		"/etc/systemd/system",
@@ -58,16 +59,10 @@ func (i *SystemdInstaller) Install(rootfsPath string, component *ResolvedCompone
 		}
 	}
 
-	// If component has extracted source, copy binaries
 	if component != nil && component.LocalPath != "" {
 		log.Info("Installing systemd from source", "path", component.LocalPath)
-		// In a real implementation, we would:
-		// 1. Build systemd from source or
-		// 2. Extract pre-built binaries
-		// For now, we create the structure for a minimal boot
 	}
 
-	// Create essential symlinks for systemd
 	symlinks := []struct {
 		target string
 		link   string
@@ -82,10 +77,8 @@ func (i *SystemdInstaller) Install(rootfsPath string, component *ResolvedCompone
 		if err := os.MkdirAll(filepath.Dir(linkPath), 0755); err != nil {
 			return fmt.Errorf("failed to create parent dir for symlink: %w", err)
 		}
-		// Remove existing
 		os.Remove(linkPath)
 		if err := os.Symlink(s.target, linkPath); err != nil {
-			// Non-fatal, the target might not exist yet
 			log.Warn("Could not create symlink", "link", s.link, "target", s.target, "error", err)
 		}
 	}
@@ -96,20 +89,17 @@ func (i *SystemdInstaller) Install(rootfsPath string, component *ResolvedCompone
 
 // Configure configures systemd
 func (i *SystemdInstaller) Configure(rootfsPath string) error {
-	// Create default target
 	defaultTarget := filepath.Join(rootfsPath, "etc", "systemd", "system", "default.target")
 	os.Remove(defaultTarget)
 	if err := os.Symlink("/usr/lib/systemd/system/multi-user.target", defaultTarget); err != nil {
 		log.Warn("Could not create default.target symlink", "error", err)
 	}
 
-	// Create machine-id placeholder
 	machineID := filepath.Join(rootfsPath, "etc", "machine-id")
 	if err := os.WriteFile(machineID, []byte(""), 0444); err != nil {
 		return fmt.Errorf("failed to create machine-id: %w", err)
 	}
 
-	// Configure journald
 	journaldConf := `[Journal]
 Storage=persistent
 Compress=yes
@@ -120,7 +110,6 @@ SystemMaxUse=500M
 		return fmt.Errorf("failed to write journald.conf: %w", err)
 	}
 
-	// Configure networkd for DHCP
 	networkConf := `[Match]
 Name=*
 
@@ -132,7 +121,6 @@ DHCP=yes
 		return fmt.Errorf("failed to write network config: %w", err)
 	}
 
-	// Create locale.conf
 	localeConf := `LANG=en_US.UTF-8
 `
 	localePath := filepath.Join(rootfsPath, "etc", "locale.conf")
@@ -140,7 +128,6 @@ DHCP=yes
 		return fmt.Errorf("failed to write locale.conf: %w", err)
 	}
 
-	// Create vconsole.conf
 	vconsoleConf := `KEYMAP=us
 `
 	vconsolePath := filepath.Join(rootfsPath, "etc", "vconsole.conf")
@@ -154,13 +141,11 @@ DHCP=yes
 
 // EnableService enables a systemd service
 func (i *SystemdInstaller) EnableService(rootfsPath, serviceName string) error {
-	// Determine target directory based on service type
 	targetDir := filepath.Join(rootfsPath, "etc", "systemd", "system", "multi-user.target.wants")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return err
 	}
 
-	// Create symlink
 	serviceFile := fmt.Sprintf("/usr/lib/systemd/system/%s", serviceName)
 	linkPath := filepath.Join(targetDir, serviceName)
 
@@ -187,8 +172,7 @@ func (i *OpenRCInstaller) Name() string {
 }
 
 // Install installs OpenRC to the rootfs
-func (i *OpenRCInstaller) Install(rootfsPath string, component *ResolvedComponent) error {
-	// Create OpenRC directories
+func (i *OpenRCInstaller) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	dirs := []string{
 		"/etc/init.d",
 		"/etc/conf.d",
@@ -209,12 +193,10 @@ func (i *OpenRCInstaller) Install(rootfsPath string, component *ResolvedComponen
 		}
 	}
 
-	// If component has extracted source, copy binaries
 	if component != nil && component.LocalPath != "" {
 		log.Info("Installing OpenRC from source", "path", component.LocalPath)
 	}
 
-	// Create /sbin/init symlink to openrc-init
 	initLink := filepath.Join(rootfsPath, "sbin", "init")
 	os.Remove(initLink)
 	if err := os.Symlink("/sbin/openrc-init", initLink); err != nil {
@@ -227,7 +209,6 @@ func (i *OpenRCInstaller) Install(rootfsPath string, component *ResolvedComponen
 
 // Configure configures OpenRC
 func (i *OpenRCInstaller) Configure(rootfsPath string) error {
-	// Create openrc.conf
 	openrcConf := `# OpenRC configuration
 rc_parallel="YES"
 rc_logger="YES"
@@ -238,7 +219,6 @@ rc_log_path="/var/log/rc.log"
 		return fmt.Errorf("failed to write rc.conf: %w", err)
 	}
 
-	// Create hostname init script
 	hostnameInit := `#!/sbin/openrc-run
 description="Set system hostname"
 
@@ -257,7 +237,6 @@ start() {
 		return fmt.Errorf("failed to write hostname init script: %w", err)
 	}
 
-	// Create network init script
 	networkInit := `#!/sbin/openrc-run
 description="Network configuration"
 
@@ -289,7 +268,6 @@ stop() {
 		return fmt.Errorf("failed to write network init script: %w", err)
 	}
 
-	// Enable essential services in boot runlevel
 	bootServices := []string{"hostname", "network"}
 	for _, svc := range bootServices {
 		if err := i.EnableService(rootfsPath, svc); err != nil {
@@ -303,7 +281,6 @@ stop() {
 
 // EnableService enables an OpenRC service
 func (i *OpenRCInstaller) EnableService(rootfsPath, serviceName string) error {
-	// Determine runlevel (default to 'default')
 	runlevel := "default"
 	if serviceName == "hostname" || serviceName == "network" {
 		runlevel = "boot"
@@ -314,7 +291,6 @@ func (i *OpenRCInstaller) EnableService(rootfsPath, serviceName string) error {
 		return err
 	}
 
-	// Create symlink to init script
 	initScript := fmt.Sprintf("/etc/init.d/%s", serviceName)
 	linkPath := filepath.Join(runlevelDir, serviceName)
 
@@ -335,7 +311,6 @@ func GetInitInstaller(initSystem string) InitInstaller {
 	case "openrc":
 		return NewOpenRCInstaller()
 	default:
-		// Default to systemd
 		return NewSystemdInstaller()
 	}
 }

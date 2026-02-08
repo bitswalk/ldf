@@ -1,60 +1,39 @@
 package build
 
 import (
-	"context"
-	"fmt"
 	"io"
+
+	"github.com/bitswalk/ldf/src/ldfd/build/engine"
 )
 
+// Re-export engine types so that existing code referencing build.RuntimeType,
+// build.Executor, build.ContainerRunOpts, etc. continues to compile.
+
 // RuntimeType represents a container/execution runtime
-type RuntimeType string
+type RuntimeType = engine.RuntimeType
 
 const (
-	RuntimePodman  RuntimeType = "podman"
-	RuntimeDocker  RuntimeType = "docker"
-	RuntimeNerdctl RuntimeType = "nerdctl"
-	RuntimeChroot  RuntimeType = "chroot"
+	RuntimePodman  = engine.RuntimePodman
+	RuntimeDocker  = engine.RuntimeDocker
+	RuntimeNerdctl = engine.RuntimeNerdctl
+	RuntimeChroot  = engine.RuntimeChroot
 )
 
 // ValidRuntimes returns all valid runtime type values
 func ValidRuntimes() []RuntimeType {
-	return []RuntimeType{RuntimePodman, RuntimeDocker, RuntimeNerdctl, RuntimeChroot}
-}
-
-// IsContainerRuntime returns true if the runtime uses OCI containers
-func (r RuntimeType) IsContainerRuntime() bool {
-	return r == RuntimePodman || r == RuntimeDocker || r == RuntimeNerdctl
+	return engine.ValidRuntimes()
 }
 
 // Executor is the interface for running isolated build commands.
-// Implementations include OCI container runtimes (podman, docker, nerdctl)
-// and direct host execution via chroot.
-type Executor interface {
-	// Run executes a command with the given options
-	Run(ctx context.Context, opts ContainerRunOpts) error
+type Executor = engine.Executor
 
-	// IsAvailable checks if the runtime binary is installed and functional
-	IsAvailable() bool
+// ContainerRunOpts holds options for running a container
+type ContainerRunOpts = engine.ContainerRunOpts
 
-	// BuilderImageExists checks if the builder image exists locally.
-	// For chroot mode, this checks if the sysroot directory exists.
-	BuilderImageExists(ctx context.Context) bool
-
-	// DefaultImage returns the default container image or sysroot path
-	DefaultImage() string
-
-	// RuntimeType returns the type of this executor
-	RuntimeType() RuntimeType
-}
+// Mount represents a container volume mount
+type Mount = engine.Mount
 
 // NewExecutor creates an Executor for the given runtime type
 func NewExecutor(runtime RuntimeType, defaultImage string, logger io.Writer) (Executor, error) {
-	switch runtime {
-	case RuntimePodman, RuntimeDocker, RuntimeNerdctl:
-		return NewContainerRuntime(string(runtime), defaultImage, logger), nil
-	case RuntimeChroot:
-		return NewChrootExecutor(defaultImage, logger), nil
-	default:
-		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
-	}
+	return engine.NewExecutor(runtime, defaultImage, logger)
 }

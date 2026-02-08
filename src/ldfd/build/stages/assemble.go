@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -24,7 +25,7 @@ func (s *AssembleStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *AssembleStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *AssembleStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if len(sc.Components) == 0 {
 		return fmt.Errorf("no components resolved")
 	}
@@ -38,7 +39,7 @@ func (s *AssembleStage) Validate(ctx context.Context, sc *StageContext) error {
 }
 
 // Execute assembles the root filesystem
-func (s *AssembleStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *AssembleStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Starting root filesystem assembly")
 
 	// Get distribution info for os-release
@@ -184,7 +185,7 @@ func (s *AssembleStage) Execute(ctx context.Context, sc *StageContext, progress 
 }
 
 // findComponentByType finds a component by its category/type
-func (s *AssembleStage) findComponentByType(components []ResolvedComponent, compType string) *ResolvedComponent {
+func (s *AssembleStage) findComponentByType(components []build.ResolvedComponent, compType string) *build.ResolvedComponent {
 	compType = strings.ToLower(compType)
 	for i := range components {
 		category := strings.ToLower(components[i].Component.Category)
@@ -198,7 +199,7 @@ func (s *AssembleStage) findComponentByType(components []ResolvedComponent, comp
 }
 
 // getKernelVersion extracts the kernel version from components
-func (s *AssembleStage) getKernelVersion(components []ResolvedComponent) string {
+func (s *AssembleStage) getKernelVersion(components []build.ResolvedComponent) string {
 	for _, c := range components {
 		if strings.Contains(strings.ToLower(c.Component.Name), "kernel") {
 			return c.Version
@@ -208,7 +209,7 @@ func (s *AssembleStage) getKernelVersion(components []ResolvedComponent) string 
 }
 
 // installDeviceTrees copies compiled DTBs from kernel output to rootfs
-func (s *AssembleStage) installDeviceTrees(sc *StageContext) error {
+func (s *AssembleStage) installDeviceTrees(sc *build.StageContext) error {
 	if sc.BoardProfile == nil || len(sc.BoardProfile.Config.DeviceTrees) == 0 {
 		return nil
 	}
@@ -254,7 +255,7 @@ func (s *AssembleStage) installDeviceTrees(sc *StageContext) error {
 }
 
 // applyBoardBootConfig writes board-specific boot configuration files
-func (s *AssembleStage) applyBoardBootConfig(sc *StageContext) error {
+func (s *AssembleStage) applyBoardBootConfig(sc *build.StageContext) error {
 	if sc.BoardProfile == nil {
 		return nil
 	}
@@ -286,7 +287,7 @@ func (s *AssembleStage) applyBoardBootConfig(sc *StageContext) error {
 }
 
 // installBoardFirmware installs firmware blobs specified by the board profile
-func (s *AssembleStage) installBoardFirmware(sc *StageContext) error {
+func (s *AssembleStage) installBoardFirmware(sc *build.StageContext) error {
 	if sc.BoardProfile == nil || len(sc.BoardProfile.Config.Firmware) == 0 {
 		return nil
 	}

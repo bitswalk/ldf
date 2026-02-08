@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -14,7 +15,7 @@ type BootloaderInstaller interface {
 	// Name returns the bootloader name
 	Name() string
 	// Install installs the bootloader files to the rootfs
-	Install(rootfsPath string, component *ResolvedComponent) error
+	Install(rootfsPath string, component *build.ResolvedComponent) error
 	// Configure generates bootloader configuration
 	Configure(rootfsPath string, kernelVersion string, arch db.TargetArch, initramfs bool) error
 	// GetInstallCommands returns commands to install bootloader to disk (run during image creation)
@@ -43,7 +44,7 @@ func (i *GRUB2Installer) Name() string {
 }
 
 // Install installs GRUB2 to the rootfs
-func (i *GRUB2Installer) Install(rootfsPath string, component *ResolvedComponent) error {
+func (i *GRUB2Installer) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	// Create GRUB directories
 	dirs := []string{
 		"/boot/grub",
@@ -169,8 +170,7 @@ func (i *SystemdBootInstaller) Name() string {
 }
 
 // Install installs systemd-boot to the rootfs
-func (i *SystemdBootInstaller) Install(rootfsPath string, component *ResolvedComponent) error {
-	// Create EFI and loader directories
+func (i *SystemdBootInstaller) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	dirs := []string{
 		"/boot/efi",
 		"/boot/efi/EFI",
@@ -193,7 +193,6 @@ func (i *SystemdBootInstaller) Install(rootfsPath string, component *ResolvedCom
 
 // Configure generates systemd-boot configuration
 func (i *SystemdBootInstaller) Configure(rootfsPath string, kernelVersion string, arch db.TargetArch, initramfs bool) error {
-	// Create loader.conf
 	loaderConf := fmt.Sprintf(`default %s.conf
 timeout %d
 console-mode max
@@ -205,7 +204,6 @@ editor no
 		return fmt.Errorf("failed to write loader.conf: %w", err)
 	}
 
-	// Create boot entry
 	var initrdLine string
 	if initramfs {
 		initrdLine = "\ninitrd /initramfs.img"
@@ -222,7 +220,6 @@ options root=UUID=ROOT_UUID ro quiet%s
 		return fmt.Errorf("failed to write boot entry: %w", err)
 	}
 
-	// Create recovery entry
 	recoveryConf := fmt.Sprintf(`title %s %s (recovery)
 version %s
 linux /vmlinuz
@@ -265,8 +262,7 @@ func (i *UKIInstaller) Name() string {
 }
 
 // Install installs UKI structure to the rootfs
-func (i *UKIInstaller) Install(rootfsPath string, component *ResolvedComponent) error {
-	// Create EFI directories
+func (i *UKIInstaller) Install(rootfsPath string, component *build.ResolvedComponent) error {
 	dirs := []string{
 		"/boot/efi",
 		"/boot/efi/EFI",
@@ -287,7 +283,6 @@ func (i *UKIInstaller) Install(rootfsPath string, component *ResolvedComponent) 
 
 // Configure creates the UKI configuration
 func (i *UKIInstaller) Configure(rootfsPath string, kernelVersion string, arch db.TargetArch, initramfs bool) error {
-	// Create cmdline file
 	cmdline := "root=UUID=ROOT_UUID ro quiet\n"
 	cmdlinePath := filepath.Join(rootfsPath, "etc", "kernel", "cmdline")
 	if err := os.MkdirAll(filepath.Dir(cmdlinePath), 0755); err != nil {
@@ -297,8 +292,6 @@ func (i *UKIInstaller) Configure(rootfsPath string, kernelVersion string, arch d
 		return fmt.Errorf("failed to write cmdline: %w", err)
 	}
 
-	// Note: Actual UKI creation happens during image generation
-	// using ukify or dracut --uki
 	log.Info("Configured UKI", "kernel", kernelVersion)
 	return nil
 }
@@ -308,10 +301,7 @@ func (i *UKIInstaller) GetInstallCommands(devicePath string, arch db.TargetArch)
 	ukiName := fmt.Sprintf("%s-%s.efi", strings.ToLower(i.distName), i.distVersion)
 
 	return []string{
-		// Create UKI using ukify (systemd 253+)
 		fmt.Sprintf("ukify build --linux=/boot/vmlinuz --initrd=/boot/initramfs.img --cmdline=@/etc/kernel/cmdline --output=/boot/efi/EFI/Linux/%s", ukiName),
-		// Or using objcopy for older systems
-		// fmt.Sprintf("objcopy ... /boot/efi/EFI/Linux/%s", ukiName),
 	}
 }
 
@@ -325,7 +315,6 @@ func GetBootloaderInstaller(bootloader, distName, distVersion string) Bootloader
 	case "uki":
 		return NewUKIInstaller(distName, distVersion)
 	default:
-		// Default to GRUB2
 		return NewGRUB2Installer(distName, distVersion)
 	}
 }

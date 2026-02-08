@@ -2,7 +2,7 @@ package distributions
 
 import (
 	"github.com/bitswalk/ldf/src/ldfd/auth"
-	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -14,7 +14,7 @@ type Handler struct {
 	sourceRepo      *db.SourceRepository
 	jwtService      *auth.JWTService
 	storageManager  StorageManager
-	kernelConfigSvc *build.KernelConfigService
+	kernelConfigSvc *kernel.KernelConfigService
 }
 
 // StorageManager interface for artifact storage operations
@@ -31,7 +31,7 @@ type Config struct {
 	SourceRepo      *db.SourceRepository
 	JWTService      *auth.JWTService
 	StorageManager  StorageManager
-	KernelConfigSvc *build.KernelConfigService
+	KernelConfigSvc *kernel.KernelConfigService
 }
 
 // CreateDistributionRequest represents the request to create a distribution

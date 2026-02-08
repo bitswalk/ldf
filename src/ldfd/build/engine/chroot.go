@@ -1,4 +1,4 @@
-package build
+package engine
 
 import (
 	"bytes"
@@ -8,7 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/bitswalk/ldf/src/common/logs"
 )
+
+var log = logs.NewDefault()
 
 // ChrootExecutor runs build commands directly on the host, either via
 // chroot into a sysroot directory or as plain shell commands.
