@@ -192,7 +192,9 @@ func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 		}
 	}
 
-	jobs, err := h.buildManager.BuildJobRepo().ListByDistribution(distID)
+	limit, offset := common.GetPaginationParams(c, 100)
+
+	jobs, total, err := h.buildManager.BuildJobRepo().ListByDistribution(distID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
 			Error:   "Internal server error",
@@ -213,6 +215,7 @@ func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 
 	c.JSON(http.StatusOK, BuildJobsListResponse{
 		Count:  len(response),
+		Total:  total,
 		Builds: response,
 	})
 }
