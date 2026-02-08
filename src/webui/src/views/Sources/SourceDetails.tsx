@@ -1,4 +1,5 @@
 import type { Component } from "solid-js";
+import { useDetailView } from "../../composables/useDetailView";
 import { createSignal, onMount, Show } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
@@ -37,18 +38,9 @@ interface SourceDetailsProps {
 }
 
 export const SourceDetails: Component<SourceDetailsProps> = (props) => {
+  const dv = useDetailView();
   const [source, setSource] = createSignal<Source | null>(null);
   const [components, setComponents] = createSignal<ComponentType[]>([]);
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  const [notification, setNotification] = createSignal<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [editModalOpen, setEditModalOpen] = createSignal(false);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [isDeleting, setIsDeleting] = createSignal(false);
 
   const admin = () => isAdmin(props.user);
   const isSystemSource = () => source()?.is_system ?? false;
@@ -65,17 +57,17 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
   const canDelete = () => canEdit();
 
   const fetchSource = async () => {
-    setLoading(true);
-    setError(null);
+    dv.setLoading(true);
+    dv.setError(null);
 
     const result = await getSource(props.sourceId);
 
     if (result.success) {
       setSource(result.source);
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
-    setLoading(false);
+    dv.setLoading(false);
   };
 
   const fetchComponents = async () => {
@@ -110,23 +102,13 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
     return component?.category || "";
   };
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
-  const showNotification = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), type === "success" ? 3000 : 5000);
-  };
-
   const handleEdit = () => {
-    setEditModalOpen(true);
+    dv.openEditModal();
   };
 
   const handleEditSubmit = async (formData: CreateSourceRequest) => {
-    setIsSubmitting(true);
-    setError(null);
+    dv.setIsSubmitting(true);
+    dv.setError(null);
 
     const updateReq: UpdateSourceRequest = {
       name: formData.name,
@@ -143,53 +125,53 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
     const result = await updateSource(props.sourceId, updateReq);
 
-    setIsSubmitting(false);
+    dv.setIsSubmitting(false);
 
     if (result.success) {
-      setEditModalOpen(false);
+      dv.closeEditModal();
       fetchSource();
-      showNotification("success", t("sources.detail.updateSuccess"));
+      dv.showNotification("success", t("sources.detail.updateSuccess"));
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const handleEditCancel = () => {
-    setEditModalOpen(false);
+    dv.closeEditModal();
   };
 
   const handleDeleteClick = () => {
-    setDeleteModalOpen(true);
+    dv.openDeleteModal();
   };
 
   const confirmDelete = async () => {
-    setIsDeleting(true);
-    setError(null);
+    dv.setIsDeleting(true);
+    dv.setError(null);
 
     const result = await deleteSource(props.sourceId);
 
-    setIsDeleting(false);
+    dv.setIsDeleting(false);
 
     if (result.success) {
-      setDeleteModalOpen(false);
-      showNotification("success", t("sources.detail.deleteSuccess"));
+      dv.closeDeleteModal();
+      dv.showNotification("success", t("sources.detail.deleteSuccess"));
       props.onDeleted?.();
       props.onBack();
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
+    dv.closeDeleteModal();
   };
 
   const handleVersionSuccess = (message: string) => {
-    showNotification("success", message);
+    dv.showNotification("success", message);
   };
 
   const handleVersionError = (message: string) => {
-    showNotification("error", message);
+    dv.showNotification("error", message);
   };
 
   // Convert source to form-compatible format
@@ -287,29 +269,29 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
         </header>
 
         {/* Notification */}
-        <Show when={notification()}>
-          <Notification type={notification()!.type} message={notification()!.message} />
+        <Show when={dv.notification()}>
+          <Notification type={dv.notification()!.type} message={dv.notification()!.message} />
         </Show>
 
         {/* Error state */}
-        <Show when={error()}>
+        <Show when={dv.error()}>
           <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-md">
             <div class="flex items-center gap-2 text-red-500">
               <Icon name="warning-circle" size="md" />
-              <span>{error()}</span>
+              <span>{dv.error()}</span>
             </div>
           </div>
         </Show>
 
         {/* Loading state */}
-        <Show when={loading()}>
+        <Show when={dv.loading()}>
           <div class="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
         </Show>
 
         {/* Content */}
-        <Show when={!loading() && source()}>
+        <Show when={!dv.loading() && source()}>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Source Info - Left column */}
             <div class="lg:col-span-1 space-y-6">
@@ -422,7 +404,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                         {t("sources.detail.created")}
                       </span>
                       <span class="font-mono text-xs">
-                        {formatDate(source()!.created_at)}
+                        {dv.formatDate(source()!.created_at)}
                       </span>
                     </div>
                     <div class="flex items-center justify-between text-sm">
@@ -430,7 +412,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
                         {t("sources.detail.updated")}
                       </span>
                       <span class="font-mono text-xs">
-                        {formatDate(source()!.updated_at)}
+                        {dv.formatDate(source()!.updated_at)}
                       </span>
                     </div>
                   </div>
@@ -457,7 +439,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
       {/* Edit Modal */}
       <Modal
-        isOpen={editModalOpen()}
+        isOpen={dv.editModalOpen()}
         onClose={handleEditCancel}
         title={t("sources.create.editModalTitle")}
       >
@@ -465,13 +447,13 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
           onSubmit={handleEditSubmit}
           onCancel={handleEditCancel}
           initialData={getFormInitialData()}
-          isSubmitting={isSubmitting()}
+          isSubmitting={dv.isSubmitting()}
         />
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={dv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("sources.delete.title")}
       >
@@ -484,7 +466,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -492,14 +474,14 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={dv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {dv.isDeleting()
                   ? t("sources.delete.deleting")
                   : t("common.actions.delete")}
               </span>
