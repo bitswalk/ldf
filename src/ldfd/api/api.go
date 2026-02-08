@@ -50,6 +50,7 @@ func New(cfg Config) *API {
 		Distributions: distributions.NewHandler(distributions.Config{
 			DistRepo:        cfg.DistRepo,
 			DownloadJobRepo: cfg.DownloadJobRepo,
+			BuildJobRepo:    buildJobRepoFromManager(cfg.BuildManager),
 			SourceRepo:      cfg.SourceRepo,
 			JWTService:      cfg.JWTService,
 			StorageManager:  newStorageManager(cfg.Storage),
@@ -112,6 +113,15 @@ func New(cfg Config) *API {
 		storage:       cfg.Storage,
 		forgeRegistry: cfg.ForgeRegistry,
 	}
+}
+
+// buildJobRepoFromManager safely extracts the BuildJobRepository from a build Manager,
+// returning nil when the manager is nil (e.g. in tests).
+func buildJobRepoFromManager(m *build.Manager) *db.BuildJobRepository {
+	if m == nil {
+		return nil
+	}
+	return m.BuildJobRepo()
 }
 
 // newStorageManager creates a StorageManager from a storage backend,
