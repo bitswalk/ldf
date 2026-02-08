@@ -23,6 +23,7 @@ import {
   type UpdateSourceRequest,
 } from "../../services/sources";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -133,7 +134,7 @@ export const Sources: Component<SourcesProps> = (props) => {
 
   const openDeleteModal = (srcs: Source[]) => {
     // Admins can delete any source, non-admins can only delete user sources
-    const isAdminUser = props.user?.role === "root";
+    const isAdminUser = isAdmin(props.user);
     const deletableSources = isAdminUser
       ? srcs
       : srcs.filter((s) => !s.is_system);
@@ -201,7 +202,7 @@ export const Sources: Component<SourcesProps> = (props) => {
     return <span>{date.toLocaleDateString()}</span>;
   };
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const filteredSources = () => {
     if (showOnlyMine() && props.user?.id) {
@@ -269,18 +270,18 @@ export const Sources: Component<SourcesProps> = (props) => {
     const canEdit = () => {
       return (
         !cellProps.row.is_system &&
-        (props.user?.id === cellProps.row.owner_id || isAdmin())
+        (props.user?.id === cellProps.row.owner_id || admin())
       );
     };
 
     const canEditSystem = () => {
-      return cellProps.row.is_system && isAdmin();
+      return cellProps.row.is_system && admin();
     };
 
     const canDelete = () => {
       // Admins can delete any source (including system sources)
       // Non-admins can only delete their own user sources
-      if (isAdmin()) return true;
+      if (admin()) return true;
       return (
         !cellProps.row.is_system && props.user?.id === cellProps.row.owner_id
       );
@@ -362,7 +363,7 @@ export const Sources: Component<SourcesProps> = (props) => {
               <p class="text-muted-foreground mt-2">{t("sources.subtitle")}</p>
             </article>
             <nav class="flex items-center gap-4">
-              <Show when={isAdmin()}>
+              <Show when={admin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
                   <span>{t("sources.filter.showOnlyMine")}</span>
                   <SummaryToggle
@@ -374,13 +375,13 @@ export const Sources: Component<SourcesProps> = (props) => {
               <button
                 onClick={handleDeleteSelected}
                 disabled={
-                  (isAdmin()
+                  (admin()
                     ? selectedSources().length
                     : selectedSources().filter((s) => !s.is_system).length) ===
                   0
                 }
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                  (isAdmin()
+                  (admin()
                     ? selectedSources().length
                     : selectedSources().filter((s) => !s.is_system).length) > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -390,7 +391,7 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("common.actions.delete")} (
-                  {isAdmin()
+                  {admin()
                     ? selectedSources().length
                     : selectedSources().filter((s) => !s.is_system).length}
                   )
@@ -508,7 +509,7 @@ export const Sources: Component<SourcesProps> = (props) => {
 
           <Show
             when={
-              (isAdmin()
+              (admin()
                 ? selectedSources().length
                 : selectedSources().filter((s) => !s.is_system).length) > 0
             }
@@ -521,7 +522,7 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("sources.delete.deleteSelected", {
-                    count: isAdmin()
+                    count: admin()
                       ? selectedSources().length
                       : selectedSources().filter((s) => !s.is_system).length,
                   })}
@@ -546,7 +547,7 @@ export const Sources: Component<SourcesProps> = (props) => {
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}
           isSubmitting={isSubmitting()}
-          isAdmin={isAdmin()}
+          isAdmin={admin()}
         />
       </Modal>
 
