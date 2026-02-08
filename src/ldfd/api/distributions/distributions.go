@@ -8,7 +8,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
-	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -693,6 +693,6 @@ func (h *Handler) HandleUploadKernelConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Kernel configuration uploaded successfully",
-		"key":     build.KernelConfigArtifactPath(dist.OwnerID, dist.ID),
+		"key":     kernel.KernelConfigArtifactPath(dist.OwnerID, dist.ID),
 	})
 }

@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
@@ -38,7 +40,7 @@ func (s *ResolveStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *ResolveStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *ResolveStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if sc.Config == nil {
 		return fmt.Errorf("distribution config is required")
 	}
@@ -49,7 +51,7 @@ func (s *ResolveStage) Validate(ctx context.Context, sc *StageContext) error {
 }
 
 // Execute resolves components and populates StageContext.Components
-func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *ResolveStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Resolving required components")
 
 	// Load board profile if configured
@@ -78,7 +80,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 	progress(10, fmt.Sprintf("Found %d required components", len(componentNames)))
 
 	// Resolve each component to its concrete version and download artifact
-	var resolved []ResolvedComponent
+	var resolved []build.ResolvedComponent
 	for i, name := range componentNames {
 		select {
 		case <-ctx.Done():
@@ -135,7 +137,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 			if artifactPath != "" {
 				log.Info("Resolved component from storage (no download job)",
 					"component", name, "version", version, "artifact", artifactPath)
-				resolved = append(resolved, ResolvedComponent{
+				resolved = append(resolved, build.ResolvedComponent{
 					Component:    *component,
 					Version:      version,
 					ArtifactPath: artifactPath,
@@ -146,7 +148,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 			return fmt.Errorf("no completed download found for component %s version %s", name, version)
 		}
 
-		resolved = append(resolved, ResolvedComponent{
+		resolved = append(resolved, build.ResolvedComponent{
 			Component:    *component,
 			Version:      version,
 			ArtifactPath: downloadJob.ArtifactPath,
@@ -158,7 +160,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 
 	// Fetch kernel .config artifact from storage into the workspace
 	progress(95, "Fetching kernel config from storage")
-	kernelConfigKey := KernelConfigArtifactPath(sc.OwnerID, sc.DistributionID)
+	kernelConfigKey := kernel.KernelConfigArtifactPath(sc.OwnerID, sc.DistributionID)
 	configPath := filepath.Join(sc.ConfigDir, ".config")
 
 	if err := os.MkdirAll(sc.ConfigDir, 0755); err != nil {
@@ -171,7 +173,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 			"distribution_id", sc.DistributionID, "error", err)
 
 		progress(97, "Generating default kernel config")
-		configSvc := NewKernelConfigService(s.storage)
+		configSvc := kernel.NewKernelConfigService(s.storage)
 		dist := &db.Distribution{
 			ID:      sc.DistributionID,
 			OwnerID: sc.OwnerID,
@@ -207,8 +209,8 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 	if hasToolchainComponent {
 		log.Info("Skipping toolchain validation (toolchain provided by downloaded components)", "toolchain", toolchain)
 	} else if sc.Executor != nil && !sc.Executor.RuntimeType().IsContainerRuntime() {
-		deps := GetToolchainDeps(toolchain, crossPrefix)
-		missing := ValidateToolchainAvailability(deps)
+		deps := build.GetToolchainDeps(toolchain, crossPrefix)
+		missing := build.ValidateToolchainAvailability(deps)
 		if len(missing) > 0 {
 			return fmt.Errorf("missing build toolchain dependencies: %v (install them or use a container-based executor)", missing)
 		}
@@ -224,7 +226,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 
 // fetchKernelConfig links or downloads the kernel config artifact into the workspace.
 // For local storage, creates a symlink to avoid duplication; for S3, downloads the file.
-func (s *ResolveStage) fetchKernelConfig(ctx context.Context, sc *StageContext, key, configPath string) error {
+func (s *ResolveStage) fetchKernelConfig(ctx context.Context, sc *build.StageContext, key, configPath string) error {
 	if resolver, ok := s.storage.(storage.LocalPathResolver); ok {
 		srcPath := resolver.ResolvePath(key)
 		if _, err := os.Stat(srcPath); err != nil {
@@ -262,7 +264,7 @@ func (s *ResolveStage) downloadToFile(ctx context.Context, key, localPath string
 
 // findArtifactInStorage checks if an artifact exists in the storage backend
 // at the expected distribution path, without requiring a download_jobs record.
-func (s *ResolveStage) findArtifactInStorage(ctx context.Context, sc *StageContext, component *db.Component, version string) string {
+func (s *ResolveStage) findArtifactInStorage(ctx context.Context, sc *build.StageContext, component *db.Component, version string) string {
 	if s.storage == nil || s.sourceRepo == nil {
 		return ""
 	}
@@ -370,7 +372,7 @@ func (s *ResolveStage) getRequiredComponents(config *db.DistributionConfig, targ
 
 	// Toolchain components
 	toolchain := db.ResolveToolchain(&config.Core)
-	isNative := IsNativeBuild(DetectHostArch(), targetArch)
+	isNative := build.IsNativeBuild(build.DetectHostArch(), targetArch)
 	switch toolchain {
 	case db.ToolchainLLVM:
 		findComponent("toolchain", "llvm")

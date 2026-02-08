@@ -51,16 +51,6 @@ func ValidateToolchainAvailability(deps ToolchainDeps) []string {
 	return missing
 }
 
-// containsCat checks if a component's categories slice contains the given category.
-func containsCat(categories []string, cat string) bool {
-	for _, c := range categories {
-		if c == cat {
-			return true
-		}
-	}
-	return false
-}
-
 // ToolchainEnvVars returns the environment variables to pass to make for the
 // given toolchain type and cross-compile prefix. These are used both in
 // container and direct execution modes.

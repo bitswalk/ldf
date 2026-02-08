@@ -114,22 +114,29 @@ func (m *Manager) RegisterStages(stages []Stage) {
 	m.stages = stages
 }
 
-// RegisterDefaultStages sets up the default build pipeline stages.
-// The executor is created per-build in the worker from current config,
-// not at registration time, so runtime changes take effect immediately.
-func (m *Manager) RegisterDefaultStages() {
-	m.stages = []Stage{
-		NewResolveStage(m.componentRepo, m.downloadJobRepo, m.boardProfileRepo, m.sourceRepo, m.storage),
-		NewDownloadCheckStage(m.downloadJobRepo, m.storage),
-		NewPrepareStage(m.storage),
-		NewCompileStage(),
-		NewAssembleStage(),
-		NewPackageStage(m.storage, 4), // 4GB default image size
-	}
+// ComponentRepo returns the component repository
+func (m *Manager) ComponentRepo() *db.ComponentRepository {
+	return m.componentRepo
+}
 
-	log.Info("Registered default build stages",
-		"count", len(m.stages),
-		"stages", []string{"resolve", "download", "prepare", "compile", "assemble", "package"})
+// DownloadJobRepo returns the download job repository
+func (m *Manager) DownloadJobRepo() *db.DownloadJobRepository {
+	return m.downloadJobRepo
+}
+
+// BoardProfileRepo returns the board profile repository
+func (m *Manager) BoardProfileRepo() *db.BoardProfileRepository {
+	return m.boardProfileRepo
+}
+
+// SourceRepo returns the source repository
+func (m *Manager) SourceRepo() *db.SourceRepository {
+	return m.sourceRepo
+}
+
+// Storage returns the storage backend
+func (m *Manager) Storage() storage.Backend {
+	return m.storage
 }
 
 // Start begins processing build jobs

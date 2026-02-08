@@ -1,4 +1,4 @@
-package build
+package kernel
 
 import (
 	"bufio"
@@ -11,9 +11,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/common/logs"
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
+
+var log = logs.NewDefault()
 
 // KernelConfigGenerator generates kernel .config files based on distribution configuration
 type KernelConfigGenerator struct {
@@ -26,7 +30,7 @@ func NewKernelConfigGenerator(storage storage.Backend) *KernelConfigGenerator {
 }
 
 // Generate creates a kernel .config file based on the distribution's kernel configuration mode
-func (g *KernelConfigGenerator) Generate(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputPath string) error {
+func (g *KernelConfigGenerator) Generate(ctx context.Context, sc *build.StageContext, kernel *build.ResolvedComponent, outputPath string) error {
 	kernelConfig := sc.Config.Core.Kernel
 	mode := kernelConfig.ConfigMode
 
@@ -57,7 +61,7 @@ func (g *KernelConfigGenerator) Generate(ctx context.Context, sc *StageContext, 
 
 // generateDefconfig generates a config using the kernel's default architecture config
 // This creates a minimal config file that tells the build to use defconfig
-func (g *KernelConfigGenerator) generateDefconfig(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputPath string) error {
+func (g *KernelConfigGenerator) generateDefconfig(ctx context.Context, sc *build.StageContext, kernel *build.ResolvedComponent, outputPath string) error {
 	// For defconfig mode, we generate a marker file that the build script will use
 	// to run `make defconfig` before building
 	content := fmt.Sprintf(`# LDF Kernel Configuration
@@ -85,7 +89,7 @@ LDF_TARGET_ARCH=%s
 }
 
 // generateWithOptions generates a config starting from defconfig and applying custom options
-func (g *KernelConfigGenerator) generateWithOptions(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, options map[string]string, outputPath string) error {
+func (g *KernelConfigGenerator) generateWithOptions(ctx context.Context, sc *build.StageContext, kernel *build.ResolvedComponent, options map[string]string, outputPath string) error {
 	// Start with recommended options
 	allOptions := g.getRecommendedOptions(sc)
 
@@ -146,7 +150,7 @@ LDF_TARGET_ARCH=%s
 }
 
 // generateFromCustom copies a user-provided custom config from storage
-func (g *KernelConfigGenerator) generateFromCustom(ctx context.Context, sc *StageContext, customConfigPath, outputPath string) error {
+func (g *KernelConfigGenerator) generateFromCustom(ctx context.Context, sc *build.StageContext, customConfigPath, outputPath string) error {
 	if customConfigPath == "" {
 		return fmt.Errorf("custom config path is empty")
 	}
@@ -200,12 +204,12 @@ LDF_TARGET_ARCH=%s
 }
 
 // getDefconfigName returns the defconfig target name from the StageContext.
-func (g *KernelConfigGenerator) getDefconfigName(sc *StageContext) string {
+func (g *KernelConfigGenerator) getDefconfigName(sc *build.StageContext) string {
 	return GetDefconfigName(sc.BoardProfile, sc.TargetArch)
 }
 
 // getRecommendedOptions returns recommended kernel options from the StageContext.
-func (g *KernelConfigGenerator) getRecommendedOptions(sc *StageContext) map[string]string {
+func (g *KernelConfigGenerator) getRecommendedOptions(sc *build.StageContext) map[string]string {
 	return GetRecommendedKernelOptions(sc.Config, sc.TargetArch)
 }
 
