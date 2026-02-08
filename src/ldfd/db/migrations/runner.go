@@ -63,6 +63,7 @@ func (r *Runner) registerAll() {
 		migration015ArchSupport(),
 		migration016DownloadCache(),
 		migration017ToolchainProfiles(),
+		migration018ToolchainComponents(),
 	}
 
 	// Sort by version to ensure correct order

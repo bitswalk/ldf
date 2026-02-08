@@ -42,6 +42,9 @@ type StageContext struct {
 	BuildEnv       *BuildEnvironment   // Populated by worker before pipeline starts
 	Executor       Executor            // Populated by worker before pipeline starts
 
+	// Toolchain info populated by prepare stage
+	ToolchainDir string // Path to extracted toolchain bin/ directory
+
 	// Artifact info populated by package stage
 	ArtifactPath     string // Storage key of final artifact
 	ArtifactChecksum string // SHA256 checksum

@@ -70,7 +70,7 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 	}
 
 	// Get required component names from config
-	componentNames := s.getRequiredComponents(sc.Config)
+	componentNames := s.getRequiredComponents(sc.Config, sc.TargetArch)
 	if len(componentNames) == 0 {
 		return fmt.Errorf("no components required for this distribution configuration")
 	}
@@ -195,7 +195,18 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 		crossPrefix = sc.BuildEnv.Toolchain.CrossCompilePrefix
 	}
 
-	if sc.Executor != nil && !sc.Executor.RuntimeType().IsContainerRuntime() {
+	// Check if toolchain will be provided by downloaded components
+	hasToolchainComponent := false
+	for _, rc := range sc.Components {
+		if containsCat(rc.Component.Categories, "toolchain") {
+			hasToolchainComponent = true
+			break
+		}
+	}
+
+	if hasToolchainComponent {
+		log.Info("Skipping toolchain validation (toolchain provided by downloaded components)", "toolchain", toolchain)
+	} else if sc.Executor != nil && !sc.Executor.RuntimeType().IsContainerRuntime() {
 		deps := GetToolchainDeps(toolchain, crossPrefix)
 		missing := ValidateToolchainAvailability(deps)
 		if len(missing) > 0 {
@@ -287,9 +298,9 @@ func (s *ResolveStage) findArtifactInStorage(ctx context.Context, sc *StageConte
 	return ""
 }
 
-// getRequiredComponents returns the list of component names required by the config
-// This mirrors download/manager.go's getRequiredComponents but returns names directly
-func (s *ResolveStage) getRequiredComponents(config *db.DistributionConfig) []string {
+// getRequiredComponents returns the list of component names required by the config.
+// This mirrors download/manager.go's getRequiredComponents but returns names directly.
+func (s *ResolveStage) getRequiredComponents(config *db.DistributionConfig, targetArch db.TargetArch) []string {
 	var components []string
 
 	// Helper to find component by category and config value
@@ -356,6 +367,21 @@ func (s *ResolveStage) getRequiredComponents(config *db.DistributionConfig) []st
 	// Note: This is handled separately since we need the board profile loaded first.
 	// Firmware with ComponentID references will be resolved during Execute after
 	// the board profile is loaded into StageContext.
+
+	// Toolchain components
+	toolchain := db.ResolveToolchain(&config.Core)
+	isNative := IsNativeBuild(DetectHostArch(), targetArch)
+	switch toolchain {
+	case db.ToolchainLLVM:
+		findComponent("toolchain", "llvm")
+	default: // GCC
+		if !isNative && targetArch == db.ArchAARCH64 {
+			findComponent("toolchain", "gcc-cross-aarch64")
+		} else {
+			findComponent("toolchain", "gcc-native")
+		}
+	}
+	findComponent("toolchain", "build-essentials")
 
 	return components
 }

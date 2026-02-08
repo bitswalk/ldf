@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +54,7 @@ type Manager struct {
 	componentRepo     *db.ComponentRepository
 	sourceRepo        *db.SourceRepository
 	sourceVersionRepo *db.SourceVersionRepository
+	boardProfileRepo  *db.BoardProfileRepository
 	urlBuilder        *URLBuilder
 	verifier          *Verifier
 	downloader        *Downloader
@@ -130,6 +132,12 @@ func NewManager(database *db.Database, storageBackend storage.Backend, cfg Confi
 	}
 
 	return m
+}
+
+// SetBoardProfileRepo sets the board profile repository for target arch resolution.
+// This is optional -- when not set, toolchain components default to native builds.
+func (m *Manager) SetBoardProfileRepo(repo *db.BoardProfileRepository) {
+	m.boardProfileRepo = repo
 }
 
 // Start begins processing download jobs
@@ -617,6 +625,37 @@ func (m *Manager) getRequiredComponents(config *db.DistributionConfig) []string 
 	if config.Target.Type == "desktop" && config.Target.Desktop != nil && config.Target.Desktop.Environment != "" {
 		findComponent("desktop", config.Target.Desktop.Environment)
 	}
+
+	// Toolchain components -- determine target arch from board profile
+	toolchain := db.ResolveToolchain(&config.Core)
+	var targetArch db.TargetArch
+	if config.BoardProfileID != "" && m.boardProfileRepo != nil {
+		if bp, err := m.boardProfileRepo.GetByID(config.BoardProfileID); err == nil && bp != nil {
+			targetArch = bp.Arch
+		}
+	}
+	// Inline native-build check (can't import build package -- would be circular)
+	isNative := targetArch == ""
+	if !isNative {
+		hostArch := runtime.GOARCH
+		switch {
+		case hostArch == "amd64" && targetArch == db.ArchX86_64:
+			isNative = true
+		case hostArch == "arm64" && targetArch == db.ArchAARCH64:
+			isNative = true
+		}
+	}
+	switch toolchain {
+	case db.ToolchainLLVM:
+		findComponent("toolchain", "llvm")
+	default: // GCC
+		if !isNative && targetArch == db.ArchAARCH64 {
+			findComponent("toolchain", "gcc-cross-aarch64")
+		} else {
+			findComponent("toolchain", "gcc-native")
+		}
+	}
+	findComponent("toolchain", "build-essentials")
 
 	return components
 }
