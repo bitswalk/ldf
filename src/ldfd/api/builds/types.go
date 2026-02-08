@@ -35,6 +35,7 @@ type BuildJobResponse struct {
 // BuildJobsListResponse represents a list of build jobs
 type BuildJobsListResponse struct {
 	Count  int                `json:"count"`
+	Total  int                `json:"total"`
 	Builds []BuildJobResponse `json:"builds"`
 }
 
