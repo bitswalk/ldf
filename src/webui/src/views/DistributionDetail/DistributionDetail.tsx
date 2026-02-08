@@ -79,6 +79,10 @@ const configOptions = {
     { id: "apparmor", name: "AppArmor" },
     { id: "none", name: "None" },
   ],
+  toolchains: [
+    { id: "gcc", name: "GCC" },
+    { id: "llvm", name: "LLVM/Clang" },
+  ],
   containerRuntimes: [
     { id: "docker-podman", name: "Docker/Podman" },
     { id: "runc", name: "runC" },
@@ -546,6 +550,11 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                         value={config()!.core.bootloader}
                         version={config()!.core.bootloader_version}
                         options={configOptions.bootloaders}
+                      />
+                      <ConfigRow
+                        label={t("distribution.detail.config.toolchain")}
+                        value={config()!.core.toolchain || "gcc"}
+                        options={configOptions.toolchains}
                       />
                       <ConfigRow
                         label={t("distribution.detail.config.partitioningType")}

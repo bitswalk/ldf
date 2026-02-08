@@ -17,7 +17,24 @@ type CoreConfig struct {
 	Kernel            KernelConfig       `json:"kernel"`
 	Bootloader        string             `json:"bootloader"`
 	BootloaderVersion string             `json:"bootloader_version,omitempty"`
+	Toolchain         string             `json:"toolchain,omitempty"`
 	Partitioning      PartitioningConfig `json:"partitioning"`
+}
+
+// ToolchainType represents the build toolchain selection
+type ToolchainType string
+
+const (
+	ToolchainGCC  ToolchainType = "gcc"
+	ToolchainLLVM ToolchainType = "llvm"
+)
+
+// ResolveToolchain returns the effective toolchain type, defaulting to GCC.
+func ResolveToolchain(core *CoreConfig) ToolchainType {
+	if ToolchainType(core.Toolchain) == ToolchainLLVM {
+		return ToolchainLLVM
+	}
+	return ToolchainGCC
 }
 
 // KernelConfigMode represents the kernel configuration mode

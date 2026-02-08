@@ -59,6 +59,7 @@ interface DistributionFormData {
   kernelVersion: string;
   bootloader: string;
   bootloaderVersion?: string;
+  toolchain: string;
   partitioningType: string;
   initSystem: string;
   initSystemVersion?: string;
@@ -89,6 +90,7 @@ interface LDFDistributionConfig {
     };
     bootloader: string;
     bootloader_version?: string;
+    toolchain?: string;
     partitioning: {
       type: string;
       mode: string;
@@ -400,6 +402,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
     kernelVersion: "",
     bootloader: "",
     bootloaderVersion: undefined,
+    toolchain: "gcc",
     partitioningType: "",
     initSystem: "",
     initSystemVersion: undefined,
@@ -607,6 +610,7 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
         },
         bootloader: data.bootloader,
         bootloader_version: getVersion(data.bootloaderVersion, data.bootloader),
+        toolchain: data.toolchain !== "gcc" ? data.toolchain : undefined,
         partitioning: {
           type: data.partitioningType,
           mode: data.partitioning,
@@ -817,6 +821,60 @@ export const DistributionForm: Component<DistributionFormProps> = (props) => {
                   {t("distribution.form.fields.kernelVersion.noVersionsHint")}
                 </p>
               </Show>
+            </fieldset>
+
+            {/* Toolchain */}
+            <fieldset class="space-y-2">
+              <legend class="text-sm font-medium">
+                {t("distribution.form.fields.toolchain.label")}
+              </legend>
+              <section class="grid grid-cols-2 gap-2">
+                <For
+                  each={[
+                    {
+                      id: "gcc",
+                      name: t("distribution.form.fields.toolchain.gcc"),
+                      description: t(
+                        "distribution.form.fields.toolchain.gccDesc",
+                      ),
+                    },
+                    {
+                      id: "llvm",
+                      name: t("distribution.form.fields.toolchain.llvm"),
+                      description: t(
+                        "distribution.form.fields.toolchain.llvmDesc",
+                      ),
+                    },
+                  ]}
+                >
+                  {(option) => (
+                    <label
+                      class={`flex items-start p-3 border rounded-md cursor-pointer transition-colors ${
+                        formData().toolchain === option.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="toolchain"
+                        value={option.id}
+                        checked={formData().toolchain === option.id}
+                        onChange={(e) =>
+                          updateFormData("toolchain", e.target.value)
+                        }
+                        class="mr-3 mt-0.5"
+                      />
+                      <div>
+                        <div class="font-medium">{option.name}</div>
+                        <div class="text-sm text-muted-foreground">
+                          {option.description}
+                        </div>
+                      </div>
+                    </label>
+                  )}
+                </For>
+              </section>
             </fieldset>
 
             {/* Bootloader */}
