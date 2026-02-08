@@ -113,6 +113,20 @@ func (d *Database) DB() *sql.DB {
 	return d.db
 }
 
+// WithTransaction executes fn within a database transaction.
+// The transaction is committed if fn returns nil, rolled back otherwise.
+func (d *Database) WithTransaction(fn func(*sql.Tx) error) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // Shutdown persists the database to disk and closes the connection
 func (d *Database) Shutdown() error {
 	var shutdownErr error
@@ -176,9 +190,9 @@ func (d *Database) persistToDisk() error {
 }
 
 // tableExistsInDiskDB checks if a table exists in the attached disk_db
-func (d *Database) tableExistsInDiskDB(tableName string) bool {
+func tableExistsInDiskDB(tx *sql.Tx, tableName string) bool {
 	var count int
-	err := d.db.QueryRow(`
+	err := tx.QueryRow(`
 		SELECT COUNT(*) FROM disk_db.sqlite_master
 		WHERE type='table' AND name=?
 	`, tableName).Scan(&count)
@@ -220,424 +234,424 @@ func (d *Database) LoadFromDisk() error {
 	var loadedTables []string
 	var loadErrors []string
 
-	// Copy settings table first (no dependencies)
-	if d.tableExistsInDiskDB("settings") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO settings
-			SELECT * FROM disk_db.settings
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("settings: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("settings(%d)", rows))
-		}
-	}
-
-	// Copy custom roles (non-system roles) - before users (users reference roles)
-	if d.tableExistsInDiskDB("roles") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO roles
-			SELECT * FROM disk_db.roles WHERE is_system = 0
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("roles: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("roles(%d)", rows))
-		}
-	}
-
-	// Copy users table - before distributions (distributions reference users)
-	if d.tableExistsInDiskDB("users") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO users
-			SELECT * FROM disk_db.users
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("users: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("users(%d)", rows))
-		}
-	}
-
-	// Copy distributions table (handle schema migration for visibility column)
-	if d.tableExistsInDiskDB("distributions") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO distributions
-			(id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message)
-			SELECT id, name, version, status,
-			       COALESCE(visibility, 'private') as visibility,
-			       config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message
-			FROM disk_db.distributions
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("distributions: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("distributions(%d)", rows))
-		}
-	}
-
-	// Copy distribution_logs table
-	if d.tableExistsInDiskDB("distribution_logs") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO distribution_logs
-			SELECT * FROM disk_db.distribution_logs
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("distribution_logs: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("distribution_logs(%d)", rows))
-		}
-	}
-
-	// Copy revoked_tokens table (references users)
-	if d.tableExistsInDiskDB("revoked_tokens") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO revoked_tokens
-			SELECT * FROM disk_db.revoked_tokens
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("revoked_tokens: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("revoked_tokens(%d)", rows))
-		}
-	}
-
-	// Copy components table FIRST (source_defaults and user_sources have FK references to components)
-	// Must be loaded before sources to satisfy foreign key constraints
-	// We DELETE then INSERT to ensure deleted components stay deleted (not re-seeded)
-	if d.tableExistsInDiskDB("components") {
-		// Check if the disk schema is compatible by looking for the 'is_optional' column
-		// (this is a key column in the current components schema)
-		var hasIsOptionalCol int
-		if err := d.db.QueryRow(`
-			SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_optional'
-		`).Scan(&hasIsOptionalCol); err != nil {
-			log.Warn("Failed to check disk schema compatibility", "error", err)
+	// Wrap all data operations in a transaction for atomicity.
+	// If a mid-load crash occurs, the transaction rolls back automatically,
+	// leaving the in-memory database with its original seeded data intact.
+	txErr := d.WithTransaction(func(tx *sql.Tx) error {
+		// Copy settings table first (no dependencies)
+		if tableExistsInDiskDB(tx, "settings") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO settings
+				SELECT * FROM disk_db.settings
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("settings: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("settings(%d)", rows))
+			}
 		}
 
-		if hasIsOptionalCol > 0 {
-			// Check if disk has the new build type columns
-			var hasKernelModuleCol int
-			if err := d.db.QueryRow(`
-				SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_kernel_module'
-			`).Scan(&hasKernelModuleCol); err != nil {
-				log.Warn("Failed to check kernel module column", "error", err)
+		// Copy custom roles (non-system roles) - before users (users reference roles)
+		if tableExistsInDiskDB(tx, "roles") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO roles
+				SELECT * FROM disk_db.roles WHERE is_system = 0
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("roles: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("roles(%d)", rows))
+			}
+		}
+
+		// Copy users table - before distributions (distributions reference users)
+		if tableExistsInDiskDB(tx, "users") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO users
+				SELECT * FROM disk_db.users
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("users: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("users(%d)", rows))
+			}
+		}
+
+		// Copy distributions table (handle schema migration for visibility column)
+		if tableExistsInDiskDB(tx, "distributions") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO distributions
+				(id, name, version, status, visibility, config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message)
+				SELECT id, name, version, status,
+				       COALESCE(visibility, 'private') as visibility,
+				       config, source_url, checksum, size_bytes, owner_id, created_at, updated_at, started_at, completed_at, error_message
+				FROM disk_db.distributions
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("distributions: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("distributions(%d)", rows))
+			}
+		}
+
+		// Copy distribution_logs table
+		if tableExistsInDiskDB(tx, "distribution_logs") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO distribution_logs
+				SELECT * FROM disk_db.distribution_logs
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("distribution_logs: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("distribution_logs(%d)", rows))
+			}
+		}
+
+		// Copy revoked_tokens table (references users)
+		if tableExistsInDiskDB(tx, "revoked_tokens") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO revoked_tokens
+				SELECT * FROM disk_db.revoked_tokens
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("revoked_tokens: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("revoked_tokens(%d)", rows))
+			}
+		}
+
+		// Copy components table FIRST (source_defaults and user_sources have FK references to components)
+		// Must be loaded before sources to satisfy foreign key constraints
+		// We DELETE then INSERT to ensure deleted components stay deleted (not re-seeded)
+		if tableExistsInDiskDB(tx, "components") {
+			// Check if the disk schema is compatible by looking for the 'is_optional' column
+			var hasIsOptionalCol int
+			if err := tx.QueryRow(`
+				SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_optional'
+			`).Scan(&hasIsOptionalCol); err != nil {
+				log.Warn("Failed to check disk schema compatibility", "error", err)
 			}
 
-			// Compatible schema - delete seeded components and load from disk
-			// ON DELETE CASCADE handles cleanup of related tables (download_jobs),
-			// and ON DELETE SET NULL handles upstream_sources
-			if _, err := d.db.Exec(`DELETE FROM components`); err != nil {
-				loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
-			}
+			if hasIsOptionalCol > 0 {
+				// Check if disk has the new build type columns
+				var hasKernelModuleCol int
+				if err := tx.QueryRow(`
+					SELECT COUNT(*) FROM disk_db.pragma_table_info('components') WHERE name = 'is_kernel_module'
+				`).Scan(&hasKernelModuleCol); err != nil {
+					log.Warn("Failed to check kernel module column", "error", err)
+				}
 
-			var result sql.Result
-			if hasKernelModuleCol > 0 {
-				// Disk has new columns - copy them directly
-				result, err = d.db.Exec(`
-					INSERT INTO components
-					(id, name, category, display_name, description, artifact_pattern,
-					 default_url_template, github_normalized_template, is_optional,
-					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace,
-					 default_version, default_version_rule)
-					SELECT id, name, category, display_name, description, artifact_pattern,
-					       default_url_template, github_normalized_template, is_optional,
-					       created_at, updated_at,
-					       COALESCE(is_system, 0) as is_system,
-					       NULLIF(owner_id, '') as owner_id,
-					       COALESCE(is_kernel_module, 0) as is_kernel_module,
-					       COALESCE(is_userspace, 1) as is_userspace,
-					       default_version,
-					       COALESCE(default_version_rule, 'latest-stable') as default_version_rule
-					FROM disk_db.components
-				`)
+				// Compatible schema - delete seeded components and load from disk
+				// ON DELETE CASCADE handles cleanup of related tables (download_jobs),
+				// and ON DELETE SET NULL handles upstream_sources
+				if _, err := tx.Exec(`DELETE FROM components`); err != nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("components delete: %v", err))
+				}
+
+				var result sql.Result
+				if hasKernelModuleCol > 0 {
+					result, err = tx.Exec(`
+						INSERT INTO components
+						(id, name, category, display_name, description, artifact_pattern,
+						 default_url_template, github_normalized_template, is_optional,
+						 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace,
+						 default_version, default_version_rule)
+						SELECT id, name, category, display_name, description, artifact_pattern,
+						       default_url_template, github_normalized_template, is_optional,
+						       created_at, updated_at,
+						       COALESCE(is_system, 0) as is_system,
+						       NULLIF(owner_id, '') as owner_id,
+						       COALESCE(is_kernel_module, 0) as is_kernel_module,
+						       COALESCE(is_userspace, 1) as is_userspace,
+						       default_version,
+						       COALESCE(default_version_rule, 'latest-stable') as default_version_rule
+						FROM disk_db.components
+					`)
+				} else {
+					result, err = tx.Exec(`
+						INSERT INTO components
+						(id, name, category, display_name, description, artifact_pattern,
+						 default_url_template, github_normalized_template, is_optional,
+						 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
+						SELECT id, name, category, display_name, description, artifact_pattern,
+						       default_url_template, github_normalized_template, is_optional,
+						       created_at, updated_at,
+						       COALESCE(is_system, 0) as is_system,
+						       NULLIF(owner_id, '') as owner_id,
+						       0 as is_kernel_module,
+						       1 as is_userspace
+						FROM disk_db.components
+					`)
+				}
+				if err != nil {
+					// Fallback: try with minimal schema (no is_system, owner_id columns on disk)
+					result, err = tx.Exec(`
+						INSERT INTO components
+						(id, name, category, display_name, description, artifact_pattern,
+						 default_url_template, github_normalized_template, is_optional,
+						 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
+						SELECT id, name, category, display_name, description, artifact_pattern,
+						       default_url_template, github_normalized_template, is_optional,
+						       created_at, updated_at,
+						       0 as is_system,
+						       NULL as owner_id,
+						       0 as is_kernel_module,
+						       1 as is_userspace
+						FROM disk_db.components
+					`)
+				}
+				if err != nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
+				} else if rows, _ := result.RowsAffected(); rows > 0 {
+					loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
+				}
+
+				// Apply build type corrections for known kernel module components
+				applyComponentBuildTypeDefaults(tx)
 			} else {
-				// Disk has old schema - use defaults for new columns
-				result, err = d.db.Exec(`
-					INSERT INTO components
-					(id, name, category, display_name, description, artifact_pattern,
-					 default_url_template, github_normalized_template, is_optional,
-					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
-					SELECT id, name, category, display_name, description, artifact_pattern,
-					       default_url_template, github_normalized_template, is_optional,
-					       created_at, updated_at,
-					       COALESCE(is_system, 0) as is_system,
-					       NULLIF(owner_id, '') as owner_id,
-					       0 as is_kernel_module,
-					       1 as is_userspace
-					FROM disk_db.components
-				`)
+				// Incompatible schema - keep seeded components from migrations
+				fmt.Fprintf(os.Stderr, "INFO: Components table schema changed, using default components\n")
 			}
-			if err != nil {
-				// Fallback: try with minimal schema (no is_system, owner_id columns on disk)
-				result, err = d.db.Exec(`
-					INSERT INTO components
-					(id, name, category, display_name, description, artifact_pattern,
-					 default_url_template, github_normalized_template, is_optional,
-					 created_at, updated_at, is_system, owner_id, is_kernel_module, is_userspace)
-					SELECT id, name, category, display_name, description, artifact_pattern,
-					       default_url_template, github_normalized_template, is_optional,
-					       created_at, updated_at,
-					       0 as is_system,
-					       NULL as owner_id,
-					       0 as is_kernel_module,
-					       1 as is_userspace
-					FROM disk_db.components
-				`)
-			}
-			if err != nil {
-				loadErrors = append(loadErrors, fmt.Sprintf("components: %v", err))
-			} else if rows, _ := result.RowsAffected(); rows > 0 {
-				loadedTables = append(loadedTables, fmt.Sprintf("components(%d)", rows))
-			}
+		}
 
-			// Apply build type corrections for known kernel module components
-			// This ensures correct values even if loading from older disk databases
-			d.applyComponentBuildTypeDefaults()
+		// Copy upstream_sources table (unified sources table - new schema)
+		if tableExistsInDiskDB(tx, "upstream_sources") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO upstream_sources
+				(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+				SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
+				FROM disk_db.upstream_sources
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("upstream_sources: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("upstream_sources(%d)", rows))
+			}
 		} else {
-			// Incompatible schema - keep seeded components from migrations
-			fmt.Fprintf(os.Stderr, "INFO: Components table schema changed, using default components\n")
-		}
-	}
+			// Fallback: migrate from old source_defaults and user_sources tables if they exist
+			// This handles loading databases created before migration 004
 
-	// Copy upstream_sources table (unified sources table - new schema)
-	if d.tableExistsInDiskDB("upstream_sources") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO upstream_sources
-			(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-			SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at
-			FROM disk_db.upstream_sources
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("upstream_sources: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("upstream_sources(%d)", rows))
-		}
-	} else {
-		// Fallback: migrate from old source_defaults and user_sources tables if they exist
-		// This handles loading databases created before migration 004
-
-		// Load from source_defaults (system sources)
-		if d.tableExistsInDiskDB("source_defaults") {
-			// Try with component_ids column first (new schema)
-			result, err := d.db.Exec(`
-				INSERT OR REPLACE INTO upstream_sources
-				(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-				SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
-				FROM disk_db.source_defaults
-			`)
-			if err != nil {
-				// Fallback: try with component_id column (migrate to component_ids)
-				result, err = d.db.Exec(`
+			// Load from source_defaults (system sources)
+			if tableExistsInDiskDB(tx, "source_defaults") {
+				result, err := tx.Exec(`
 					INSERT OR REPLACE INTO upstream_sources
 					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-					SELECT id, name, url,
-					       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
-					       retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
+					SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
 					FROM disk_db.source_defaults
 				`)
+				if err != nil {
+					result, err = tx.Exec(`
+						INSERT OR REPLACE INTO upstream_sources
+						(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+						SELECT id, name, url,
+						       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+						       retrieval_method, url_template, priority, enabled, 1, NULL, created_at, updated_at
+						FROM disk_db.source_defaults
+					`)
+				}
+				if err != nil {
+					result, err = tx.Exec(`
+						INSERT OR REPLACE INTO upstream_sources
+						(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+						SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 1, NULL, created_at, updated_at
+						FROM disk_db.source_defaults
+					`)
+				}
+				if err != nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("source_defaults->upstream_sources: %v", err))
+				} else if rows, _ := result.RowsAffected(); rows > 0 {
+					loadedTables = append(loadedTables, fmt.Sprintf("source_defaults->upstream_sources(%d)", rows))
+				}
 			}
-			if err != nil {
-				// Fallback: try without component columns (old schema)
-				result, err = d.db.Exec(`
+
+			// Load from user_sources (user sources)
+			if tableExistsInDiskDB(tx, "user_sources") {
+				result, err := tx.Exec(`
 					INSERT OR REPLACE INTO upstream_sources
 					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-					SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 1, NULL, created_at, updated_at
-					FROM disk_db.source_defaults
+					SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
+					FROM disk_db.user_sources
 				`)
-			}
-			if err != nil {
-				loadErrors = append(loadErrors, fmt.Sprintf("source_defaults->upstream_sources: %v", err))
-			} else if rows, _ := result.RowsAffected(); rows > 0 {
-				loadedTables = append(loadedTables, fmt.Sprintf("source_defaults->upstream_sources(%d)", rows))
+				if err != nil {
+					result, err = tx.Exec(`
+						INSERT OR REPLACE INTO upstream_sources
+						(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+						SELECT id, name, url,
+						       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
+						       retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
+						FROM disk_db.user_sources
+					`)
+				}
+				if err != nil {
+					result, err = tx.Exec(`
+						INSERT OR REPLACE INTO upstream_sources
+						(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
+						SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 0, owner_id, created_at, updated_at
+						FROM disk_db.user_sources
+					`)
+				}
+				if err != nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("user_sources->upstream_sources: %v", err))
+				} else if rows, _ := result.RowsAffected(); rows > 0 {
+					loadedTables = append(loadedTables, fmt.Sprintf("user_sources->upstream_sources(%d)", rows))
+				}
 			}
 		}
 
-		// Load from user_sources (user sources)
-		if d.tableExistsInDiskDB("user_sources") {
-			// Try with component_ids column first (new schema)
-			result, err := d.db.Exec(`
-				INSERT OR REPLACE INTO upstream_sources
-				(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-				SELECT id, name, url, COALESCE(component_ids, '[]'), retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
-				FROM disk_db.user_sources
-			`)
-			if err != nil {
-				// Fallback: try with component_id column (migrate to component_ids)
-				result, err = d.db.Exec(`
-					INSERT OR REPLACE INTO upstream_sources
-					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-					SELECT id, name, url,
-					       CASE WHEN component_id IS NOT NULL AND component_id != '' THEN '["' || component_id || '"]' ELSE '[]' END,
-					       retrieval_method, url_template, priority, enabled, 0, owner_id, created_at, updated_at
-					FROM disk_db.user_sources
-				`)
-			}
-			if err != nil {
-				// Fallback: try without component columns (old schema)
-				result, err = d.db.Exec(`
-					INSERT OR REPLACE INTO upstream_sources
-					(id, name, url, component_ids, retrieval_method, url_template, priority, enabled, is_system, owner_id, created_at, updated_at)
-					SELECT id, name, url, '[]', 'release', NULL, priority, enabled, 0, owner_id, created_at, updated_at
-					FROM disk_db.user_sources
-				`)
-			}
-			if err != nil {
-				loadErrors = append(loadErrors, fmt.Sprintf("user_sources->upstream_sources: %v", err))
-			} else if rows, _ := result.RowsAffected(); rows > 0 {
-				loadedTables = append(loadedTables, fmt.Sprintf("user_sources->upstream_sources(%d)", rows))
-			}
-		}
-	}
-
-	// Copy download_jobs table (handle schema migration for new columns)
-	if d.tableExistsInDiskDB("download_jobs") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO download_jobs
-			(id, distribution_id, owner_id, component_id, source_id, source_type,
-			 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
-			 created_at, started_at, completed_at, artifact_path, checksum, error_message,
-			 retry_count, max_retries)
-			SELECT id, distribution_id,
-			       COALESCE(owner_id, '') as owner_id,
-			       component_id,
-			       source_id, source_type,
-			       COALESCE(retrieval_method, 'release') as retrieval_method,
-			       resolved_url, version, status, progress_bytes, total_bytes,
-			       created_at, started_at, completed_at, artifact_path, checksum, error_message,
-			       retry_count, max_retries
-			FROM disk_db.download_jobs
-		`)
-		if err != nil {
-			// Fallback: try without new columns
-			result, err = d.db.Exec(`
+		// Copy download_jobs table (handle schema migration for new columns)
+		if tableExistsInDiskDB(tx, "download_jobs") {
+			result, err := tx.Exec(`
 				INSERT OR REPLACE INTO download_jobs
 				(id, distribution_id, owner_id, component_id, source_id, source_type,
 				 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
 				 created_at, started_at, completed_at, artifact_path, checksum, error_message,
 				 retry_count, max_retries)
-				SELECT id, distribution_id, '', component_id, source_id, source_type,
-				       'release', resolved_url, version, status, progress_bytes, total_bytes,
+				SELECT id, distribution_id,
+				       COALESCE(owner_id, '') as owner_id,
+				       component_id,
+				       source_id, source_type,
+				       COALESCE(retrieval_method, 'release') as retrieval_method,
+				       resolved_url, version, status, progress_bytes, total_bytes,
 				       created_at, started_at, completed_at, artifact_path, checksum, error_message,
 				       retry_count, max_retries
 				FROM disk_db.download_jobs
 			`)
+			if err != nil {
+				result, err = tx.Exec(`
+					INSERT OR REPLACE INTO download_jobs
+					(id, distribution_id, owner_id, component_id, source_id, source_type,
+					 retrieval_method, resolved_url, version, status, progress_bytes, total_bytes,
+					 created_at, started_at, completed_at, artifact_path, checksum, error_message,
+					 retry_count, max_retries)
+					SELECT id, distribution_id, '', component_id, source_id, source_type,
+					       'release', resolved_url, version, status, progress_bytes, total_bytes,
+					       created_at, started_at, completed_at, artifact_path, checksum, error_message,
+					       retry_count, max_retries
+					FROM disk_db.download_jobs
+				`)
+			}
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("download_jobs: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("download_jobs(%d)", rows))
+			}
 		}
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("download_jobs: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("download_jobs(%d)", rows))
-		}
-	}
 
-	// Copy artifact_cache table
-	if d.tableExistsInDiskDB("artifact_cache") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO artifact_cache
-			SELECT * FROM disk_db.artifact_cache
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("artifact_cache: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("artifact_cache(%d)", rows))
+		// Copy artifact_cache table
+		if tableExistsInDiskDB(tx, "artifact_cache") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO artifact_cache
+				SELECT * FROM disk_db.artifact_cache
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("artifact_cache: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("artifact_cache(%d)", rows))
+			}
 		}
-	}
 
-	// Copy mirror_configs table
-	if d.tableExistsInDiskDB("mirror_configs") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO mirror_configs
-			SELECT * FROM disk_db.mirror_configs
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("mirror_configs: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("mirror_configs(%d)", rows))
+		// Copy mirror_configs table
+		if tableExistsInDiskDB(tx, "mirror_configs") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO mirror_configs
+				SELECT * FROM disk_db.mirror_configs
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("mirror_configs: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("mirror_configs(%d)", rows))
+			}
 		}
-	}
 
-	// Copy board_profiles table (delete seeded profiles first, load all from disk)
-	if d.tableExistsInDiskDB("board_profiles") {
-		if _, err := d.db.Exec(`DELETE FROM board_profiles`); err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("board_profiles delete: %v", err))
+		// Copy board_profiles table (delete seeded profiles first, load all from disk)
+		if tableExistsInDiskDB(tx, "board_profiles") {
+			if _, err := tx.Exec(`DELETE FROM board_profiles`); err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("board_profiles delete: %v", err))
+			}
+			result, err := tx.Exec(`
+				INSERT INTO board_profiles
+				SELECT * FROM disk_db.board_profiles
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("board_profiles: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("board_profiles(%d)", rows))
+			}
 		}
-		result, err := d.db.Exec(`
-			INSERT INTO board_profiles
-			SELECT * FROM disk_db.board_profiles
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("board_profiles: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("board_profiles(%d)", rows))
-		}
-	}
 
-	// Copy toolchain_profiles table (delete seeded profiles first, load all from disk)
-	if d.tableExistsInDiskDB("toolchain_profiles") {
-		if _, err := d.db.Exec(`DELETE FROM toolchain_profiles`); err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles delete: %v", err))
+		// Copy toolchain_profiles table (delete seeded profiles first, load all from disk)
+		if tableExistsInDiskDB(tx, "toolchain_profiles") {
+			if _, err := tx.Exec(`DELETE FROM toolchain_profiles`); err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles delete: %v", err))
+			}
+			result, err := tx.Exec(`
+				INSERT INTO toolchain_profiles
+				SELECT * FROM disk_db.toolchain_profiles
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("toolchain_profiles(%d)", rows))
+			}
 		}
-		result, err := d.db.Exec(`
-			INSERT INTO toolchain_profiles
-			SELECT * FROM disk_db.toolchain_profiles
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("toolchain_profiles(%d)", rows))
-		}
-	}
 
-	// Copy build_jobs table
-	if d.tableExistsInDiskDB("build_jobs") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO build_jobs
-			SELECT * FROM disk_db.build_jobs
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("build_jobs: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("build_jobs(%d)", rows))
+		// Copy build_jobs table
+		if tableExistsInDiskDB(tx, "build_jobs") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO build_jobs
+				SELECT * FROM disk_db.build_jobs
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("build_jobs: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("build_jobs(%d)", rows))
+			}
 		}
-	}
 
-	// Copy build_stages table
-	if d.tableExistsInDiskDB("build_stages") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO build_stages
-			SELECT * FROM disk_db.build_stages
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("build_stages: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("build_stages(%d)", rows))
+		// Copy build_stages table
+		if tableExistsInDiskDB(tx, "build_stages") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO build_stages
+				SELECT * FROM disk_db.build_stages
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("build_stages: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("build_stages(%d)", rows))
+			}
 		}
-	}
 
-	// Copy build_logs table
-	if d.tableExistsInDiskDB("build_logs") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO build_logs
-			SELECT * FROM disk_db.build_logs
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("build_logs: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("build_logs(%d)", rows))
+		// Copy build_logs table
+		if tableExistsInDiskDB(tx, "build_logs") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO build_logs
+				SELECT * FROM disk_db.build_logs
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("build_logs: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("build_logs(%d)", rows))
+			}
 		}
-	}
 
-	// Copy refresh_tokens table
-	if d.tableExistsInDiskDB("refresh_tokens") {
-		result, err := d.db.Exec(`
-			INSERT OR REPLACE INTO refresh_tokens
-			SELECT * FROM disk_db.refresh_tokens
-		`)
-		if err != nil {
-			loadErrors = append(loadErrors, fmt.Sprintf("refresh_tokens: %v", err))
-		} else if rows, _ := result.RowsAffected(); rows > 0 {
-			loadedTables = append(loadedTables, fmt.Sprintf("refresh_tokens(%d)", rows))
+		// Copy refresh_tokens table
+		if tableExistsInDiskDB(tx, "refresh_tokens") {
+			result, err := tx.Exec(`
+				INSERT OR REPLACE INTO refresh_tokens
+				SELECT * FROM disk_db.refresh_tokens
+			`)
+			if err != nil {
+				loadErrors = append(loadErrors, fmt.Sprintf("refresh_tokens: %v", err))
+			} else if rows, _ := result.RowsAffected(); rows > 0 {
+				loadedTables = append(loadedTables, fmt.Sprintf("refresh_tokens(%d)", rows))
+			}
 		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return fmt.Errorf("transaction failed during disk load: %w", txErr)
 	}
 
 	// Log what was loaded
@@ -775,24 +789,24 @@ func (d *Database) ResetToDefaults() error {
 
 // applyComponentBuildTypeDefaults ensures known kernel module components have correct build type flags.
 // This is called after loading from disk to handle older databases that may have incorrect defaults.
-func (d *Database) applyComponentBuildTypeDefaults() {
+func applyComponentBuildTypeDefaults(tx *sql.Tx) {
 	// Kernel is kernel-only, not userspace
-	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`); err != nil {
+	if _, err := tx.Exec(`UPDATE components SET is_kernel_module = 1, is_userspace = 0 WHERE name = 'kernel'`); err != nil {
 		log.Warn("Failed to apply kernel build type defaults", "error", err)
 	}
 
 	// Filesystem components have both kernel drivers and userspace tools
-	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`); err != nil {
+	if _, err := tx.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('btrfs', 'xfs', 'ext4', 'f2fs', 'zfs')`); err != nil {
 		log.Warn("Failed to apply filesystem build type defaults", "error", err)
 	}
 
 	// Security components have kernel LSM modules and userspace tools
-	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`); err != nil {
+	if _, err := tx.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name IN ('selinux', 'apparmor')`); err != nil {
 		log.Warn("Failed to apply security build type defaults", "error", err)
 	}
 
 	// Virtualization components that require KVM kernel module
-	if _, err := d.db.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`); err != nil {
+	if _, err := tx.Exec(`UPDATE components SET is_kernel_module = 1 WHERE name = 'qemu-kvm-libvirt'`); err != nil {
 		log.Warn("Failed to apply virtualization build type defaults", "error", err)
 	}
 }
