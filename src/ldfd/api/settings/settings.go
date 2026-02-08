@@ -193,11 +193,7 @@ func (h *Handler) HandleGet(c *gin.Context) {
 
 	reg := findSettingByKey(key)
 	if reg == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Setting '%s' not found", key),
-		})
+		common.NotFound(c, fmt.Sprintf("Setting '%s' not found", key))
 		return
 	}
 
@@ -237,21 +233,13 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 
 	reg := findSettingByKey(key)
 	if reg == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Setting '%s' not found", key),
-		})
+		common.NotFound(c, fmt.Sprintf("Setting '%s' not found", key))
 		return
 	}
 
 	var req UpdateSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -270,21 +258,13 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 		case json.Number:
 			intVal, err := v.Int64()
 			if err != nil {
-				c.JSON(http.StatusBadRequest, common.ErrorResponse{
-					Error:   "Bad request",
-					Code:    http.StatusBadRequest,
-					Message: fmt.Sprintf("Invalid integer value for '%s'", key),
-				})
+				common.BadRequest(c, fmt.Sprintf("Invalid integer value for '%s'", key))
 				return
 			}
 			typedValue = int(intVal)
 			stringValue = fmt.Sprintf("%d", intVal)
 		default:
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("Expected integer value for '%s', got %T", key, req.Value),
-			})
+			common.BadRequest(c, fmt.Sprintf("Expected integer value for '%s', got %T", key, req.Value))
 			return
 		}
 	case "bool":
@@ -293,11 +273,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 			typedValue = v
 			stringValue = fmt.Sprintf("%t", v)
 		default:
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("Expected boolean value for '%s', got %T", key, req.Value),
-			})
+			common.BadRequest(c, fmt.Sprintf("Expected boolean value for '%s', got %T", key, req.Value))
 			return
 		}
 	default:
@@ -306,11 +282,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 			typedValue = v
 			stringValue = v
 		default:
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("Expected string value for '%s', got %T", key, req.Value),
-			})
+			common.BadRequest(c, fmt.Sprintf("Expected string value for '%s', got %T", key, req.Value))
 			return
 		}
 	}
@@ -318,11 +290,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	// Validate app_name length constraint
 	if key == "webui.app_name" {
 		if strVal, ok := typedValue.(string); ok && len(strVal) > 32 {
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: "Application name must be 32 characters or less",
-			})
+			common.BadRequest(c, "Application name must be 32 characters or less")
 			return
 		}
 	}
@@ -341,11 +309,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	}
 
 	if err := h.database.SetSetting(key, persistValue); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to persist setting: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to persist setting: %v", err))
 		return
 	}
 
@@ -407,29 +371,17 @@ func (h *Handler) applySettingChange(key string, value interface{}) {
 func (h *Handler) HandleResetDatabase(c *gin.Context) {
 	var req ResetDatabaseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
 	if req.Confirmation != "RESET_DATABASE" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Invalid confirmation. Send confirmation: \"RESET_DATABASE\" to proceed.",
-		})
+		common.BadRequest(c, "Invalid confirmation. Send confirmation: \"RESET_DATABASE\" to proceed.")
 		return
 	}
 
 	if err := h.database.ResetToDefaults(); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to reset database: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to reset database: %v", err))
 		return
 	}
 

@@ -61,11 +61,7 @@ func (a *API) authRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := a.getTokenClaims(c)
 		if claims == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{
-				Error:   "Unauthorized",
-				Code:    http.StatusUnauthorized,
-				Message: "Authentication required",
-			})
+			common.AbortUnauthorized(c, "Authentication required")
 			return
 		}
 
@@ -80,21 +76,13 @@ func (a *API) writeAccessRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := a.getTokenClaims(c)
 		if claims == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{
-				Error:   "Unauthorized",
-				Code:    http.StatusUnauthorized,
-				Message: "Authentication required",
-			})
+			common.AbortUnauthorized(c, "Authentication required")
 			return
 		}
 
 		// Check if user has write permission
 		if !claims.HasWriteAccess() {
-			c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Write access denied",
-			})
+			common.AbortForbidden(c, "Write access denied")
 			return
 		}
 
@@ -109,21 +97,13 @@ func (a *API) adminAccessRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := a.getTokenClaims(c)
 		if claims == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{
-				Error:   "Unauthorized",
-				Code:    http.StatusUnauthorized,
-				Message: "Authentication required",
-			})
+			common.AbortUnauthorized(c, "Authentication required")
 			return
 		}
 
 		// Check if user has admin permission
 		if !claims.HasAdminAccess() {
-			c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Admin access denied",
-			})
+			common.AbortForbidden(c, "Admin access denied")
 			return
 		}
 
@@ -138,21 +118,13 @@ func (a *API) rootAccessRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := a.getTokenClaims(c)
 		if claims == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{
-				Error:   "Unauthorized",
-				Code:    http.StatusUnauthorized,
-				Message: "Authentication required",
-			})
+			common.AbortUnauthorized(c, "Authentication required")
 			return
 		}
 
 		// Must be root role specifically
 		if claims.RoleID != auth.RoleIDRoot {
-			c.AbortWithStatusJSON(http.StatusForbidden, ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Root access required",
-			})
+			common.AbortForbidden(c, "Root access required")
 			return
 		}
 

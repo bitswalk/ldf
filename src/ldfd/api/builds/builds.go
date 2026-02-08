@@ -26,57 +26,33 @@ func NewHandler(cfg Config) *Handler {
 func (h *Handler) HandleStartBuild(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	if dist.Config == nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution has no configuration",
-		})
+		common.BadRequest(c, "Distribution has no configuration")
 		return
 	}
 
@@ -94,11 +70,7 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		case "aarch64":
 			arch = db.ArchAARCH64
 		default:
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("Unsupported architecture: %s (supported: x86_64, aarch64)", req.Arch),
-			})
+			common.BadRequest(c, fmt.Sprintf("Unsupported architecture: %s (supported: x86_64, aarch64)", req.Arch))
 			return
 		}
 	}
@@ -113,11 +85,7 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 		case "iso":
 			format = db.ImageFormatISO
 		default:
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("Unsupported image format: %s (supported: raw, qcow2, iso)", req.Format),
-			})
+			common.BadRequest(c, fmt.Sprintf("Unsupported image format: %s (supported: raw, qcow2, iso)", req.Format))
 			return
 		}
 	}
@@ -125,21 +93,13 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 	// Pre-flight: validate build environment for the requested architecture
 	runtime := build.RuntimeType(h.buildManager.GetConfig().ContainerRuntime)
 	if _, err := build.ValidateBuildEnvironment(runtime, h.buildManager.GetConfig().ContainerImage, arch); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Build environment not available",
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("Cannot build for %s: %v", arch, err),
-		})
+		common.BadRequest(c, fmt.Sprintf("Cannot build for %s: %v", arch, err))
 		return
 	}
 
 	job, err := h.buildManager.SubmitBuild(dist, claims.UserID, arch, format, req.ClearCache)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -154,40 +114,24 @@ func (h *Handler) HandleStartBuild(c *gin.Context) {
 func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, common.ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Access denied to private distribution",
-			})
+			common.Forbidden(c, "Access denied to private distribution")
 			return
 		}
 	}
@@ -196,11 +140,7 @@ func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 
 	jobs, total, err := h.buildManager.BuildJobRepo().ListByDistribution(distID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -224,51 +164,31 @@ func (h *Handler) HandleListDistributionBuilds(c *gin.Context) {
 func (h *Handler) HandleGetBuild(c *gin.Context) {
 	buildID := c.Param("buildId")
 	if buildID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Build ID required",
-		})
+		common.BadRequest(c, "Build ID required")
 		return
 	}
 
 	job, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Build not found",
-		})
+		common.NotFound(c, "Build not found")
 		return
 	}
 
 	// Check access
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if dist != nil && dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, common.ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Access denied",
-			})
+			common.Forbidden(c, "Access denied")
 			return
 		}
 	}
@@ -285,29 +205,17 @@ func (h *Handler) HandleGetBuild(c *gin.Context) {
 func (h *Handler) HandleGetBuildLogs(c *gin.Context) {
 	buildID := c.Param("buildId")
 	if buildID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Build ID required",
-		})
+		common.BadRequest(c, "Build ID required")
 		return
 	}
 
 	job, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Build not found",
-		})
+		common.NotFound(c, "Build not found")
 		return
 	}
 
@@ -323,11 +231,7 @@ func (h *Handler) HandleGetBuildLogs(c *gin.Context) {
 		logs, err = h.buildManager.BuildJobRepo().GetLogs(buildID, limit, offset)
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -345,21 +249,13 @@ func (h *Handler) HandleGetBuildLogs(c *gin.Context) {
 func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 	buildID := c.Param("buildId")
 	if buildID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Build ID required",
-		})
+		common.BadRequest(c, "Build ID required")
 		return
 	}
 
 	job, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 	if err != nil || job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Build not found",
-		})
+		common.NotFound(c, "Build not found")
 		return
 	}
 
@@ -463,67 +359,39 @@ func (h *Handler) HandleStreamBuildLogs(c *gin.Context) {
 func (h *Handler) HandleCancelBuild(c *gin.Context) {
 	buildID := c.Param("buildId")
 	if buildID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Build ID required",
-		})
+		common.BadRequest(c, "Build ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	job, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Build not found",
-		})
+		common.NotFound(c, "Build not found")
 		return
 	}
 
 	// Check ownership
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	if err := h.buildManager.CancelBuild(buildID); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -536,67 +404,39 @@ func (h *Handler) HandleCancelBuild(c *gin.Context) {
 func (h *Handler) HandleRetryBuild(c *gin.Context) {
 	buildID := c.Param("buildId")
 	if buildID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Build ID required",
-		})
+		common.BadRequest(c, "Build ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	job, err := h.buildManager.BuildJobRepo().GetByID(buildID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Build not found",
-		})
+		common.NotFound(c, "Build not found")
 		return
 	}
 
 	// Check ownership
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	if err := h.buildManager.RetryBuild(buildID); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -618,48 +458,28 @@ func (h *Handler) HandleRetryBuild(c *gin.Context) {
 func (h *Handler) HandleClearDistributionBuilds(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Access denied",
-		})
+		common.Forbidden(c, "Access denied")
 		return
 	}
 
 	if err := h.buildManager.BuildJobRepo().DeleteByDistribution(distID); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -670,11 +490,7 @@ func (h *Handler) HandleClearDistributionBuilds(c *gin.Context) {
 func (h *Handler) HandleListActiveBuilds(c *gin.Context) {
 	jobs, err := h.buildManager.BuildJobRepo().ListActive()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 

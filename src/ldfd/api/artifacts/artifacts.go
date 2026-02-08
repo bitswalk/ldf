@@ -51,29 +51,17 @@ func (h *Handler) checkDistributionAccess(c *gin.Context, distID string) (*struc
 
 	canAccess, err := h.distRepo.CanUserAccess(distID, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return nil, false
 	}
 	if !canAccess {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return nil, false
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil || dist == nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to retrieve distribution details",
-		})
+		common.InternalError(c, "Failed to retrieve distribution details")
 		return nil, false
 	}
 
@@ -101,49 +89,29 @@ func (h *Handler) checkDistributionAccess(c *gin.Context, distID string) (*struc
 // @Router       /v1/distributions/{id}/artifacts [post]
 func (h *Handler) HandleUpload(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "No file provided: " + err.Error(),
-		})
+		common.BadRequest(c, "No file provided: "+err.Error())
 		return
 	}
 	defer file.Close()
@@ -161,11 +129,7 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 	}
 
 	if err := h.storage.Upload(c.Request.Context(), key, file, header.Size, contentType); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to upload artifact: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to upload artifact: "+err.Error())
 		return
 	}
 
@@ -194,21 +158,13 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 // @Router       /v1/distributions/{id}/artifacts [get]
 func (h *Handler) HandleList(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -220,11 +176,7 @@ func (h *Handler) HandleList(c *gin.Context) {
 	prefix := getArtifactPrefix(distInfo.OwnerID, distInfo.ID)
 	artifacts, err := h.storage.List(c.Request.Context(), prefix)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to list artifacts: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to list artifacts: "+err.Error())
 		return
 	}
 
@@ -253,21 +205,13 @@ func (h *Handler) HandleList(c *gin.Context) {
 // @Router       /v1/distributions/{id}/artifacts/{path} [get]
 func (h *Handler) HandleDownload(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -278,11 +222,7 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Artifact path required",
-		})
+		common.BadRequest(c, "Artifact path required")
 		return
 	}
 
@@ -290,11 +230,7 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 
 	reader, info, err := h.storage.Download(c.Request.Context(), key)
 	if err != nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Artifact not found: " + err.Error(),
-		})
+		common.NotFound(c, "Artifact not found: "+err.Error())
 		return
 	}
 	defer reader.Close()
@@ -326,21 +262,13 @@ func (h *Handler) HandleDownload(c *gin.Context) {
 // @Router       /v1/distributions/{id}/artifacts/{path} [delete]
 func (h *Handler) HandleDelete(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -351,22 +279,14 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Artifact path required",
-		})
+		common.BadRequest(c, "Artifact path required")
 		return
 	}
 
 	key := getArtifactKey(distInfo.OwnerID, distInfo.ID, artifactPath)
 
 	if err := h.storage.Delete(c.Request.Context(), key); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to delete artifact: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to delete artifact: "+err.Error())
 		return
 	}
 
@@ -393,21 +313,13 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 // @Router       /v1/distributions/{id}/artifacts-url/{path} [get]
 func (h *Handler) HandleGetURL(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -418,11 +330,7 @@ func (h *Handler) HandleGetURL(c *gin.Context) {
 
 	artifactPath := c.Param("path")
 	if artifactPath == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Artifact path required",
-		})
+		common.BadRequest(c, "Artifact path required")
 		return
 	}
 
@@ -437,21 +345,13 @@ func (h *Handler) HandleGetURL(c *gin.Context) {
 
 	exists, err := h.storage.Exists(c.Request.Context(), key)
 	if err != nil || !exists {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Artifact not found",
-		})
+		common.NotFound(c, "Artifact not found")
 		return
 	}
 
 	url, err := h.storage.GetPresignedURL(c.Request.Context(), key, time.Duration(expiry)*time.Second)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to generate presigned URL: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to generate presigned URL: "+err.Error())
 		return
 	}
 
@@ -475,11 +375,7 @@ func (h *Handler) HandleGetURL(c *gin.Context) {
 // @Router       /v1/artifacts [get]
 func (h *Handler) HandleListAll(c *gin.Context) {
 	if h.storage == nil {
-		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse{
-			Error:   "Service unavailable",
-			Code:    http.StatusServiceUnavailable,
-			Message: "Storage service not configured",
-		})
+		common.ServiceUnavailable(c, "Storage service not configured")
 		return
 	}
 
@@ -493,11 +389,7 @@ func (h *Handler) HandleListAll(c *gin.Context) {
 
 	distributions, err := h.distRepo.ListAccessible(userID, isAdmin, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -517,11 +409,7 @@ func (h *Handler) HandleListAll(c *gin.Context) {
 
 	allStorageArtifacts, err := h.storage.List(c.Request.Context(), "distribution/")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to list artifacts: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to list artifacts: "+err.Error())
 		return
 	}
 
