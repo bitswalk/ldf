@@ -12,8 +12,11 @@ import { Login } from "./views/Login";
 import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
 import { Settings } from "./views/Settings";
-import { BoardProfiles } from "./views/BoardProfiles";
-import { ToolchainProfiles } from "./views/ToolchainProfiles";
+import { BoardProfiles, BoardProfileDetail } from "./views/BoardProfiles";
+import {
+  ToolchainProfiles,
+  ToolchainProfileDetail,
+} from "./views/ToolchainProfiles";
 import { BuildDetail } from "./views/BuildDetail";
 import { Console } from "./components/Console";
 import { Menu, type MenuItem } from "./components/Menu";
@@ -50,7 +53,9 @@ type ViewType =
   | "components"
   | "component-details"
   | "board-profiles"
+  | "board-profile-detail"
   | "toolchain-profiles"
+  | "toolchain-profile-detail"
   | "build-detail"
   | "login"
   | "register"
@@ -90,6 +95,11 @@ const App: Component = () => {
   const [selectedBuildId, setSelectedBuildId] = createSignal<string | null>(
     null,
   );
+  const [selectedBoardProfileId, setSelectedBoardProfileId] = createSignal<
+    string | null
+  >(null);
+  const [selectedToolchainProfileId, setSelectedToolchainProfileId] =
+    createSignal<string | null>(null);
 
   onMount(async () => {
     // Subscribe to auth changes from the API client
@@ -282,6 +292,26 @@ const App: Component = () => {
     setCurrentView("distribution-detail");
   };
 
+  const handleViewBoardProfile = (profileId: string) => {
+    setSelectedBoardProfileId(profileId);
+    setCurrentView("board-profile-detail");
+  };
+
+  const handleBackFromBoardProfileDetail = () => {
+    setSelectedBoardProfileId(null);
+    setCurrentView("board-profiles");
+  };
+
+  const handleViewToolchainProfile = (profileId: string) => {
+    setSelectedToolchainProfileId(profileId);
+    setCurrentView("toolchain-profile-detail");
+  };
+
+  const handleBackFromToolchainProfileDetail = () => {
+    setSelectedToolchainProfileId(null);
+    setCurrentView("toolchain-profiles");
+  };
+
   const menuItems = (): MenuItem[] => [
     {
       id: "distribution",
@@ -412,11 +442,39 @@ const App: Component = () => {
                   <BoardProfiles
                     isLoggedIn={isLoggedIn()}
                     user={authState().user}
+                    onViewProfile={handleViewBoardProfile}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "board-profile-detail" &&
+                    selectedBoardProfileId()
+                  }
+                >
+                  <BoardProfileDetail
+                    profileId={selectedBoardProfileId()!}
+                    onBack={handleBackFromBoardProfileDetail}
+                    onDeleted={handleBackFromBoardProfileDetail}
+                    user={authState().user}
                   />
                 </Match>
                 <Match when={currentView() === "toolchain-profiles"}>
                   <ToolchainProfiles
                     isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                    onViewProfile={handleViewToolchainProfile}
+                  />
+                </Match>
+                <Match
+                  when={
+                    currentView() === "toolchain-profile-detail" &&
+                    selectedToolchainProfileId()
+                  }
+                >
+                  <ToolchainProfileDetail
+                    profileId={selectedToolchainProfileId()!}
+                    onBack={handleBackFromToolchainProfileDetail}
+                    onDeleted={handleBackFromToolchainProfileDetail}
                     user={authState().user}
                   />
                 </Match>

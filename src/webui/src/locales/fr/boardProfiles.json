@@ -57,6 +57,30 @@
   "badges": {
     "system": "Systeme"
   },
+  "detail": {
+    "title": "Profil de carte",
+    "subtitle": "Configuration et details du profil de carte",
+    "back": "Retour aux profils de carte",
+    "profileDetails": "Details du profil",
+    "configuration": "Configuration",
+    "name": "Identifiant",
+    "displayName": "Nom d'affichage",
+    "description": "Description",
+    "arch": "Architecture",
+    "system": "Profil systeme",
+    "owner": "Proprietaire",
+    "created": "Cree le",
+    "updated": "Mis a jour le",
+    "kernelDefconfig": "Defconfig noyau",
+    "kernelCmdline": "Ligne de commande noyau",
+    "deviceTrees": "Device Trees",
+    "bootParams": "Parametres de demarrage",
+    "firmware": "Firmware",
+    "noConfig": "Aucune configuration definie",
+    "noDescription": "Aucune description",
+    "updateSuccess": "Profil de carte mis a jour avec succes",
+    "deleteSuccess": "Profil de carte supprime avec succes"
+  },
   "errors": {
     "loadFailed": "Echec du chargement des profils de carte",
     "createFailed": "Echec de la creation du profil de carte",

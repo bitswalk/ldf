@@ -15,17 +15,16 @@ import { t } from "../../services/i18n";
 import {
   listToolchainProfiles,
   createToolchainProfile,
-  updateToolchainProfile,
   deleteToolchainProfile,
   type ToolchainProfile,
   type CreateToolchainProfileRequest,
-  type UpdateToolchainProfileRequest,
 } from "../../services/toolchainProfiles";
 import type { UserInfo } from "../../services/auth";
 
 interface ToolchainProfilesProps {
   isLoggedIn: boolean;
   user: UserInfo | null;
+  onViewProfile?: (id: string) => void;
 }
 
 export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
@@ -37,11 +36,8 @@ export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
     ToolchainProfile[]
   >([]);
 
-  // Create/edit modal state
+  // Create modal state
   const [formModalOpen, setFormModalOpen] = createSignal(false);
-  const [editingProfile, setEditingProfile] = createSignal<
-    ToolchainProfile | undefined
-  >(undefined);
   const [formSubmitting, setFormSubmitting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
@@ -84,51 +80,25 @@ export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
   };
 
   const openCreateModal = () => {
-    setEditingProfile(undefined);
-    setFormError(null);
-    setFormModalOpen(true);
-  };
-
-  const openEditModal = (profile: ToolchainProfile) => {
-    setEditingProfile(profile);
     setFormError(null);
     setFormModalOpen(true);
   };
 
   const closeFormModal = () => {
     setFormModalOpen(false);
-    setEditingProfile(undefined);
     setFormError(null);
   };
 
-  const handleFormSubmit = async (
-    data: CreateToolchainProfileRequest | UpdateToolchainProfileRequest,
-  ) => {
+  const handleFormSubmit = async (data: CreateToolchainProfileRequest) => {
     setFormSubmitting(true);
     setFormError(null);
 
-    const editing = editingProfile();
-    if (editing) {
-      const result = await updateToolchainProfile(
-        editing.id,
-        data as UpdateToolchainProfileRequest,
-      );
-      if (result.success) {
-        closeFormModal();
-        fetchProfiles();
-      } else {
-        setFormError(result.message);
-      }
+    const result = await createToolchainProfile(data);
+    if (result.success) {
+      closeFormModal();
+      fetchProfiles();
     } else {
-      const result = await createToolchainProfile(
-        data as CreateToolchainProfileRequest,
-      );
-      if (result.success) {
-        closeFormModal();
-        fetchProfiles();
-      } else {
-        setFormError(result.message);
-      }
+      setFormError(result.message);
     }
 
     setFormSubmitting(false);
@@ -190,7 +160,14 @@ export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onSelect={() => openEditModal(cellProps.row)}
+            onSelect={() => props.onViewProfile?.(cellProps.row.id)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>{t("common.actions.viewDetails")}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => props.onViewProfile?.(cellProps.row.id)}
             class="gap-2"
           >
             <Icon name="pencil" size="sm" />
@@ -292,15 +269,19 @@ export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
                 columns={[
                   {
                     key: "display_name",
-                    label: t("toolchainProfiles.columns.displayName"),
-                    sortable: true,
-                    class: "font-medium",
-                  },
-                  {
-                    key: "name",
                     label: t("toolchainProfiles.columns.name"),
                     sortable: true,
-                    class: "font-mono text-sm text-muted-foreground",
+                    class: "font-medium",
+                    render: (value, row) => (
+                      <button
+                        onClick={() =>
+                          props.onViewProfile?.((row as ToolchainProfile).id)
+                        }
+                        class="text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {value as string}
+                      </button>
+                    ),
                   },
                   {
                     key: "type",
@@ -355,18 +336,13 @@ export const ToolchainProfiles: Component<ToolchainProfilesProps> = (props) => {
         </section>
       </section>
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal */}
       <Modal
         isOpen={formModalOpen()}
         onClose={closeFormModal}
-        title={
-          editingProfile()
-            ? t("toolchainProfiles.edit")
-            : t("toolchainProfiles.create")
-        }
+        title={t("toolchainProfiles.create")}
       >
         <ToolchainProfileForm
-          profile={editingProfile()}
           onSubmit={handleFormSubmit}
           onCancel={closeFormModal}
           submitting={formSubmitting()}

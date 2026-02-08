@@ -15,17 +15,16 @@ import { t } from "../../services/i18n";
 import {
   listBoardProfiles,
   createBoardProfile,
-  updateBoardProfile,
   deleteBoardProfile,
   type BoardProfile,
   type CreateBoardProfileRequest,
-  type UpdateBoardProfileRequest,
 } from "../../services/boardProfiles";
 import type { UserInfo } from "../../services/auth";
 
 interface BoardProfilesProps {
   isLoggedIn: boolean;
   user: UserInfo | null;
+  onViewProfile?: (id: string) => void;
 }
 
 export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
@@ -37,11 +36,8 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
     [],
   );
 
-  // Create/edit modal state
+  // Create modal state
   const [formModalOpen, setFormModalOpen] = createSignal(false);
-  const [editingProfile, setEditingProfile] = createSignal<
-    BoardProfile | undefined
-  >(undefined);
   const [formSubmitting, setFormSubmitting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
@@ -84,51 +80,25 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
   };
 
   const openCreateModal = () => {
-    setEditingProfile(undefined);
-    setFormError(null);
-    setFormModalOpen(true);
-  };
-
-  const openEditModal = (profile: BoardProfile) => {
-    setEditingProfile(profile);
     setFormError(null);
     setFormModalOpen(true);
   };
 
   const closeFormModal = () => {
     setFormModalOpen(false);
-    setEditingProfile(undefined);
     setFormError(null);
   };
 
-  const handleFormSubmit = async (
-    data: CreateBoardProfileRequest | UpdateBoardProfileRequest,
-  ) => {
+  const handleFormSubmit = async (data: CreateBoardProfileRequest) => {
     setFormSubmitting(true);
     setFormError(null);
 
-    const editing = editingProfile();
-    if (editing) {
-      const result = await updateBoardProfile(
-        editing.id,
-        data as UpdateBoardProfileRequest,
-      );
-      if (result.success) {
-        closeFormModal();
-        fetchProfiles();
-      } else {
-        setFormError(result.message);
-      }
+    const result = await createBoardProfile(data);
+    if (result.success) {
+      closeFormModal();
+      fetchProfiles();
     } else {
-      const result = await createBoardProfile(
-        data as CreateBoardProfileRequest,
-      );
-      if (result.success) {
-        closeFormModal();
-        fetchProfiles();
-      } else {
-        setFormError(result.message);
-      }
+      setFormError(result.message);
     }
 
     setFormSubmitting(false);
@@ -190,7 +160,14 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onSelect={() => openEditModal(cellProps.row)}
+            onSelect={() => props.onViewProfile?.(cellProps.row.id)}
+            class="gap-2"
+          >
+            <Icon name="eye" size="sm" />
+            <span>{t("common.actions.viewDetails")}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => props.onViewProfile?.(cellProps.row.id)}
             class="gap-2"
           >
             <Icon name="pencil" size="sm" />
@@ -292,15 +269,19 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
                 columns={[
                   {
                     key: "display_name",
-                    label: t("boardProfiles.columns.displayName"),
-                    sortable: true,
-                    class: "font-medium",
-                  },
-                  {
-                    key: "name",
                     label: t("boardProfiles.columns.name"),
                     sortable: true,
-                    class: "font-mono text-sm text-muted-foreground",
+                    class: "font-medium",
+                    render: (value, row) => (
+                      <button
+                        onClick={() =>
+                          props.onViewProfile?.((row as BoardProfile).id)
+                        }
+                        class="text-left hover:text-primary hover:underline transition-colors"
+                      >
+                        {value as string}
+                      </button>
+                    ),
                   },
                   {
                     key: "arch",
@@ -352,16 +333,13 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
         </section>
       </section>
 
-      {/* Create/Edit Modal */}
+      {/* Create Modal */}
       <Modal
         isOpen={formModalOpen()}
         onClose={closeFormModal}
-        title={
-          editingProfile() ? t("boardProfiles.edit") : t("boardProfiles.create")
-        }
+        title={t("boardProfiles.create")}
       >
         <BoardProfileForm
-          profile={editingProfile()}
           onSubmit={handleFormSubmit}
           onCancel={closeFormModal}
           submitting={formSubmitting()}
