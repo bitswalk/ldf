@@ -6,8 +6,8 @@ vars:
   SRV_BINARY: ldfd
   WEBUI_DIR: src/webui
   # Version components
-  RELEASE_NAME: Basilisk
-  RELEASE_VERSION: 1.2.10
+  RELEASE_NAME: Chimera
+  RELEASE_VERSION: 1.3.0
   RELEASE_DATE:
     sh: date -u +"%Y.%m"
   GIT_COMMIT:
