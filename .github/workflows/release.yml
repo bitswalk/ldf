@@ -84,7 +84,9 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           TAG=${{ steps.version.outputs.tag }}
           PREV_TAG=${{ steps.prev.outputs.tag }}
-          if [ -n "$PREV_TAG" ]; then
+          if [ -f RELEASE_NOTES.md ]; then
+            NOTES_FLAG="--notes-file RELEASE_NOTES.md"
+          elif [ -n "$PREV_TAG" ]; then
             NOTES_FLAG="--generate-notes --notes-start-tag $PREV_TAG"
           else
             NOTES_FLAG="--generate-notes"

@@ -17,6 +17,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
+	"github.com/bitswalk/ldf/src/ldfd/api/toolchains"
 	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/security"
@@ -50,6 +51,7 @@ func New(cfg Config) *API {
 		Distributions: distributions.NewHandler(distributions.Config{
 			DistRepo:        cfg.DistRepo,
 			DownloadJobRepo: cfg.DownloadJobRepo,
+			BuildJobRepo:    buildJobRepoFromManager(cfg.BuildManager),
 			SourceRepo:      cfg.SourceRepo,
 			JWTService:      cfg.JWTService,
 			StorageManager:  newStorageManager(cfg.Storage),
@@ -107,11 +109,24 @@ func New(cfg Config) *API {
 			BoardProfileRepo: cfg.BoardProfileRepo,
 		}),
 
+		ToolchainProfiles: toolchains.NewHandler(toolchains.Config{
+			ToolchainProfileRepo: cfg.ToolchainProfileRepo,
+		}),
+
 		jwtService:    cfg.JWTService,
 		rateLimiter:   NewRateLimiter(cfg.RateLimitConfig),
 		storage:       cfg.Storage,
 		forgeRegistry: cfg.ForgeRegistry,
 	}
+}
+
+// buildJobRepoFromManager safely extracts the BuildJobRepository from a build Manager,
+// returning nil when the manager is nil (e.g. in tests).
+func buildJobRepoFromManager(m *build.Manager) *db.BuildJobRepository {
+	if m == nil {
+		return nil
+	}
+	return m.BuildJobRepo()
 }
 
 // newStorageManager creates a StorageManager from a storage backend,

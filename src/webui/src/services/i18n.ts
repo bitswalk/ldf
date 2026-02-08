@@ -114,6 +114,7 @@ class I18nService {
         components,
         build,
         boardProfiles,
+        toolchainProfiles,
       ] = await Promise.all([
         import(`../locales/${locale}/common.json`),
         import(`../locales/${locale}/settings.json`),
@@ -124,6 +125,7 @@ class I18nService {
         import(`../locales/${locale}/components.json`),
         import(`../locales/${locale}/build.json`),
         import(`../locales/${locale}/boardProfiles.json`),
+        import(`../locales/${locale}/toolchainProfiles.json`),
       ]);
 
       // Merge all modules with namespace prefixes
@@ -137,6 +139,7 @@ class I18nService {
         components: components.default,
         build: build.default,
         boardProfiles: boardProfiles.default,
+        toolchainProfiles: toolchainProfiles.default,
       };
 
       // Flatten for fast lookups

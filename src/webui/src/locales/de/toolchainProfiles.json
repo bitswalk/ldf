@@ -1,0 +1,70 @@
+{
+  "title": "Toolchain-Profile",
+  "description": "Build-Toolchain-Profile fur die Distributions-Kompilierung verwalten",
+  "create": "Toolchain-Profil erstellen",
+  "edit": "Toolchain-Profil bearbeiten",
+  "empty": "Keine Toolchain-Profile gefunden",
+  "emptyDescription": "Erstellen Sie ein Toolchain-Profil, um wiederverwendbare Build-Toolchain-Konfigurationen zu definieren.",
+  "filter": {
+    "allTypes": "Alle Typen"
+  },
+  "columns": {
+    "name": "Name",
+    "displayName": "Anzeigename",
+    "type": "Typ",
+    "crossCompilePrefix": "Cross-Compile-Prafix",
+    "system": "System",
+    "owner": "Besitzer",
+    "actions": "Aktionen"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "description": "Eindeutiger Bezeichner (z.B. gcc-cross-aarch64)",
+      "placeholder": "meine-toolchain"
+    },
+    "displayName": {
+      "label": "Anzeigename",
+      "description": "Lesbarer Name fur das Profil",
+      "placeholder": "Meine benutzerdefinierte Toolchain"
+    },
+    "description": {
+      "label": "Beschreibung",
+      "description": "Optionale Beschreibung des Toolchain-Profils",
+      "placeholder": "Beschreibung der Toolchain-Konfiguration"
+    },
+    "type": {
+      "label": "Toolchain-Typ",
+      "description": "Basis-Compiler-Toolchain"
+    },
+    "crossCompilePrefix": {
+      "label": "Cross-Compile-Prafix",
+      "description": "Cross-Compiler-Prafix fur Cross-Kompilierung (optional)",
+      "placeholder": "aarch64-linux-gnu-"
+    },
+    "extraEnv": {
+      "label": "Zusatzliche Umgebungsvariablen",
+      "description": "Zusatzliche Umgebungsvariablen fur make (SCHLUESSEL=WERT pro Zeile, optional)",
+      "placeholder": "KCFLAGS=-O2\nKAFLAGS=-march=armv8-a"
+    },
+    "compilerFlags": {
+      "label": "Compiler-Flags",
+      "description": "Zusatzliche CFLAGS/LDFLAGS fur den Compiler (optional)",
+      "placeholder": "-march=armv8-a -mtune=cortex-a72"
+    }
+  },
+  "delete": {
+    "title": "Toolchain-Profil loschen",
+    "confirm": "Sind Sie sicher, dass Sie das Toolchain-Profil \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "systemError": "System-Toolchain-Profile konnen nicht geloscht werden."
+  },
+  "badges": {
+    "system": "System"
+  },
+  "errors": {
+    "loadFailed": "Fehler beim Laden der Toolchain-Profile",
+    "createFailed": "Fehler beim Erstellen des Toolchain-Profils",
+    "updateFailed": "Fehler beim Aktualisieren des Toolchain-Profils",
+    "deleteFailed": "Fehler beim Loschen des Toolchain-Profils"
+  }
+}

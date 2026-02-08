@@ -43,6 +43,7 @@ export interface DistributionConfig {
     };
     bootloader: string;
     bootloader_version?: string;
+    toolchain?: string;
     partitioning: {
       type: string;
       mode: string;

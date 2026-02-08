@@ -106,6 +106,7 @@ func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr 
 	mirrorResolver := download.NewMirrorResolver(enabledMirrors, mirrorCfg)
 
 	downloadManager := download.NewManager(database, storageBackend, downloadCfg, artifactCache, mirrorResolver)
+	downloadManager.SetBoardProfileRepo(db.NewBoardProfileRepository(database))
 
 	// Initialize source version repository and discovery service
 	sourceVersionRepo := db.NewSourceVersionRepository(database)
@@ -146,24 +147,25 @@ func NewServer(database *db.Database, storageBackend storage.Backend, secretMgr 
 	api.SetLogger(log)
 	api.SetVersionInfo(VersionInfo)
 	apiInstance := api.New(api.Config{
-		DistRepo:          db.NewDistributionRepository(database),
-		SourceRepo:        sourceRepo,
-		ComponentRepo:     componentRepo,
-		SourceVersionRepo: sourceVersionRepo,
-		DownloadJobRepo:   db.NewDownloadJobRepository(database),
-		MirrorConfigRepo:  mirrorConfigRepo,
-		LangPackRepo:      db.NewLanguagePackRepository(database),
-		BoardProfileRepo:  db.NewBoardProfileRepository(database),
-		Database:          database,
-		RateLimitConfig:   rateLimitCfg,
-		SecretManager:     secretMgr,
-		Storage:           storageBackend,
-		UserManager:       userManager,
-		JWTService:        jwtService,
-		DownloadManager:   downloadManager,
-		BuildManager:      buildManager,
-		VersionDiscovery:  versionDiscovery,
-		ForgeRegistry:     forgeRegistry,
+		DistRepo:             db.NewDistributionRepository(database),
+		SourceRepo:           sourceRepo,
+		ComponentRepo:        componentRepo,
+		SourceVersionRepo:    sourceVersionRepo,
+		DownloadJobRepo:      db.NewDownloadJobRepository(database),
+		MirrorConfigRepo:     mirrorConfigRepo,
+		LangPackRepo:         db.NewLanguagePackRepository(database),
+		BoardProfileRepo:     db.NewBoardProfileRepository(database),
+		ToolchainProfileRepo: db.NewToolchainProfileRepository(database),
+		Database:             database,
+		RateLimitConfig:      rateLimitCfg,
+		SecretManager:        secretMgr,
+		Storage:              storageBackend,
+		UserManager:          userManager,
+		JWTService:           jwtService,
+		DownloadManager:      downloadManager,
+		BuildManager:         buildManager,
+		VersionDiscovery:     versionDiscovery,
+		ForgeRegistry:        forgeRegistry,
 	})
 
 	// Register all routes

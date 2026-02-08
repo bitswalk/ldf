@@ -17,7 +17,24 @@ type CoreConfig struct {
 	Kernel            KernelConfig       `json:"kernel"`
 	Bootloader        string             `json:"bootloader"`
 	BootloaderVersion string             `json:"bootloader_version,omitempty"`
+	Toolchain         string             `json:"toolchain,omitempty"`
 	Partitioning      PartitioningConfig `json:"partitioning"`
+}
+
+// ToolchainType represents the build toolchain selection
+type ToolchainType string
+
+const (
+	ToolchainGCC  ToolchainType = "gcc"
+	ToolchainLLVM ToolchainType = "llvm"
+)
+
+// ResolveToolchain returns the effective toolchain type, defaulting to GCC.
+func ResolveToolchain(core *CoreConfig) ToolchainType {
+	if ToolchainType(core.Toolchain) == ToolchainLLVM {
+		return ToolchainLLVM
+	}
+	return ToolchainGCC
 }
 
 // KernelConfigMode represents the kernel configuration mode
@@ -446,4 +463,25 @@ type BoardFirmware struct {
 	ComponentID string `json:"component_id,omitempty"` // optional reference to component registry
 	Path        string `json:"path,omitempty"`         // install path in rootfs
 	Description string `json:"description,omitempty"`
+}
+
+// ToolchainProfile represents a reusable build toolchain configuration
+type ToolchainProfile struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"` // unique slug: "gcc-native", "llvm-cross-aarch64"
+	DisplayName string          `json:"display_name"`
+	Description string          `json:"description,omitempty"`
+	Type        string          `json:"type"` // "gcc" or "llvm"
+	Config      ToolchainConfig `json:"config"`
+	IsSystem    bool            `json:"is_system"`
+	OwnerID     string          `json:"owner_id,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// ToolchainConfig holds toolchain-specific build parameters
+type ToolchainConfig struct {
+	CrossCompilePrefix string            `json:"cross_compile_prefix,omitempty"` // e.g. "aarch64-linux-gnu-"
+	ExtraEnv           map[string]string `json:"extra_env,omitempty"`            // additional env vars for make
+	CompilerFlags      string            `json:"compiler_flags,omitempty"`       // extra CFLAGS/LDFLAGS
 }

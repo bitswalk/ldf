@@ -10,6 +10,7 @@ import (
 type Handler struct {
 	distRepo        *db.DistributionRepository
 	downloadJobRepo *db.DownloadJobRepository
+	buildJobRepo    *db.BuildJobRepository
 	sourceRepo      *db.SourceRepository
 	jwtService      *auth.JWTService
 	storageManager  StorageManager
@@ -26,6 +27,7 @@ type StorageManager interface {
 type Config struct {
 	DistRepo        *db.DistributionRepository
 	DownloadJobRepo *db.DownloadJobRepository
+	BuildJobRepo    *db.BuildJobRepository
 	SourceRepo      *db.SourceRepository
 	JWTService      *auth.JWTService
 	StorageManager  StorageManager

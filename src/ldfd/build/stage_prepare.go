@@ -110,6 +110,19 @@ func (s *PrepareStage) Execute(ctx context.Context, sc *StageContext, progress P
 			"path", sourceDir)
 	}
 
+	// Identify extracted toolchain component and set ToolchainDir
+	for i := range sc.Components {
+		rc := &sc.Components[i]
+		if containsCat(rc.Component.Categories, "toolchain") &&
+			(strings.Contains(rc.Component.Name, "gcc") || strings.Contains(rc.Component.Name, "llvm")) {
+			sc.ToolchainDir = filepath.Join(rc.LocalPath, "bin")
+			log.Info("Toolchain component extracted",
+				"component", rc.Component.Name,
+				"toolchain_dir", sc.ToolchainDir)
+			break
+		}
+	}
+
 	progress(85, "Generating build scripts")
 
 	// Generate build scripts for container execution

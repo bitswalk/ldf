@@ -13,6 +13,7 @@ import { Register } from "./views/Register";
 import { Connection } from "./views/Connection";
 import { Settings } from "./views/Settings";
 import { BoardProfiles } from "./views/BoardProfiles";
+import { ToolchainProfiles } from "./views/ToolchainProfiles";
 import { BuildDetail } from "./views/BuildDetail";
 import { Console } from "./components/Console";
 import { Menu, type MenuItem } from "./components/Menu";
@@ -49,6 +50,7 @@ type ViewType =
   | "components"
   | "component-details"
   | "board-profiles"
+  | "toolchain-profiles"
   | "build-detail"
   | "login"
   | "register"
@@ -311,6 +313,12 @@ const App: Component = () => {
       icon: "cpu",
       onClick: () => setCurrentView("board-profiles"),
     },
+    {
+      id: "toolchain-profiles",
+      label: "Toolchains",
+      icon: "wrench",
+      onClick: () => setCurrentView("toolchain-profiles"),
+    },
   ];
 
   return (
@@ -402,6 +410,12 @@ const App: Component = () => {
                 </Match>
                 <Match when={currentView() === "board-profiles"}>
                   <BoardProfiles
+                    isLoggedIn={isLoggedIn()}
+                    user={authState().user}
+                  />
+                </Match>
+                <Match when={currentView() === "toolchain-profiles"}>
+                  <ToolchainProfiles
                     isLoggedIn={isLoggedIn()}
                     user={authState().user}
                   />

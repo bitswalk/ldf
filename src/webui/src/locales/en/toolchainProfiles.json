@@ -1,0 +1,70 @@
+{
+  "title": "Toolchain Profiles",
+  "description": "Manage build toolchain profiles for distribution compilation",
+  "create": "Create Toolchain Profile",
+  "edit": "Edit Toolchain Profile",
+  "empty": "No toolchain profiles found",
+  "emptyDescription": "Create a toolchain profile to define reusable build toolchain configurations.",
+  "filter": {
+    "allTypes": "All Types"
+  },
+  "columns": {
+    "name": "Name",
+    "displayName": "Display Name",
+    "type": "Type",
+    "crossCompilePrefix": "Cross-Compile Prefix",
+    "system": "System",
+    "owner": "Owner",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Name",
+      "description": "Unique slug identifier (e.g., gcc-cross-aarch64)",
+      "placeholder": "my-toolchain"
+    },
+    "displayName": {
+      "label": "Display Name",
+      "description": "Human-readable name for the profile",
+      "placeholder": "My Custom Toolchain"
+    },
+    "description": {
+      "label": "Description",
+      "description": "Optional description of the toolchain profile",
+      "placeholder": "Description of the toolchain configuration"
+    },
+    "type": {
+      "label": "Toolchain Type",
+      "description": "Base compiler toolchain"
+    },
+    "crossCompilePrefix": {
+      "label": "Cross-Compile Prefix",
+      "description": "Cross-compiler prefix for cross-compilation (optional)",
+      "placeholder": "aarch64-linux-gnu-"
+    },
+    "extraEnv": {
+      "label": "Extra Environment Variables",
+      "description": "Additional environment variables passed to make (KEY=VALUE per line, optional)",
+      "placeholder": "KCFLAGS=-O2\nKAFLAGS=-march=armv8-a"
+    },
+    "compilerFlags": {
+      "label": "Compiler Flags",
+      "description": "Extra CFLAGS/LDFLAGS to pass to the compiler (optional)",
+      "placeholder": "-march=armv8-a -mtune=cortex-a72"
+    }
+  },
+  "delete": {
+    "title": "Delete Toolchain Profile",
+    "confirm": "Are you sure you want to delete the toolchain profile \"{{ name }}\"? This action cannot be undone.",
+    "systemError": "System toolchain profiles cannot be deleted."
+  },
+  "badges": {
+    "system": "System"
+  },
+  "errors": {
+    "loadFailed": "Failed to load toolchain profiles",
+    "createFailed": "Failed to create toolchain profile",
+    "updateFailed": "Failed to update toolchain profile",
+    "deleteFailed": "Failed to delete toolchain profile"
+  }
+}

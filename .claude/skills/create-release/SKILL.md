@@ -126,28 +126,85 @@ git merge --no-ff release/<version> -m "Merge release/<version> - v<version> <co
 git tag -a v<version> -m "v<version> - <codename>"
 ```
 
-### 7. Push main and tag
+### 7. Generate release notes (minor+ releases only)
+
+For **minor releases** (x.Y.0) and **major releases** (X.0.0), generate curated release notes. Skip this step for patch releases (x.y.Z where Z > 0) -- they use auto-generated changelog.
+
+Determine if this is a minor+ release by checking if the patch version is `0`.
+
+Write a `RELEASE_NOTES.md` file in the repo root with the following structure. Do NOT include an H1 title -- the GitHub release title (`v<version>`) already serves as the heading.
+
+```markdown
+## Highlights
+
+- Concise bullet points of the most important user-facing changes
+- Group by theme (new features, improvements, fixes)
+- Reference GitHub issues where relevant (#N)
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| ldfd | LDF daemon / API server |
+| ldfctl | Command-line client |
+| WebUI | Web interface (served by ldfd) |
+
+## Milestones Included
+
+- **M<N>** -- <Title>: brief summary of what was delivered
+- List all milestones completed since the previous minor/major release
+
+## Installation
+
+\```bash
+# Download and extract
+tar -xzf ldfd-v<version>-linux-amd64.tar.gz
+tar -xzf ldfctl-v<version>-linux-amd64.tar.gz
+
+# Verify
+./ldfd version
+./ldfctl version
+\```
+```
+
+**Guidelines:**
+- Keep it concise -- no redundant information (the H1 title is already the release tag)
+- Highlights should focus on what's new since the last minor/major release, not repeat commit messages
+- Use the milestone descriptions from MEMORY.md and GitHub issues for content
+- The checksums section is not needed -- the workflow adds checksums as release assets
+
+After writing, commit it:
+
+```bash
+git add RELEASE_NOTES.md
+git commit --amend --no-edit
+```
+
+This amends the merge commit so the notes file is included in the tagged release.
+
+### 8. Push main and tag
 
 ```bash
 git push origin main
 git push origin v<version>
 ```
 
-This triggers the automated release workflow (`.github/workflows/release.yml`), which builds production binaries, packages them with checksums, and creates the GitHub release.
+This triggers the automated release workflow (`.github/workflows/release.yml`), which builds production binaries, packages them with checksums, and creates the GitHub release. For minor+ releases, the workflow uses `RELEASE_NOTES.md` as the release body.
 
-### 8. Clean up
+### 9. Clean up
 
 ```bash
 git branch -d release/<version>
 git push origin --delete release/<version>
 ```
 
-### 9. Report
+### 10. Report
 
 Summarize:
 - Release branch merged to `main`
 - Tag pushed: `v<version>`
 - Codename: `<codename>`
 - Automated release workflow triggered
+- Release notes: curated (minor+) or auto-generated (patch)
 - Release branch deleted (local and remote)
 - Check: `https://github.com/bitswalk/ldf/actions`

@@ -84,6 +84,7 @@ func init() {
 	distributionCreateCmd.Flags().String("visibility", "", "Visibility (public, private)")
 	distributionCreateCmd.Flags().String("source-url", "", "Source URL")
 	distributionCreateCmd.Flags().String("checksum", "", "Checksum")
+	distributionCreateCmd.Flags().String("toolchain", "gcc", "Build toolchain (gcc, llvm)")
 	_ = distributionCreateCmd.MarkFlagRequired("name")
 
 	// Update flags
@@ -93,6 +94,7 @@ func init() {
 	distributionUpdateCmd.Flags().String("visibility", "", "Visibility (public, private)")
 	distributionUpdateCmd.Flags().String("source-url", "", "Source URL")
 	distributionUpdateCmd.Flags().String("checksum", "", "Checksum")
+	distributionUpdateCmd.Flags().String("toolchain", "", "Build toolchain (gcc, llvm)")
 
 	// List flags
 	distributionListCmd.Flags().Int("limit", 0, "Maximum number of results")
@@ -175,6 +177,7 @@ func runDistributionCreate(cmd *cobra.Command, args []string) error {
 	visibility, _ := cmd.Flags().GetString("visibility")
 	sourceURL, _ := cmd.Flags().GetString("source-url")
 	checksum, _ := cmd.Flags().GetString("checksum")
+	toolchain, _ := cmd.Flags().GetString("toolchain")
 
 	req := &client.CreateDistributionRequest{
 		Name:       name,
@@ -182,6 +185,14 @@ func runDistributionCreate(cmd *cobra.Command, args []string) error {
 		Visibility: visibility,
 		SourceURL:  sourceURL,
 		Checksum:   checksum,
+	}
+
+	if toolchain != "" && toolchain != "gcc" {
+		req.Config = map[string]interface{}{
+			"core": map[string]interface{}{
+				"toolchain": toolchain,
+			},
+		}
 	}
 
 	resp, err := c.CreateDistribution(ctx, req)
@@ -228,6 +239,14 @@ func runDistributionUpdate(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("checksum") {
 		v, _ := cmd.Flags().GetString("checksum")
 		req.Checksum = v
+	}
+	if cmd.Flags().Changed("toolchain") {
+		v, _ := cmd.Flags().GetString("toolchain")
+		req.Config = map[string]interface{}{
+			"core": map[string]interface{}{
+				"toolchain": v,
+			},
+		}
 	}
 
 	resp, err := c.UpdateDistribution(ctx, args[0], req)

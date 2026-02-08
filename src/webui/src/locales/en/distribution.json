@@ -82,6 +82,7 @@
     "config": {
       "coreSystem": "CORE SYSTEM",
       "kernelVersion": "Kernel Version",
+      "toolchain": "Build Toolchain",
       "bootloader": "Bootloader",
       "partitioningType": "Partitioning Type",
       "partitioningMode": "Partitioning Mode",
@@ -151,6 +152,13 @@
         "loading": "Loading kernel versions...",
         "none": "None (no synced versions available)",
         "noVersionsHint": "No kernel versions available. Sync your kernel sources first to see available versions."
+      },
+      "toolchain": {
+        "label": "Build Toolchain",
+        "gcc": "GCC",
+        "gccDesc": "GNU Compiler Collection, traditional Linux kernel toolchain",
+        "llvm": "LLVM/Clang",
+        "llvmDesc": "LLVM-based toolchain with Clang compiler"
       },
       "bootloader": "Bootloader",
       "partitioningSystem": "Partitioning System",
