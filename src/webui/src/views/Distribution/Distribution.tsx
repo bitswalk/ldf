@@ -27,6 +27,7 @@ import {
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
 import { isAdmin } from "../../utils/auth";
+import { useListView } from "../../composables/useListView";
 
 interface UserInfo {
   id: string;
@@ -42,20 +43,10 @@ interface DistributionProps {
 }
 
 export const Distribution: Component<DistributionProps> = (props) => {
-  const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
+  const lv = useListView<DistributionType>();
   const [distributions, setDistributions] = createSignal<DistributionType[]>(
     [],
   );
-  const [selectedDistributions, setSelectedDistributions] = createSignal<
-    DistributionType[]
-  >([]);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [distributionsToDelete, setDistributionsToDelete] = createSignal<
-    DistributionType[]
-  >([]);
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [showOnlyMine, setShowOnlyMine] = createSignal(false);
   const [deletionPreviews, setDeletionPreviews] = createSignal<
     DeletionPreview[]
@@ -63,17 +54,17 @@ export const Distribution: Component<DistributionProps> = (props) => {
   const [loadingPreviews, setLoadingPreviews] = createSignal(false);
 
   const fetchDistributions = async () => {
-    setIsLoading(true);
-    setError(null);
+    lv.setIsLoading(true);
+    lv.setError(null);
 
     const result = await listDistributions();
 
-    setIsLoading(false);
+    lv.setIsLoading(false);
 
     if (result.success) {
       setDistributions(result.distributions);
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -83,10 +74,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
     }
   });
 
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-
   const handleCreateDistribution = () => {
-    setIsModalOpen(true);
+    lv.openModal();
   };
 
   const handleFormSubmit = async (formData: {
@@ -97,8 +86,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
     runtime: DistributionConfig["runtime"];
     target: DistributionConfig["target"];
   }) => {
-    setIsSubmitting(true);
-    setError(null);
+    lv.setIsSubmitting(true);
+    lv.setError(null);
 
     const result = await createDistribution({
       name: formData.name,
@@ -111,18 +100,18 @@ export const Distribution: Component<DistributionProps> = (props) => {
       },
     });
 
-    setIsSubmitting(false);
+    lv.setIsSubmitting(false);
 
     if (result.success) {
-      setIsModalOpen(false);
+      lv.closeModal();
       fetchDistributions();
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
   const handleFormCancel = () => {
-    setIsModalOpen(false);
+    lv.closeModal();
   };
 
   const handleEditDistribution = (_id: string) => {
@@ -130,8 +119,8 @@ export const Distribution: Component<DistributionProps> = (props) => {
   };
 
   const openDeleteModal = async (dists: DistributionType[]) => {
-    setDistributionsToDelete(dists);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete(dists);
+    lv.openDeleteModal();
     setLoadingPreviews(true);
     setDeletionPreviews([]);
 
@@ -155,42 +144,42 @@ export const Distribution: Component<DistributionProps> = (props) => {
   };
 
   const handleSelectionChange = (selected: DistributionType[]) => {
-    setSelectedDistributions(selected);
+    lv.setSelected(selected);
   };
 
   const handleDeleteSelected = () => {
-    const selected = selectedDistributions();
+    const selected = lv.selected();
     if (selected.length === 0) return;
     openDeleteModal(selected);
   };
 
   const confirmDelete = async () => {
-    const toDelete = distributionsToDelete();
+    const toDelete = lv.itemsToDelete();
     if (toDelete.length === 0) return;
 
-    setIsDeleting(true);
-    setError(null);
+    lv.setIsDeleting(true);
+    lv.setError(null);
 
     for (const dist of toDelete) {
       const result = await deleteDistribution(dist.id);
       if (!result.success) {
-        setError(result.message);
-        setIsDeleting(false);
+        lv.setError(result.message);
+        lv.setIsDeleting(false);
         return;
       }
     }
 
     const deletedIds = new Set(toDelete.map((d) => d.id));
     setDistributions((prev) => prev.filter((d) => !deletedIds.has(d.id)));
-    setSelectedDistributions([]);
-    setIsDeleting(false);
-    setDeleteModalOpen(false);
-    setDistributionsToDelete([]);
+    lv.setSelected([]);
+    lv.setIsDeleting(false);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setDistributionsToDelete([]);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
     setDeletionPreviews([]);
   };
 
@@ -243,7 +232,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
         ),
       );
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -405,16 +394,16 @@ export const Distribution: Component<DistributionProps> = (props) => {
               </Show>
               <button
                 onClick={handleDeleteSelected}
-                disabled={selectedDistributions().length === 0}
+                disabled={lv.selected().length === 0}
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                  selectedDistributions().length > 0
+                  lv.selected().length > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  {t("common.actions.delete")} ({selectedDistributions().length}
+                  {t("common.actions.delete")} ({lv.selected().length}
                   )
                 </span>
               </button>
@@ -428,15 +417,15 @@ export const Distribution: Component<DistributionProps> = (props) => {
             </nav>
           </header>
 
-          <Show when={error()}>
+          <Show when={lv.error()}>
             <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-              {error()}
+              {lv.error()}
             </aside>
           </Show>
 
           <section class="flex-1 overflow-visible">
             <Show
-              when={!isLoading()}
+              when={!lv.isLoading()}
               fallback={
                 <section class="h-full flex items-center justify-center">
                   <Spinner size="lg" />
@@ -514,7 +503,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
             </Show>
           </section>
 
-          <Show when={selectedDistributions().length > 0}>
+          <Show when={lv.selected().length > 0}>
             <footer class="flex justify-end pt-4">
               <button
                 onClick={handleDeleteSelected}
@@ -523,7 +512,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("distribution.actions.deleteSelected", {
-                    count: selectedDistributions().length,
+                    count: lv.selected().length,
                   })}
                 </span>
               </button>
@@ -533,7 +522,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
       </Show>
 
       <Modal
-        isOpen={isModalOpen()}
+        isOpen={lv.isModalOpen()}
         onClose={handleFormCancel}
         title={t("distribution.create.modalTitle")}
       >
@@ -544,31 +533,31 @@ export const Distribution: Component<DistributionProps> = (props) => {
       </Modal>
 
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={lv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("distribution.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
             <Show
-              when={distributionsToDelete().length === 1}
+              when={lv.itemsToDelete().length === 1}
               fallback={
                 <>
                   {t("distribution.delete.confirmMultiple", {
-                    count: distributionsToDelete().length,
+                    count: lv.itemsToDelete().length,
                   })}
                 </>
               }
             >
               {t("distribution.delete.confirmSingle", {
-                name: distributionsToDelete()[0]?.name || "",
+                name: lv.itemsToDelete()[0]?.name || "",
               })}
             </Show>
           </p>
 
-          <Show when={distributionsToDelete().length > 1}>
+          <Show when={lv.itemsToDelete().length > 1}>
             <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
-              {distributionsToDelete().map((dist) => (
+              {lv.itemsToDelete().map((dist) => (
                 <li class="py-1">{dist.name}</li>
               ))}
             </ul>
@@ -692,7 +681,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -700,18 +689,18 @@ export const Distribution: Component<DistributionProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting() || loadingPreviews()}
+              disabled={lv.isDeleting() || loadingPreviews()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={lv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {lv.isDeleting()
                   ? t("distribution.delete.deleting")
-                  : distributionsToDelete().length > 1
+                  : lv.itemsToDelete().length > 1
                     ? t("distribution.actions.deleteCount", {
-                        count: distributionsToDelete().length,
+                        count: lv.itemsToDelete().length,
                       })
                     : t("common.actions.delete")}
               </span>
