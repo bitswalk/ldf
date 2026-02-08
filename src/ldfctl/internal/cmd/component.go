@@ -210,26 +210,11 @@ func runComponentUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateComponentRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("category") {
-		v, _ := cmd.Flags().GetString("category")
-		req.Category = v
-	}
-	if cmd.Flags().Changed("description") {
-		v, _ := cmd.Flags().GetString("description")
-		req.Description = v
-	}
-	if cmd.Flags().Changed("source-url") {
-		v, _ := cmd.Flags().GetString("source-url")
-		req.SourceURL = v
-	}
-	if cmd.Flags().Changed("license") {
-		v, _ := cmd.Flags().GetString("license")
-		req.License = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "category", &req.Category)
+	setStringIfChanged(cmd, "description", &req.Description)
+	setStringIfChanged(cmd, "source-url", &req.SourceURL)
+	setStringIfChanged(cmd, "license", &req.License)
 
 	resp, err := c.UpdateComponent(ctx, args[0], req)
 	if err != nil {

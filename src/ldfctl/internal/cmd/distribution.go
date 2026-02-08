@@ -204,30 +204,12 @@ func runDistributionUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateDistributionRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("version") {
-		v, _ := cmd.Flags().GetString("version")
-		req.Version = v
-	}
-	if cmd.Flags().Changed("status") {
-		v, _ := cmd.Flags().GetString("status")
-		req.Status = v
-	}
-	if cmd.Flags().Changed("visibility") {
-		v, _ := cmd.Flags().GetString("visibility")
-		req.Visibility = v
-	}
-	if cmd.Flags().Changed("source-url") {
-		v, _ := cmd.Flags().GetString("source-url")
-		req.SourceURL = v
-	}
-	if cmd.Flags().Changed("checksum") {
-		v, _ := cmd.Flags().GetString("checksum")
-		req.Checksum = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "version", &req.Version)
+	setStringIfChanged(cmd, "status", &req.Status)
+	setStringIfChanged(cmd, "visibility", &req.Visibility)
+	setStringIfChanged(cmd, "source-url", &req.SourceURL)
+	setStringIfChanged(cmd, "checksum", &req.Checksum)
 	if cmd.Flags().Changed("toolchain") {
 		v, _ := cmd.Flags().GetString("toolchain")
 		req.Config = map[string]interface{}{
