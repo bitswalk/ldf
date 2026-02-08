@@ -1,0 +1,70 @@
+{
+  "title": "Profils de toolchain",
+  "description": "Gerer les profils de toolchain de build pour la compilation des distributions",
+  "create": "Creer un profil de toolchain",
+  "edit": "Modifier le profil de toolchain",
+  "empty": "Aucun profil de toolchain trouve",
+  "emptyDescription": "Creez un profil de toolchain pour definir des configurations de toolchain de build reutilisables.",
+  "filter": {
+    "allTypes": "Tous les types"
+  },
+  "columns": {
+    "name": "Nom",
+    "displayName": "Nom d'affichage",
+    "type": "Type",
+    "crossCompilePrefix": "Prefixe de cross-compilation",
+    "system": "Systeme",
+    "owner": "Proprietaire",
+    "actions": "Actions"
+  },
+  "form": {
+    "name": {
+      "label": "Nom",
+      "description": "Identifiant unique (ex: gcc-cross-aarch64)",
+      "placeholder": "ma-toolchain"
+    },
+    "displayName": {
+      "label": "Nom d'affichage",
+      "description": "Nom lisible pour le profil",
+      "placeholder": "Ma toolchain personnalisee"
+    },
+    "description": {
+      "label": "Description",
+      "description": "Description optionnelle du profil de toolchain",
+      "placeholder": "Description de la configuration de la toolchain"
+    },
+    "type": {
+      "label": "Type de toolchain",
+      "description": "Toolchain de compilation de base"
+    },
+    "crossCompilePrefix": {
+      "label": "Prefixe de cross-compilation",
+      "description": "Prefixe du cross-compilateur pour la compilation croisee (optionnel)",
+      "placeholder": "aarch64-linux-gnu-"
+    },
+    "extraEnv": {
+      "label": "Variables d'environnement supplementaires",
+      "description": "Variables d'environnement supplementaires passees a make (CLE=VALEUR par ligne, optionnel)",
+      "placeholder": "KCFLAGS=-O2\nKAFLAGS=-march=armv8-a"
+    },
+    "compilerFlags": {
+      "label": "Options du compilateur",
+      "description": "CFLAGS/LDFLAGS supplementaires passes au compilateur (optionnel)",
+      "placeholder": "-march=armv8-a -mtune=cortex-a72"
+    }
+  },
+  "delete": {
+    "title": "Supprimer le profil de toolchain",
+    "confirm": "Etes-vous sur de vouloir supprimer le profil de toolchain \"{{ name }}\" ? Cette action est irreversible.",
+    "systemError": "Les profils de toolchain systeme ne peuvent pas etre supprimes."
+  },
+  "badges": {
+    "system": "Systeme"
+  },
+  "errors": {
+    "loadFailed": "Echec du chargement des profils de toolchain",
+    "createFailed": "Echec de la creation du profil de toolchain",
+    "updateFailed": "Echec de la mise a jour du profil de toolchain",
+    "deleteFailed": "Echec de la suppression du profil de toolchain"
+  }
+}

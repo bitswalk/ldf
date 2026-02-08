@@ -15,6 +15,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
+	"github.com/bitswalk/ldf/src/ldfd/api/toolchains"
 	"github.com/bitswalk/ldf/src/ldfd/auth"
 	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
@@ -30,20 +31,21 @@ type ErrorResponse = common.ErrorResponse
 // API holds all handler instances and dependencies
 type API struct {
 	// Subpackage handlers
-	Base          *base.Handler
-	Auth          *apiauth.Handler
-	Distributions *distributions.Handler
-	Components    *components.Handler
-	Sources       *sources.Handler
-	Downloads     *downloads.Handler
-	Mirrors       *downloads.MirrorHandler
-	Builds        *builds.Handler
-	Artifacts     *artifacts.Handler
-	Branding      *branding.Handler
-	LangPacks     *langpacks.Handler
-	Settings      *settings.Handler
-	Forge         *apiforge.Handler
-	BoardProfiles *boardprofiles.Handler
+	Base              *base.Handler
+	Auth              *apiauth.Handler
+	Distributions     *distributions.Handler
+	Components        *components.Handler
+	Sources           *sources.Handler
+	Downloads         *downloads.Handler
+	Mirrors           *downloads.MirrorHandler
+	Builds            *builds.Handler
+	Artifacts         *artifacts.Handler
+	Branding          *branding.Handler
+	LangPacks         *langpacks.Handler
+	Settings          *settings.Handler
+	Forge             *apiforge.Handler
+	BoardProfiles     *boardprofiles.Handler
+	ToolchainProfiles *toolchains.Handler
 
 	// Direct dependencies for middleware
 	jwtService    *auth.JWTService
@@ -54,22 +56,23 @@ type API struct {
 
 // Config contains API configuration options
 type Config struct {
-	DistRepo          *db.DistributionRepository
-	SourceRepo        *db.SourceRepository
-	ComponentRepo     *db.ComponentRepository
-	SourceVersionRepo *db.SourceVersionRepository
-	DownloadJobRepo   *db.DownloadJobRepository
-	MirrorConfigRepo  *db.MirrorConfigRepository
-	LangPackRepo      *db.LanguagePackRepository
-	BoardProfileRepo  *db.BoardProfileRepository
-	Database          *db.Database
-	RateLimitConfig   RateLimitConfig
-	SecretManager     *security.SecretManager
-	Storage           storage.Backend
-	UserManager       *auth.UserManager
-	JWTService        *auth.JWTService
-	DownloadManager   *download.Manager
-	BuildManager      *build.Manager
-	VersionDiscovery  *download.VersionDiscovery
-	ForgeRegistry     *forge.Registry
+	DistRepo             *db.DistributionRepository
+	SourceRepo           *db.SourceRepository
+	ComponentRepo        *db.ComponentRepository
+	SourceVersionRepo    *db.SourceVersionRepository
+	DownloadJobRepo      *db.DownloadJobRepository
+	MirrorConfigRepo     *db.MirrorConfigRepository
+	LangPackRepo         *db.LanguagePackRepository
+	BoardProfileRepo     *db.BoardProfileRepository
+	ToolchainProfileRepo *db.ToolchainProfileRepository
+	Database             *db.Database
+	RateLimitConfig      RateLimitConfig
+	SecretManager        *security.SecretManager
+	Storage              storage.Backend
+	UserManager          *auth.UserManager
+	JWTService           *auth.JWTService
+	DownloadManager      *download.Manager
+	BuildManager         *build.Manager
+	VersionDiscovery     *download.VersionDiscovery
+	ForgeRegistry        *forge.Registry
 }

@@ -149,6 +149,22 @@ func (a *API) RegisterRoutes(router *gin.Engine) {
 			}
 		}
 
+		// Toolchain profile routes - read operations (public)
+		toolchainsRead := v1.Group("/toolchains")
+		{
+			toolchainsRead.GET("", a.ToolchainProfiles.HandleList)
+			toolchainsRead.GET("/:id", a.ToolchainProfiles.HandleGet)
+		}
+
+		// Toolchain profile routes - write operations (requires write access)
+		toolchainsWrite := v1.Group("/toolchains")
+		toolchainsWrite.Use(a.writeAccessRequired())
+		{
+			toolchainsWrite.POST("", a.ToolchainProfiles.HandleCreate)
+			toolchainsWrite.PUT("/:id", a.ToolchainProfiles.HandleUpdate)
+			toolchainsWrite.DELETE("/:id", a.ToolchainProfiles.HandleDelete)
+		}
+
 		// Sources routes - unified API (authenticated)
 		// All sources use the same endpoints with permission checks based on is_system/owner_id
 		sourcesGroup := v1.Group("/sources")
