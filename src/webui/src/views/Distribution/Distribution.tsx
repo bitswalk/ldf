@@ -26,6 +26,7 @@ import {
   type DeletionPreview,
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -202,7 +203,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
     return <span>{date.toLocaleDateString()}</span>;
   };
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const filteredDistributions = () => {
     if (showOnlyMine() && props.user?.id) {
@@ -302,7 +303,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
   ) => {
     const canToggleVisibility = () => {
       // User can toggle if they own it OR if they're an admin
-      return props.user?.id === cellProps.row.owner_id || isAdmin();
+      return props.user?.id === cellProps.row.owner_id || admin();
     };
 
     return (
@@ -393,7 +394,7 @@ export const Distribution: Component<DistributionProps> = (props) => {
               </p>
             </article>
             <nav class="flex items-center gap-4">
-              <Show when={isAdmin()}>
+              <Show when={admin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
                   <span>{t("distribution.filter.showOnlyMine")}</span>
                   <SummaryToggle

@@ -3,6 +3,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import { SourceForm } from "../../components/SourceForm";
 import { VersionList } from "../../components/VersionList";
@@ -19,6 +20,7 @@ import {
   type Component as ComponentType,
 } from "../../services/components";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -48,16 +50,16 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isDeleting, setIsDeleting] = createSignal(false);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
   const isSystemSource = () => source()?.is_system ?? false;
 
   const canEdit = () => {
     const src = source();
     if (!src) return false;
     if (src.is_system) {
-      return isAdmin();
+      return admin();
     }
-    return props.user?.id === src.owner_id || isAdmin();
+    return props.user?.id === src.owner_id || admin();
   };
 
   const canDelete = () => canEdit();
@@ -286,25 +288,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
 
         {/* Notification */}
         <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+          <Notification type={notification()!.type} message={notification()!.message} />
         </Show>
 
         {/* Error state */}

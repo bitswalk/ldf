@@ -3,6 +3,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import { ComponentForm } from "../../components/ComponentForm";
 import {
@@ -18,6 +19,7 @@ import {
 import { listSources, type Source } from "../../services/sources";
 import { t } from "../../services/i18n";
 import { getCategoryColor } from "../../utils/categoryStyles";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -49,7 +51,7 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isDeleting, setIsDeleting] = createSignal(false);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const fetchComponent = async () => {
     setLoading(true);
@@ -205,7 +207,7 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
               {component()?.name || t("components.detail.subtitle")}
             </p>
           </div>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <div class="flex items-center gap-2">
               <button
                 onClick={handleEdit}
@@ -227,25 +229,7 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
 
         {/* Notification */}
         <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+          <Notification type={notification()!.type} message={notification()!.message} />
         </Show>
 
         {/* Error state */}

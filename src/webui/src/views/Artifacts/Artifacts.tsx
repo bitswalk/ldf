@@ -24,6 +24,7 @@ import {
   type Distribution,
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -232,7 +233,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     return <span>{date.toLocaleDateString()}</span>;
   };
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const filteredArtifacts = () => {
     if (showOnlyMine() && props.user?.id) {
@@ -325,7 +326,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               </p>
             </article>
             <nav class="flex items-center gap-4">
-              <Show when={isAdmin()}>
+              <Show when={admin()}>
                 <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
                   <span>{t("artifacts.filter.showOnlyMine")}</span>
                   <SummaryToggle

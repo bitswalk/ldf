@@ -23,6 +23,7 @@ import {
 } from "../../services/components";
 import { t } from "../../services/i18n";
 import { getCategoryColor } from "../../utils/categoryStyles";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -192,7 +193,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     return <span>{date.toLocaleDateString()}</span>;
   };
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const categories = () => {
     const cats = new Set(components().map((c) => c.category));
@@ -265,7 +266,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
             <Icon name="eye" size="sm" />
             <span>{t("common.actions.viewDetails")}</span>
           </DropdownMenuItem>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <DropdownMenuItem
               onSelect={() => handleEditComponent(cellProps.row)}
               class="gap-2"
@@ -309,7 +310,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                 )}
               </For>
             </select>
-            <Show when={isAdmin()}>
+            <Show when={admin()}>
               <button
                 onClick={handleDeleteSelected}
                 disabled={selectedComponents().length === 0}
@@ -424,14 +425,14 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                 ]}
                 data={filteredComponents()}
                 rowKey="id"
-                selectable={isAdmin()}
+                selectable={admin()}
                 onSelectionChange={handleSelectionChange}
               />
             </Show>
           </Show>
         </section>
 
-        <Show when={isAdmin() && selectedComponents().length > 0}>
+        <Show when={admin() && selectedComponents().length > 0}>
           <footer class="flex justify-end pt-4">
             <button
               onClick={handleDeleteSelected}

@@ -3,6 +3,7 @@ import { createSignal, onMount, Show, For } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import { ToolchainProfileForm } from "../../components/ToolchainProfileForm";
 import {
@@ -14,6 +15,7 @@ import {
   type CreateToolchainProfileRequest,
 } from "../../services/toolchainProfiles";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -45,7 +47,7 @@ export const ToolchainProfileDetail: Component<
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -190,7 +192,7 @@ export const ToolchainProfileDetail: Component<
               {profile()?.name || t("toolchainProfiles.detail.subtitle")}
             </p>
           </div>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <div class="flex items-center gap-2">
               <button
                 onClick={handleEdit}
@@ -214,25 +216,7 @@ export const ToolchainProfileDetail: Component<
 
         {/* Notification */}
         <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+          <Notification type={notification()!.type} message={notification()!.message} />
         </Show>
 
         {/* Error state */}
