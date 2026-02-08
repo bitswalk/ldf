@@ -58,20 +58,16 @@ func runSettingList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	rows := [][]string{}
-	for _, s := range resp.Settings {
-		val := fmt.Sprintf("%v", s.Value)
-		rows = append(rows, []string{s.Key, val, s.Type})
-	}
-	output.PrintTable([]string{"KEY", "VALUE", "TYPE"}, rows)
-	return nil
+		rows := [][]string{}
+		for _, s := range resp.Settings {
+			val := fmt.Sprintf("%v", s.Value)
+			rows = append(rows, []string{s.Key, val, s.Type})
+		}
+		output.PrintTable([]string{"KEY", "VALUE", "TYPE"}, rows)
+		return nil
+	})
 }
 
 func runSettingGet(cmd *cobra.Command, args []string) error {
@@ -83,30 +79,26 @@ func runSettingGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	reboot := "no"
-	if resp.Reboot {
-		reboot = "yes"
-	}
+		reboot := "no"
+		if resp.Reboot {
+			reboot = "yes"
+		}
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Key", resp.Key},
-			{"Value", fmt.Sprintf("%v", resp.Value)},
-			{"Type", resp.Type},
-			{"Default", fmt.Sprintf("%v", resp.Default)},
-			{"Description", resp.Description},
-			{"Requires Reboot", reboot},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Key", resp.Key},
+				{"Value", fmt.Sprintf("%v", resp.Value)},
+				{"Type", resp.Type},
+				{"Default", fmt.Sprintf("%v", resp.Default)},
+				{"Description", resp.Description},
+				{"Requires Reboot", reboot},
+			},
+		)
+		return nil
+	})
 }
 
 func runSettingSet(cmd *cobra.Command, args []string) error {
@@ -128,15 +120,11 @@ func runSettingSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Setting %q updated to %v.", key, resp.Value))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Setting %q updated to %v.", key, resp.Value))
+		return nil
+	})
 }
 
 func runSettingResetDB(cmd *cobra.Command, args []string) error {
@@ -158,13 +146,9 @@ func runSettingResetDB(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Database reset successfully"})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Database reset successfully"})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Database reset successfully"}, func() error {
 
-	output.PrintMessage("Database reset successfully.")
-	return nil
+		output.PrintMessage("Database reset successfully.")
+		return nil
+	})
 }

@@ -82,24 +82,20 @@ func runDownloadList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No downloads found.")
+		if resp.Count == 0 {
+			output.PrintMessage("No downloads found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Jobs))
+		for i, j := range resp.Jobs {
+			rows[i] = []string{j.ID, j.Status, fmt.Sprintf("%d%%", j.Progress), j.SourceURL}
+		}
+		output.PrintTable([]string{"ID", "STATUS", "PROGRESS", "SOURCE"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Jobs))
-	for i, j := range resp.Jobs {
-		rows[i] = []string{j.ID, j.Status, fmt.Sprintf("%d%%", j.Progress), j.SourceURL}
-	}
-	output.PrintTable([]string{"ID", "STATUS", "PROGRESS", "SOURCE"}, rows)
-	return nil
+	})
 }
 
 func runDownloadGet(cmd *cobra.Command, args []string) error {
@@ -111,30 +107,26 @@ func runDownloadGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", resp.ID},
-			{"Distribution", resp.DistributionID},
-			{"Component", resp.ComponentID},
-			{"Source URL", resp.SourceURL},
-			{"Status", resp.Status},
-			{"Progress", fmt.Sprintf("%d%%", resp.Progress)},
-			{"Total Bytes", fmt.Sprintf("%d", resp.TotalBytes)},
-			{"Downloaded", fmt.Sprintf("%d", resp.DownloadedBytes)},
-			{"Error", resp.Error},
-			{"Created", resp.CreatedAt},
-			{"Updated", resp.UpdatedAt},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", resp.ID},
+				{"Distribution", resp.DistributionID},
+				{"Component", resp.ComponentID},
+				{"Source URL", resp.SourceURL},
+				{"Status", resp.Status},
+				{"Progress", fmt.Sprintf("%d%%", resp.Progress)},
+				{"Total Bytes", fmt.Sprintf("%d", resp.TotalBytes)},
+				{"Downloaded", fmt.Sprintf("%d", resp.DownloadedBytes)},
+				{"Error", resp.Error},
+				{"Created", resp.CreatedAt},
+				{"Updated", resp.UpdatedAt},
+			},
+		)
+		return nil
+	})
 }
 
 func runDownloadStart(cmd *cobra.Command, args []string) error {
@@ -146,15 +138,11 @@ func runDownloadStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Downloads started for distribution %s.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Downloads started for distribution %s.", args[0]))
+		return nil
+	})
 }
 
 func runDownloadCancel(cmd *cobra.Command, args []string) error {
@@ -165,15 +153,11 @@ func runDownloadCancel(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Download cancelled", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Download cancelled", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Download cancelled", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Download %s cancelled.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Download %s cancelled.", args[0]))
+		return nil
+	})
 }
 
 func runDownloadRetry(cmd *cobra.Command, args []string) error {
@@ -184,15 +168,11 @@ func runDownloadRetry(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Download retry started", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Download retry started", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Download retry started", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Download %s retry started.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Download %s retry started.", args[0]))
+		return nil
+	})
 }
 
 func runDownloadActive(cmd *cobra.Command, args []string) error {
@@ -204,22 +184,18 @@ func runDownloadActive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No active downloads.")
+		if resp.Count == 0 {
+			output.PrintMessage("No active downloads.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Jobs))
+		for i, j := range resp.Jobs {
+			rows[i] = []string{j.ID, j.DistributionID, j.Status, fmt.Sprintf("%d%%", j.Progress), j.SourceURL}
+		}
+		output.PrintTable([]string{"ID", "DISTRIBUTION", "STATUS", "PROGRESS", "SOURCE"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Jobs))
-	for i, j := range resp.Jobs {
-		rows[i] = []string{j.ID, j.DistributionID, j.Status, fmt.Sprintf("%d%%", j.Progress), j.SourceURL}
-	}
-	output.PrintTable([]string{"ID", "DISTRIBUTION", "STATUS", "PROGRESS", "SOURCE"}, rows)
-	return nil
+	})
 }

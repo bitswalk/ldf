@@ -58,24 +58,20 @@ func runLangpackList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if len(resp.LanguagePacks) == 0 {
-		output.PrintMessage("No language packs found.")
+		if len(resp.LanguagePacks) == 0 {
+			output.PrintMessage("No language packs found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.LanguagePacks))
+		for i, lp := range resp.LanguagePacks {
+			rows[i] = []string{lp.Locale, lp.Name, lp.Version, lp.Author}
+		}
+		output.PrintTable([]string{"LOCALE", "NAME", "VERSION", "AUTHOR"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.LanguagePacks))
-	for i, lp := range resp.LanguagePacks {
-		rows[i] = []string{lp.Locale, lp.Name, lp.Version, lp.Author}
-	}
-	output.PrintTable([]string{"LOCALE", "NAME", "VERSION", "AUTHOR"}, rows)
-	return nil
+	})
 }
 
 func runLangpackGet(cmd *cobra.Command, args []string) error {
@@ -87,23 +83,19 @@ func runLangpackGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Locale", resp.Locale},
-			{"Name", resp.Name},
-			{"Version", resp.Version},
-			{"Author", resp.Author},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Locale", resp.Locale},
+				{"Name", resp.Name},
+				{"Version", resp.Version},
+				{"Author", resp.Author},
+			},
+		)
+		return nil
+	})
 }
 
 func runLangpackUpload(cmd *cobra.Command, args []string) error {
@@ -116,15 +108,11 @@ func runLangpackUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Language pack uploaded", "file": filePath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Language pack uploaded", "file": filePath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Language pack uploaded", "file": filePath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Language pack %q uploaded.", filepath.Base(filePath)))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Language pack %q uploaded.", filepath.Base(filePath)))
+		return nil
+	})
 }
 
 func runLangpackDelete(cmd *cobra.Command, args []string) error {
@@ -135,13 +123,9 @@ func runLangpackDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Language pack deleted", "locale": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Language pack deleted", "locale": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Language pack deleted", "locale": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Language pack %q deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Language pack %q deleted.", args[0]))
+		return nil
+	})
 }

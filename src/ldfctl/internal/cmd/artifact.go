@@ -80,24 +80,20 @@ func runArtifactList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No artifacts found.")
+		if resp.Count == 0 {
+			output.PrintMessage("No artifacts found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Artifacts))
+		for i, a := range resp.Artifacts {
+			rows[i] = []string{a.Path, fmt.Sprintf("%d", a.Size)}
+		}
+		output.PrintTable([]string{"PATH", "SIZE"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Artifacts))
-	for i, a := range resp.Artifacts {
-		rows[i] = []string{a.Path, fmt.Sprintf("%d", a.Size)}
-	}
-	output.PrintTable([]string{"PATH", "SIZE"}, rows)
-	return nil
+	})
 }
 
 func runArtifactUpload(cmd *cobra.Command, args []string) error {
@@ -111,15 +107,11 @@ func runArtifactUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Artifact uploaded", "distribution_id": distID, "file": filePath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Artifact uploaded", "distribution_id": distID, "file": filePath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Artifact uploaded", "distribution_id": distID, "file": filePath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Artifact %q uploaded to distribution %s.", filepath.Base(filePath), distID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Artifact %q uploaded to distribution %s.", filepath.Base(filePath), distID))
+		return nil
+	})
 }
 
 func runArtifactDownload(cmd *cobra.Command, args []string) error {
@@ -137,15 +129,11 @@ func runArtifactDownload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Artifact downloaded", "path": destPath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Artifact downloaded", "path": destPath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Artifact downloaded", "path": destPath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Artifact downloaded to %s.", destPath))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Artifact downloaded to %s.", destPath))
+		return nil
+	})
 }
 
 func runArtifactDelete(cmd *cobra.Command, args []string) error {
@@ -159,15 +147,11 @@ func runArtifactDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Artifact deleted", "path": artifactPath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Artifact deleted", "path": artifactPath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Artifact deleted", "path": artifactPath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Artifact %q deleted.", artifactPath))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Artifact %q deleted.", artifactPath))
+		return nil
+	})
 }
 
 func runArtifactURL(cmd *cobra.Command, args []string) error {
@@ -179,15 +163,11 @@ func runArtifactURL(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("%v", resp))
-	return nil
+		output.PrintMessage(fmt.Sprintf("%v", resp))
+		return nil
+	})
 }
 
 func runArtifactStorageStatus(cmd *cobra.Command, args []string) error {
@@ -199,33 +179,29 @@ func runArtifactStorageStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	available := "no"
-	if resp.Available {
-		available = "yes"
-	}
+		available := "no"
+		if resp.Available {
+			available = "yes"
+		}
 
-	rows := [][]string{
-		{"Type", resp.Type},
-		{"Available", available},
-	}
-	if resp.Path != "" {
-		rows = append(rows, []string{"Path", resp.Path})
-	}
-	if resp.Bucket != "" {
-		rows = append(rows, []string{"Bucket", resp.Bucket})
-	}
-	if resp.Endpoint != "" {
-		rows = append(rows, []string{"Endpoint", resp.Endpoint})
-	}
-	output.PrintTable([]string{"FIELD", "VALUE"}, rows)
-	return nil
+		rows := [][]string{
+			{"Type", resp.Type},
+			{"Available", available},
+		}
+		if resp.Path != "" {
+			rows = append(rows, []string{"Path", resp.Path})
+		}
+		if resp.Bucket != "" {
+			rows = append(rows, []string{"Bucket", resp.Bucket})
+		}
+		if resp.Endpoint != "" {
+			rows = append(rows, []string{"Endpoint", resp.Endpoint})
+		}
+		output.PrintTable([]string{"FIELD", "VALUE"}, rows)
+		return nil
+	})
 }
 
 func runArtifactListAll(cmd *cobra.Command, args []string) error {
@@ -237,22 +213,18 @@ func runArtifactListAll(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No artifacts found.")
+		if resp.Count == 0 {
+			output.PrintMessage("No artifacts found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Artifacts))
+		for i, a := range resp.Artifacts {
+			rows[i] = []string{a.Path, fmt.Sprintf("%d", a.Size)}
+		}
+		output.PrintTable([]string{"PATH", "SIZE"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Artifacts))
-	for i, a := range resp.Artifacts {
-		rows[i] = []string{a.Path, fmt.Sprintf("%d", a.Size)}
-	}
-	output.PrintTable([]string{"PATH", "SIZE"}, rows)
-	return nil
+	})
 }

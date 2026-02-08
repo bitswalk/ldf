@@ -64,15 +64,11 @@ func runBrandingGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Asset downloaded", "asset": asset, "path": destPath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Asset downloaded", "asset": asset, "path": destPath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Asset downloaded", "asset": asset, "path": destPath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Branding asset %q downloaded to %s.", asset, destPath))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Branding asset %q downloaded to %s.", asset, destPath))
+		return nil
+	})
 }
 
 func runBrandingInfo(cmd *cobra.Command, args []string) error {
@@ -84,24 +80,20 @@ func runBrandingInfo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Asset", resp.Asset},
-			{"Exists", strconv.FormatBool(resp.Exists)},
-			{"URL", resp.URL},
-			{"Content Type", resp.ContentType},
-			{"Size", fmt.Sprintf("%d", resp.Size)},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Asset", resp.Asset},
+				{"Exists", strconv.FormatBool(resp.Exists)},
+				{"URL", resp.URL},
+				{"Content Type", resp.ContentType},
+				{"Size", fmt.Sprintf("%d", resp.Size)},
+			},
+		)
+		return nil
+	})
 }
 
 func runBrandingUpload(cmd *cobra.Command, args []string) error {
@@ -115,15 +107,11 @@ func runBrandingUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Asset uploaded", "asset": asset, "file": filePath})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Asset uploaded", "asset": asset, "file": filePath})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Asset uploaded", "asset": asset, "file": filePath}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Branding asset %q uploaded from %s.", asset, filepath.Base(filePath)))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Branding asset %q uploaded from %s.", asset, filepath.Base(filePath)))
+		return nil
+	})
 }
 
 func runBrandingDelete(cmd *cobra.Command, args []string) error {
@@ -134,13 +122,9 @@ func runBrandingDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Asset deleted", "asset": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Asset deleted", "asset": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Asset deleted", "asset": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Branding asset %q deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Branding asset %q deleted.", args[0]))
+		return nil
+	})
 }

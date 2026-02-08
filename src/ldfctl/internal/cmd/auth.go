@@ -85,25 +85,15 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save token: %w", err)
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]interface{}{
-			"message":  "Login successful",
-			"username": resp.User.Name,
-			"role":     resp.User.Role,
-			"server":   serverURL,
-		})
-	case "yaml":
-		return output.PrintYAML(map[string]interface{}{
-			"message":  "Login successful",
-			"username": resp.User.Name,
-			"role":     resp.User.Role,
-			"server":   serverURL,
-		})
-	}
-
-	output.PrintMessage(fmt.Sprintf("Logged in as %s (%s) on %s", resp.User.Name, resp.User.Role, serverURL))
-	return nil
+	return output.PrintFormatted(getOutputFormat(), map[string]interface{}{
+		"message":  "Login successful",
+		"username": resp.User.Name,
+		"role":     resp.User.Role,
+		"server":   serverURL,
+	}, func() error {
+		output.PrintMessage(fmt.Sprintf("Logged in as %s (%s) on %s", resp.User.Name, resp.User.Role, serverURL))
+		return nil
+	})
 }
 
 func runLogout(cmd *cobra.Command, args []string) error {
@@ -117,15 +107,11 @@ func runLogout(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to clear token: %w", err)
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Logged out"})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Logged out"})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Logged out"}, func() error {
 
-	output.PrintMessage("Logged out successfully.")
-	return nil
+		output.PrintMessage("Logged out successfully.")
+		return nil
+	})
 }
 
 func runWhoami(cmd *cobra.Command, args []string) error {
@@ -137,21 +123,17 @@ func runWhoami(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("token validation failed: %w", err)
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Username", resp.User.Name},
-			{"Email", resp.User.Email},
-			{"Role", resp.User.Role},
-			{"User ID", resp.User.ID},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Username", resp.User.Name},
+				{"Email", resp.User.Email},
+				{"Role", resp.User.Role},
+				{"User ID", resp.User.ID},
+			},
+		)
+		return nil
+	})
 }
