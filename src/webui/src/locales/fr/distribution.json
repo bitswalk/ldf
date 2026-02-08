@@ -82,6 +82,7 @@
     "config": {
       "coreSystem": "SYSTEME PRINCIPAL",
       "kernelVersion": "Version du noyau",
+      "toolchain": "Chaine de compilation",
       "bootloader": "Chargeur de demarrage",
       "partitioningType": "Type de partitionnement",
       "partitioningMode": "Mode de partitionnement",
@@ -151,6 +152,13 @@
         "loading": "Chargement des versions du noyau...",
         "none": "Aucune (pas de versions synchronisees disponibles)",
         "noVersionsHint": "Aucune version du noyau disponible. Synchronisez d'abord vos sources de noyau pour voir les versions disponibles."
+      },
+      "toolchain": {
+        "label": "Chaine de compilation",
+        "gcc": "GCC",
+        "gccDesc": "Collection de compilateurs GNU, chaine traditionnelle du noyau Linux",
+        "llvm": "LLVM/Clang",
+        "llvmDesc": "Chaine de compilation basee sur LLVM avec le compilateur Clang"
       },
       "bootloader": "Chargeur de demarrage",
       "partitioningSystem": "Systeme de partitionnement",

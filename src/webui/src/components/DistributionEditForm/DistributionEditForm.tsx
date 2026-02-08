@@ -368,6 +368,7 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
       core: {
         kernel: { version: "" },
         bootloader: "systemd-boot",
+        toolchain: "gcc",
         partitioning: { type: "a-b", mode: "lvm" },
       },
       system: {
@@ -574,6 +575,59 @@ export const DistributionEditForm: Component<DistributionEditFormProps> = (
                   </article>
                 )}
               </For>
+            </section>
+          </fieldset>
+
+          {/* Toolchain */}
+          <fieldset class="space-y-2">
+            <legend class="text-sm font-medium">
+              {t("distribution.form.fields.toolchain.label")}
+            </legend>
+            <section class="grid grid-cols-2 gap-2">
+              <label
+                class={`flex flex-col p-3 border rounded-md cursor-pointer transition-colors ${
+                  (config().core.toolchain || "gcc") === "gcc"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="toolchain"
+                  value="gcc"
+                  checked={(config().core.toolchain || "gcc") === "gcc"}
+                  onChange={() => updateConfig("core.toolchain", "gcc")}
+                  class="sr-only"
+                />
+                <strong class="font-medium">
+                  {t("distribution.form.fields.toolchain.gcc")}
+                </strong>
+                <p class="text-xs text-muted-foreground mt-1">
+                  {t("distribution.form.fields.toolchain.gccDesc")}
+                </p>
+              </label>
+              <label
+                class={`flex flex-col p-3 border rounded-md cursor-pointer transition-colors ${
+                  config().core.toolchain === "llvm"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="toolchain"
+                  value="llvm"
+                  checked={config().core.toolchain === "llvm"}
+                  onChange={() => updateConfig("core.toolchain", "llvm")}
+                  class="sr-only"
+                />
+                <strong class="font-medium">
+                  {t("distribution.form.fields.toolchain.llvm")}
+                </strong>
+                <p class="text-xs text-muted-foreground mt-1">
+                  {t("distribution.form.fields.toolchain.llvmDesc")}
+                </p>
+              </label>
             </section>
           </fieldset>
 

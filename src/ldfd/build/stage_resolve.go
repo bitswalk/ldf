@@ -187,6 +187,25 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 		}
 	}
 
+	// Validate build toolchain availability (non-container mode only)
+	progress(98, "Validating build toolchain")
+	toolchain := db.ResolveToolchain(&sc.Config.Core)
+	crossPrefix := ""
+	if sc.BuildEnv != nil {
+		crossPrefix = sc.BuildEnv.Toolchain.CrossCompilePrefix
+	}
+
+	if sc.Executor != nil && !sc.Executor.RuntimeType().IsContainerRuntime() {
+		deps := GetToolchainDeps(toolchain, crossPrefix)
+		missing := ValidateToolchainAvailability(deps)
+		if len(missing) > 0 {
+			return fmt.Errorf("missing build toolchain dependencies: %v (install them or use a container-based executor)", missing)
+		}
+		log.Info("Build toolchain validated", "toolchain", toolchain, "deps", len(deps.All()))
+	} else {
+		log.Info("Skipping toolchain validation (container mode)", "toolchain", toolchain)
+	}
+
 	progress(100, fmt.Sprintf("Resolved %d components", len(resolved)))
 
 	return nil

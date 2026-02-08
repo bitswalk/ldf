@@ -152,19 +152,24 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		platformFlag = sc.BuildEnv.ContainerPlatformFlag
 	}
 
+	// Build environment variables from toolchain config
+	toolchain := db.ResolveToolchain(&sc.Config.Core)
+	envVars := ToolchainEnvVars(toolchain, crossCompile)
+	envVars["ARCH"] = makeArch
+	envVars["NPROC"] = "0" // 0 means auto-detect
+	if _, ok := envVars["CROSS_COMPILE"]; !ok && crossCompile != "" {
+		envVars["CROSS_COMPILE"] = crossCompile
+	}
+
 	opts := ContainerRunOpts{
 		Image:    containerImage,
 		Mounts:   mounts,
 		WorkDir:  "/src/kernel",
 		Platform: platformFlag,
-		Env: map[string]string{
-			"ARCH":          makeArch,
-			"CROSS_COMPILE": crossCompile,
-			"NPROC":         "0", // 0 means auto-detect
-		},
-		Command: []string{"/bin/bash", "/scripts/compile-kernel.sh"},
-		Stdout:  progressWriter,
-		Stderr:  progressWriter,
+		Env:      envVars,
+		Command:  []string{"/bin/bash", "/scripts/compile-kernel.sh"},
+		Stdout:   progressWriter,
+		Stderr:   progressWriter,
 	}
 
 	if err := sc.Executor.Run(ctx, opts); err != nil {
@@ -220,18 +225,23 @@ func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext,
 		dtbPlatformFlag = sc.BuildEnv.ContainerPlatformFlag
 	}
 
+	// Build DTB env vars from toolchain config
+	dtbToolchain := db.ResolveToolchain(&sc.Config.Core)
+	dtbEnv := ToolchainEnvVars(dtbToolchain, crossCompile)
+	dtbEnv["ARCH"] = makeArch
+	if _, ok := dtbEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
+		dtbEnv["CROSS_COMPILE"] = crossCompile
+	}
+
 	opts := ContainerRunOpts{
 		Image:    dtbContainerImage,
 		Mounts:   mounts,
 		WorkDir:  "/src/kernel",
 		Platform: dtbPlatformFlag,
-		Env: map[string]string{
-			"ARCH":          makeArch,
-			"CROSS_COMPILE": crossCompile,
-		},
-		Command: []string{"/bin/bash", "/scripts/compile-dtbs.sh"},
-		Stdout:  logFile,
-		Stderr:  logFile,
+		Env:      dtbEnv,
+		Command:  []string{"/bin/bash", "/scripts/compile-dtbs.sh"},
+		Stdout:   logFile,
+		Stderr:   logFile,
 	}
 
 	progress(94, fmt.Sprintf("Compiling %d device tree(s)", len(sc.BoardProfile.Config.DeviceTrees)))
@@ -294,10 +304,12 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 	kernelDir := kernel.LocalPath
 	nproc := fmt.Sprintf("%d", runtime.NumCPU())
 
-	// Common make arguments
-	makeEnv := map[string]string{
-		"ARCH":          makeArch,
-		"CROSS_COMPILE": crossCompile,
+	// Build environment variables from toolchain config
+	toolchain := db.ResolveToolchain(&sc.Config.Core)
+	makeEnv := ToolchainEnvVars(toolchain, crossCompile)
+	makeEnv["ARCH"] = makeArch
+	if _, ok := makeEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
+		makeEnv["CROSS_COMPILE"] = crossCompile
 	}
 
 	// Create a log file for build output
@@ -573,6 +585,14 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 	}
 	defer logFile.Close()
 
+	// Build DTB env vars from toolchain config
+	dtbDirectToolchain := db.ResolveToolchain(&sc.Config.Core)
+	dtbDirectEnv := ToolchainEnvVars(dtbDirectToolchain, crossCompile)
+	dtbDirectEnv["ARCH"] = makeArch
+	if _, ok := dtbDirectEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
+		dtbDirectEnv["CROSS_COMPILE"] = crossCompile
+	}
+
 	for i, dt := range sc.BoardProfile.Config.DeviceTrees {
 		dtbTarget := strings.TrimSuffix(dt.Source, ".dts") + ".dtb"
 
@@ -581,10 +601,7 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 		// Build the DTB
 		if err := sc.Executor.Run(ctx, ContainerRunOpts{
 			WorkDir: kernelDir,
-			Env: map[string]string{
-				"ARCH":          makeArch,
-				"CROSS_COMPILE": crossCompile,
-			},
+			Env:     dtbDirectEnv,
 			Command: []string{"make", archFlag, crossFlag, dtbTarget},
 			Stdout:  logFile,
 			Stderr:  logFile,
@@ -609,10 +626,7 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 
 				if err := sc.Executor.Run(ctx, ContainerRunOpts{
 					WorkDir: kernelDir,
-					Env: map[string]string{
-						"ARCH":          makeArch,
-						"CROSS_COMPILE": crossCompile,
-					},
+					Env:     dtbDirectEnv,
 					Command: []string{"make", archFlag, crossFlag, dtboTarget},
 					Stdout:  logFile,
 					Stderr:  logFile,
@@ -639,6 +653,7 @@ set -e
 echo "=== LDF Kernel Build ==="
 echo "Architecture: ${ARCH:-x86}"
 echo "Cross-compile: ${CROSS_COMPILE:-none}"
+echo "Toolchain: ${LLVM:+LLVM/Clang}${LLVM:-GCC}"
 echo "Config mode: ` + configMode + `"
 echo ""
 
@@ -649,6 +664,12 @@ if [ "${NPROC}" = "0" ] || [ -z "${NPROC}" ]; then
     NPROC=$(nproc)
 fi
 echo "Using ${NPROC} parallel jobs"
+
+# Build LLVM make arguments if LLVM toolchain is selected
+LLVM_ARGS=""
+if [ "${LLVM}" = "1" ]; then
+    LLVM_ARGS="LLVM=1 CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm STRIP=llvm-strip OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump HOSTCC=clang HOSTCXX=clang++"
+fi
 
 `
 
@@ -664,9 +685,9 @@ grep -v "^# LDF" /config/.config | grep -v "^LDF_" > .config || true
 # Fragment mode: run defconfig then merge stored config fragment
 echo "Generating defconfig for ${ARCH}..."
 if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
-    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" x86_64_defconfig
+    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} x86_64_defconfig
 else
-    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" defconfig
+    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} defconfig
 fi
 
 # Merge config fragment (recommended + user options) on top of defconfig
@@ -727,7 +748,7 @@ fi
 	script += `
 # Update config to resolve dependencies
 echo "Resolving config dependencies..."
-make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" olddefconfig
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} olddefconfig
 
 echo ""
 echo "=== Starting kernel build ==="
@@ -736,21 +757,21 @@ echo ""
 # Build kernel image
 if [ "${ARCH}" = "x86" ] || [ "${ARCH}" = "x86_64" ]; then
     echo "Building bzImage..."
-    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} bzImage
+    make ARCH=x86 CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} -j${NPROC} bzImage
 else
     echo "Building Image..."
-    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} Image
+    make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} -j${NPROC} Image
 fi
 
 # Build modules
 echo ""
 echo "Building modules..."
-make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" -j${NPROC} modules
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} -j${NPROC} modules
 
 # Install modules
 echo ""
 echo "Installing modules..."
-make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" INSTALL_MOD_PATH=/output/modules modules_install
+make ARCH="${ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" ${LLVM_ARGS} INSTALL_MOD_PATH=/output/modules modules_install
 
 # Copy kernel image
 echo ""
