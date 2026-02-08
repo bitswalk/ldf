@@ -27,6 +27,7 @@ func NewHandler(cfg Config) *Handler {
 	return &Handler{
 		distRepo:        cfg.DistRepo,
 		downloadJobRepo: cfg.DownloadJobRepo,
+		buildJobRepo:    cfg.BuildJobRepo,
 		sourceRepo:      cfg.SourceRepo,
 		jwtService:      cfg.JWTService,
 		storageManager:  cfg.StorageManager,
@@ -588,6 +589,13 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 	if h.downloadJobRepo != nil {
 		if err := h.downloadJobRepo.DeleteByDistribution(id); err != nil {
 			log.Error("Failed to delete download jobs for distribution", "distribution_id", id, "error", err)
+		}
+	}
+
+	// Cascade delete: build jobs (and their stages/logs via FK CASCADE)
+	if h.buildJobRepo != nil {
+		if err := h.buildJobRepo.DeleteByDistribution(id); err != nil {
+			log.Error("Failed to delete build jobs for distribution", "distribution_id", id, "error", err)
 		}
 	}
 
