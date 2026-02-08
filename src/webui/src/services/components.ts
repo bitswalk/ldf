@@ -530,6 +530,8 @@ export function getCategoryDisplayName(category: string): string {
     desktop: "Desktop",
     container: "Container",
     virtualization: "Virtualization",
+    toolchain: "Toolchain",
+    filesystem: "Filesystem",
   };
   return (
     names[category] || category.charAt(0).toUpperCase() + category.slice(1)
@@ -765,6 +767,8 @@ export const COMPONENT_CATEGORIES = [
   "runtime",
   "security",
   "desktop",
+  "toolchain",
+  "filesystem",
 ] as const;
 
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];

@@ -219,7 +219,7 @@ export const SourceDetails: Component<SourceDetailsProps> = (props) => {
         <header class="flex items-center gap-4">
           <button
             onClick={props.onBack}
-            class="p-2 rounded-md hover:bg-muted transition-colors"
+            class="size-10 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
             title={t("sources.detail.back")}
           >
             <Icon name="arrow-left" size="lg" />

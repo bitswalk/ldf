@@ -56,10 +56,33 @@
   "delete": {
     "title": "Supprimer le profil de toolchain",
     "confirm": "Etes-vous sur de vouloir supprimer le profil de toolchain \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} profils de toolchain ? Cette action est irreversible.",
     "systemError": "Les profils de toolchain systeme ne peuvent pas etre supprimes."
   },
   "badges": {
     "system": "Systeme"
+  },
+  "detail": {
+    "title": "Profil de toolchain",
+    "subtitle": "Configuration et details du profil de toolchain",
+    "back": "Retour aux profils de toolchain",
+    "profileDetails": "Details du profil",
+    "configuration": "Configuration",
+    "name": "Identifiant",
+    "displayName": "Nom d'affichage",
+    "description": "Description",
+    "type": "Type de toolchain",
+    "system": "Profil systeme",
+    "owner": "Proprietaire",
+    "created": "Cree le",
+    "updated": "Mis a jour le",
+    "crossCompilePrefix": "Prefixe de cross-compilation",
+    "compilerFlags": "Options du compilateur",
+    "extraEnv": "Variables d'environnement",
+    "noConfig": "Aucune configuration definie",
+    "noDescription": "Aucune description",
+    "updateSuccess": "Profil de toolchain mis a jour avec succes",
+    "deleteSuccess": "Profil de toolchain supprime avec succes"
   },
   "errors": {
     "loadFailed": "Echec du chargement des profils de toolchain",

@@ -51,10 +51,35 @@
   "delete": {
     "title": "Delete Board Profile",
     "confirm": "Are you sure you want to delete the board profile \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} board profiles? This action cannot be undone.",
     "systemError": "System board profiles cannot be deleted."
   },
   "badges": {
     "system": "System"
+  },
+  "detail": {
+    "title": "Board Profile",
+    "subtitle": "Board profile configuration and details",
+    "back": "Back to board profiles",
+    "profileDetails": "Profile Details",
+    "configuration": "Configuration",
+    "name": "Slug",
+    "displayName": "Display Name",
+    "description": "Description",
+    "arch": "Architecture",
+    "system": "System Profile",
+    "owner": "Owner",
+    "created": "Created",
+    "updated": "Updated",
+    "kernelDefconfig": "Kernel Defconfig",
+    "kernelCmdline": "Kernel Command Line",
+    "deviceTrees": "Device Trees",
+    "bootParams": "Boot Parameters",
+    "firmware": "Firmware",
+    "noConfig": "No configuration defined",
+    "noDescription": "No description",
+    "updateSuccess": "Board profile updated successfully",
+    "deleteSuccess": "Board profile deleted successfully"
   },
   "errors": {
     "loadFailed": "Failed to load board profiles",

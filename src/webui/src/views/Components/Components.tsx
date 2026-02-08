@@ -218,6 +218,8 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
       runtime: "bg-purple-500/10 text-purple-500",
       security: "bg-red-500/10 text-red-500",
       desktop: "bg-pink-500/10 text-pink-500",
+      toolchain: "bg-lime-500/10 text-lime-500",
+      filesystem: "bg-stone-500/10 text-stone-500",
     };
     const colorClass = colorMap[category] || "bg-muted text-muted-foreground";
 

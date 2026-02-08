@@ -56,10 +56,33 @@
   "delete": {
     "title": "Toolchain-Profil loschen",
     "confirm": "Sind Sie sicher, dass Sie das Toolchain-Profil \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Toolchain-Profile loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "systemError": "System-Toolchain-Profile konnen nicht geloscht werden."
   },
   "badges": {
     "system": "System"
+  },
+  "detail": {
+    "title": "Toolchain-Profil",
+    "subtitle": "Konfiguration und Details des Toolchain-Profils",
+    "back": "Zuruck zu Toolchain-Profilen",
+    "profileDetails": "Profildetails",
+    "configuration": "Konfiguration",
+    "name": "Bezeichner",
+    "displayName": "Anzeigename",
+    "description": "Beschreibung",
+    "type": "Toolchain-Typ",
+    "system": "Systemprofil",
+    "owner": "Besitzer",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "crossCompilePrefix": "Cross-Compile-Prafix",
+    "compilerFlags": "Compiler-Flags",
+    "extraEnv": "Umgebungsvariablen",
+    "noConfig": "Keine Konfiguration definiert",
+    "noDescription": "Keine Beschreibung",
+    "updateSuccess": "Toolchain-Profil erfolgreich aktualisiert",
+    "deleteSuccess": "Toolchain-Profil erfolgreich geloscht"
   },
   "errors": {
     "loadFailed": "Fehler beim Laden der Toolchain-Profile",

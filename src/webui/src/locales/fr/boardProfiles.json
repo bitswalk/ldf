@@ -51,10 +51,35 @@
   "delete": {
     "title": "Supprimer le profil de carte",
     "confirm": "Etes-vous sur de vouloir supprimer le profil de carte \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} profils de carte ? Cette action est irreversible.",
     "systemError": "Les profils de carte systeme ne peuvent pas etre supprimes."
   },
   "badges": {
     "system": "Systeme"
+  },
+  "detail": {
+    "title": "Profil de carte",
+    "subtitle": "Configuration et details du profil de carte",
+    "back": "Retour aux profils de carte",
+    "profileDetails": "Details du profil",
+    "configuration": "Configuration",
+    "name": "Identifiant",
+    "displayName": "Nom d'affichage",
+    "description": "Description",
+    "arch": "Architecture",
+    "system": "Profil systeme",
+    "owner": "Proprietaire",
+    "created": "Cree le",
+    "updated": "Mis a jour le",
+    "kernelDefconfig": "Defconfig noyau",
+    "kernelCmdline": "Ligne de commande noyau",
+    "deviceTrees": "Device Trees",
+    "bootParams": "Parametres de demarrage",
+    "firmware": "Firmware",
+    "noConfig": "Aucune configuration definie",
+    "noDescription": "Aucune description",
+    "updateSuccess": "Profil de carte mis a jour avec succes",
+    "deleteSuccess": "Profil de carte supprime avec succes"
   },
   "errors": {
     "loadFailed": "Echec du chargement des profils de carte",

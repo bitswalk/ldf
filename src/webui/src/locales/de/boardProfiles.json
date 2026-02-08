@@ -51,10 +51,35 @@
   "delete": {
     "title": "Board-Profil loschen",
     "confirm": "Sind Sie sicher, dass Sie das Board-Profil \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Board-Profile loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "systemError": "System-Board-Profile konnen nicht geloscht werden."
   },
   "badges": {
     "system": "System"
+  },
+  "detail": {
+    "title": "Board-Profil",
+    "subtitle": "Konfiguration und Details des Board-Profils",
+    "back": "Zuruck zu Board-Profilen",
+    "profileDetails": "Profildetails",
+    "configuration": "Konfiguration",
+    "name": "Bezeichner",
+    "displayName": "Anzeigename",
+    "description": "Beschreibung",
+    "arch": "Architektur",
+    "system": "Systemprofil",
+    "owner": "Besitzer",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "kernelDefconfig": "Kernel-Defconfig",
+    "kernelCmdline": "Kernel-Befehlszeile",
+    "deviceTrees": "Device Trees",
+    "bootParams": "Boot-Parameter",
+    "firmware": "Firmware",
+    "noConfig": "Keine Konfiguration definiert",
+    "noDescription": "Keine Beschreibung",
+    "updateSuccess": "Board-Profil erfolgreich aktualisiert",
+    "deleteSuccess": "Board-Profil erfolgreich geloscht"
   },
   "errors": {
     "loadFailed": "Fehler beim Laden der Board-Profile",
