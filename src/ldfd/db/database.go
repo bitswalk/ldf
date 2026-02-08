@@ -17,6 +17,12 @@ import (
 
 var log = logs.NewDefault()
 
+const (
+	SQLiteBusyTimeout  = 5000
+	SQLiteMaxOpenConns = 1
+	SQLiteMaxIdleConns = 1
+)
+
 // Database wraps the SQLite connection with persistence capabilities
 type Database struct {
 	db           *sql.DB
@@ -59,15 +65,16 @@ func New(cfg Config) (*Database, error) {
 	// connections, concurrent readers (SSE polling) and writers (build
 	// worker) deadlock on table locks, causing "database table is locked"
 	// errors that silently drop stage status updates.
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared&_busy_timeout=5000&_foreign_keys=1")
+	dsn := fmt.Sprintf("file::memory:?cache=shared&_busy_timeout=%d&_foreign_keys=1", SQLiteBusyTimeout)
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open in-memory database: %w", err)
 	}
 
 	// Single connection eliminates shared-cache table-level lock contention.
 	// All DB operations are serialized, which is fine for SQLite performance.
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(SQLiteMaxOpenConns)
+	db.SetMaxIdleConns(SQLiteMaxIdleConns)
 	db.SetConnMaxLifetime(0) // Connection doesn't expire
 
 	database := &Database{

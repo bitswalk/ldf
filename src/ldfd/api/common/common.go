@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	DefaultPaginationLimit = 50
+	MaxPaginationLimit     = 500
+)
+
 // GetClaimsFromContext retrieves the token claims stored by auth middleware
 func GetClaimsFromContext(c *gin.Context) *auth.TokenClaims {
 	if claims, exists := c.Get("claims"); exists {
@@ -48,7 +53,7 @@ func GetTokenClaimsFromRequest(c *gin.Context, jwtService *auth.JWTService) *aut
 
 // GetPaginationParams extracts limit and offset from query parameters
 func GetPaginationParams(c *gin.Context, maxLimit int) (int, int) {
-	limit := 50
+	limit := DefaultPaginationLimit
 	offset := 0
 
 	if l := c.Query("limit"); l != "" {
