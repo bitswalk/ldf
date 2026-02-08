@@ -56,6 +56,7 @@
   "delete": {
     "title": "Toolchain-Profil loschen",
     "confirm": "Sind Sie sicher, dass Sie das Toolchain-Profil \"{{ name }}\" loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "confirmMultiple": "Sind Sie sicher, dass Sie {{ count }} Toolchain-Profile loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "systemError": "System-Toolchain-Profile konnen nicht geloscht werden."
   },
   "badges": {

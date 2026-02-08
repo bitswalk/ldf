@@ -56,6 +56,7 @@
   "delete": {
     "title": "Delete Toolchain Profile",
     "confirm": "Are you sure you want to delete the toolchain profile \"{{ name }}\"? This action cannot be undone.",
+    "confirmMultiple": "Are you sure you want to delete {{ count }} toolchain profiles? This action cannot be undone.",
     "systemError": "System toolchain profiles cannot be deleted."
   },
   "badges": {

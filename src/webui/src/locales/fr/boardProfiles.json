@@ -51,6 +51,7 @@
   "delete": {
     "title": "Supprimer le profil de carte",
     "confirm": "Etes-vous sur de vouloir supprimer le profil de carte \"{{ name }}\" ? Cette action est irreversible.",
+    "confirmMultiple": "Etes-vous sur de vouloir supprimer {{ count }} profils de carte ? Cette action est irreversible.",
     "systemError": "Les profils de carte systeme ne peuvent pas etre supprimes."
   },
   "badges": {
