@@ -165,25 +165,48 @@ func (s *ResolveStage) Execute(ctx context.Context, sc *StageContext, progress P
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	if resolver, ok := s.storage.(storage.LocalPathResolver); ok {
-		// Symlink for local storage — avoids duplication
-		srcPath := resolver.ResolvePath(kernelConfigKey)
-		if err := os.Symlink(srcPath, configPath); err != nil {
-			// Fallback to copy if symlink fails
-			log.Warn("Symlink failed, falling back to copy", "error", err)
-			if err := s.downloadToFile(ctx, kernelConfigKey, configPath); err != nil {
-				return fmt.Errorf("failed to fetch kernel config artifact: %w", err)
-			}
+	if err := s.fetchKernelConfig(ctx, sc, kernelConfigKey, configPath); err != nil {
+		// Config artifact doesn't exist (pre-build-engine distribution) -- generate it
+		log.Warn("Kernel config artifact not found, generating default",
+			"distribution_id", sc.DistributionID, "error", err)
+
+		progress(97, "Generating default kernel config")
+		configSvc := NewKernelConfigService(s.storage)
+		dist := &db.Distribution{
+			ID:      sc.DistributionID,
+			OwnerID: sc.OwnerID,
+			Config:  sc.Config,
 		}
-	} else {
-		if err := s.downloadToFile(ctx, kernelConfigKey, configPath); err != nil {
-			return fmt.Errorf("failed to fetch kernel config artifact: %w", err)
+		if err := configSvc.GenerateAndStore(ctx, dist); err != nil {
+			return fmt.Errorf("failed to generate kernel config artifact: %w", err)
+		}
+
+		// Now fetch the freshly generated artifact
+		if err := s.fetchKernelConfig(ctx, sc, kernelConfigKey, configPath); err != nil {
+			return fmt.Errorf("failed to fetch generated kernel config: %w", err)
 		}
 	}
 
 	progress(100, fmt.Sprintf("Resolved %d components", len(resolved)))
 
 	return nil
+}
+
+// fetchKernelConfig links or downloads the kernel config artifact into the workspace.
+// For local storage, creates a symlink to avoid duplication; for S3, downloads the file.
+func (s *ResolveStage) fetchKernelConfig(ctx context.Context, sc *StageContext, key, configPath string) error {
+	if resolver, ok := s.storage.(storage.LocalPathResolver); ok {
+		srcPath := resolver.ResolvePath(key)
+		if _, err := os.Stat(srcPath); err != nil {
+			return fmt.Errorf("kernel config artifact not found: %w", err)
+		}
+		if err := os.Symlink(srcPath, configPath); err != nil {
+			log.Warn("Symlink failed, falling back to copy", "error", err)
+			return s.downloadToFile(ctx, key, configPath)
+		}
+		return nil
+	}
+	return s.downloadToFile(ctx, key, configPath)
 }
 
 // downloadToFile downloads a storage object to a local file.
