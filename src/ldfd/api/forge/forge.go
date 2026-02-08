@@ -33,11 +33,7 @@ func NewHandler(cfg Config) *Handler {
 func (h *Handler) HandleDetect(c *gin.Context) {
 	var req DetectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -88,11 +84,7 @@ func (h *Handler) HandleDetect(c *gin.Context) {
 func (h *Handler) HandlePreviewFilter(c *gin.Context) {
 	var req PreviewFilterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -113,11 +105,7 @@ func (h *Handler) HandlePreviewFilter(c *gin.Context) {
 	// Discover versions from upstream
 	versions, err := provider.DiscoverVersions(ctx, req.URL)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, common.ErrorResponse{
-			Error:   "Failed to fetch versions",
-			Code:    http.StatusBadGateway,
-			Message: err.Error(),
-		})
+		common.BadGateway(c, err.Error())
 		return
 	}
 
