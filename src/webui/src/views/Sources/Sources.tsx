@@ -24,6 +24,7 @@ import {
 } from "../../services/sources";
 import { t } from "../../services/i18n";
 import { isAdmin } from "../../utils/auth";
+import { useListView } from "../../composables/useListView";
 
 interface UserInfo {
   id: string;
@@ -39,30 +40,23 @@ interface SourcesProps {
 }
 
 export const Sources: Component<SourcesProps> = (props) => {
-  const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
+  const lv = useListView<Source>();
   const [sources, setSources] = createSignal<Source[]>([]);
-  const [selectedSources, setSelectedSources] = createSignal<Source[]>([]);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [sourcesToDelete, setSourcesToDelete] = createSignal<Source[]>([]);
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [showOnlyMine, setShowOnlyMine] = createSignal(false);
   const [editingSource, setEditingSource] = createSignal<Source | null>(null);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   const fetchSources = async () => {
-    setIsLoading(true);
-    setError(null);
+    lv.setIsLoading(true);
+    lv.setError(null);
 
     const result = await listSources();
 
-    setIsLoading(false);
+    lv.setIsLoading(false);
 
     if (result.success) {
       setSources(result.sources);
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -74,12 +68,12 @@ export const Sources: Component<SourcesProps> = (props) => {
 
   const handleCreateSource = () => {
     setEditingSource(null);
-    setIsModalOpen(true);
+    lv.openModal();
   };
 
   const handleFormSubmit = async (formData: CreateSourceRequest) => {
-    setIsSubmitting(true);
-    setError(null);
+    lv.setIsSubmitting(true);
+    lv.setError(null);
 
     const editing = editingSource();
 
@@ -95,31 +89,31 @@ export const Sources: Component<SourcesProps> = (props) => {
       };
       const result = await updateSource(editing.id, updateReq);
 
-      setIsSubmitting(false);
+      lv.setIsSubmitting(false);
 
       if (result.success) {
-        setIsModalOpen(false);
+        lv.closeModal();
         setEditingSource(null);
         fetchSources();
       } else {
-        setError(result.message);
+        lv.setError(result.message);
       }
     } else {
       const result = await createSource(formData);
 
-      setIsSubmitting(false);
+      lv.setIsSubmitting(false);
 
       if (result.success) {
-        setIsModalOpen(false);
+        lv.closeModal();
         fetchSources();
       } else {
-        setError(result.message);
+        lv.setError(result.message);
       }
     }
   };
 
   const handleFormCancel = () => {
-    setIsModalOpen(false);
+    lv.closeModal();
     setEditingSource(null);
   };
 
@@ -140,11 +134,11 @@ export const Sources: Component<SourcesProps> = (props) => {
       : srcs.filter((s) => !s.is_system);
 
     if (deletableSources.length === 0) {
-      setError(t("sources.delete.systemSourceError"));
+      lv.setError(t("sources.delete.systemSourceError"));
       return;
     }
-    setSourcesToDelete(deletableSources);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete(deletableSources);
+    lv.openDeleteModal();
   };
 
   const handleDeleteSource = (id: string) => {
@@ -155,42 +149,40 @@ export const Sources: Component<SourcesProps> = (props) => {
   };
 
   const handleSelectionChange = (selected: Source[]) => {
-    setSelectedSources(selected);
+    lv.setSelected(selected);
   };
 
   const handleDeleteSelected = () => {
-    const selected = selectedSources();
+    const selected = lv.selected();
     if (selected.length === 0) return;
     openDeleteModal(selected);
   };
 
   const confirmDelete = async () => {
-    const toDelete = sourcesToDelete();
+    const toDelete = lv.itemsToDelete();
     if (toDelete.length === 0) return;
 
-    setIsDeleting(true);
-    setError(null);
+    lv.setIsDeleting(true);
+    lv.setError(null);
 
     for (const source of toDelete) {
       const result = await deleteSource(source.id);
       if (!result.success) {
-        setError(result.message);
-        setIsDeleting(false);
+        lv.setError(result.message);
+        lv.setIsDeleting(false);
         return;
       }
     }
 
     const deletedIds = new Set(toDelete.map((s) => s.id));
     setSources((prev) => prev.filter((s) => !deletedIds.has(s.id)));
-    setSelectedSources([]);
-    setIsDeleting(false);
-    setDeleteModalOpen(false);
-    setSourcesToDelete([]);
+    lv.setSelected([]);
+    lv.setIsDeleting(false);
+    lv.closeDeleteModal();
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setSourcesToDelete([]);
+    lv.closeDeleteModal();
   };
 
   const formatDate = (
@@ -227,7 +219,7 @@ export const Sources: Component<SourcesProps> = (props) => {
         ),
       );
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -376,14 +368,13 @@ export const Sources: Component<SourcesProps> = (props) => {
                 onClick={handleDeleteSelected}
                 disabled={
                   (admin()
-                    ? selectedSources().length
-                    : selectedSources().filter((s) => !s.is_system).length) ===
-                  0
+                    ? lv.selected().length
+                    : lv.selected().filter((s) => !s.is_system).length) === 0
                 }
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
                   (admin()
-                    ? selectedSources().length
-                    : selectedSources().filter((s) => !s.is_system).length) > 0
+                    ? lv.selected().length
+                    : lv.selected().filter((s) => !s.is_system).length) > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
@@ -392,8 +383,8 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <span>
                   {t("common.actions.delete")} (
                   {admin()
-                    ? selectedSources().length
-                    : selectedSources().filter((s) => !s.is_system).length}
+                    ? lv.selected().length
+                    : lv.selected().filter((s) => !s.is_system).length}
                   )
                 </span>
               </button>
@@ -407,15 +398,15 @@ export const Sources: Component<SourcesProps> = (props) => {
             </nav>
           </header>
 
-          <Show when={error()}>
+          <Show when={lv.error()}>
             <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-              {error()}
+              {lv.error()}
             </aside>
           </Show>
 
           <section class="flex-1 overflow-visible">
             <Show
-              when={!isLoading()}
+              when={!lv.isLoading()}
               fallback={
                 <section class="h-full flex items-center justify-center">
                   <Spinner size="lg" />
@@ -510,8 +501,8 @@ export const Sources: Component<SourcesProps> = (props) => {
           <Show
             when={
               (admin()
-                ? selectedSources().length
-                : selectedSources().filter((s) => !s.is_system).length) > 0
+                ? lv.selected().length
+                : lv.selected().filter((s) => !s.is_system).length) > 0
             }
           >
             <footer class="flex justify-end pt-4">
@@ -523,8 +514,8 @@ export const Sources: Component<SourcesProps> = (props) => {
                 <span>
                   {t("sources.delete.deleteSelected", {
                     count: admin()
-                      ? selectedSources().length
-                      : selectedSources().filter((s) => !s.is_system).length,
+                      ? lv.selected().length
+                      : lv.selected().filter((s) => !s.is_system).length,
                   })}
                 </span>
               </button>
@@ -534,7 +525,7 @@ export const Sources: Component<SourcesProps> = (props) => {
       </Show>
 
       <Modal
-        isOpen={isModalOpen()}
+        isOpen={lv.isModalOpen()}
         onClose={handleFormCancel}
         title={
           editingSource()
@@ -546,37 +537,37 @@ export const Sources: Component<SourcesProps> = (props) => {
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingSource() || undefined}
-          isSubmitting={isSubmitting()}
+          isSubmitting={lv.isSubmitting()}
           isAdmin={admin()}
         />
       </Modal>
 
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={lv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("sources.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
             <Show
-              when={sourcesToDelete().length === 1}
+              when={lv.itemsToDelete().length === 1}
               fallback={
                 <>
                   {t("sources.delete.confirmMultiple", {
-                    count: sourcesToDelete().length,
+                    count: lv.itemsToDelete().length,
                   })}
                 </>
               }
             >
               {t("sources.delete.confirmSingle", {
-                name: sourcesToDelete()[0]?.name || "",
+                name: lv.itemsToDelete()[0]?.name || "",
               })}
             </Show>
           </p>
 
-          <Show when={sourcesToDelete().length > 1}>
+          <Show when={lv.itemsToDelete().length > 1}>
             <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
-              {sourcesToDelete().map((source) => (
+              {lv.itemsToDelete().map((source) => (
                 <li class="py-1">{source.name}</li>
               ))}
             </ul>
@@ -586,7 +577,7 @@ export const Sources: Component<SourcesProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -594,18 +585,18 @@ export const Sources: Component<SourcesProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={lv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {lv.isDeleting()
                   ? t("sources.delete.deleting")
-                  : sourcesToDelete().length > 1
+                  : lv.itemsToDelete().length > 1
                     ? t("sources.delete.deleteCount", {
-                        count: sourcesToDelete().length,
+                        count: lv.itemsToDelete().length,
                       })
                     : t("common.actions.delete")}
               </span>

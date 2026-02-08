@@ -25,6 +25,7 @@ import {
 } from "../../services/distribution";
 import { t } from "../../services/i18n";
 import { isAdmin } from "../../utils/auth";
+import { useListView } from "../../composables/useListView";
 
 interface UserInfo {
   id: string;
@@ -39,17 +40,8 @@ interface ArtifactsProps {
 }
 
 export const Artifacts: Component<ArtifactsProps> = (props) => {
-  const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
+  const lv = useListView<Artifact>();
   const [artifacts, setArtifacts] = createSignal<Artifact[]>([]);
-  const [selectedArtifacts, setSelectedArtifacts] = createSignal<Artifact[]>(
-    [],
-  );
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [artifactsToDelete, setArtifactsToDelete] = createSignal<Artifact[]>(
-    [],
-  );
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [showOnlyMine, setShowOnlyMine] = createSignal(false);
 
   // Upload modal state
@@ -65,20 +57,20 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
   const [uploadError, setUploadError] = createSignal<string | null>(null);
 
   const fetchArtifacts = async () => {
-    setIsLoading(true);
-    setError(null);
+    lv.setIsLoading(true);
+    lv.setError(null);
 
     const result = await listArtifacts();
 
-    setIsLoading(false);
+    lv.setIsLoading(false);
 
     if (result.success) {
       setArtifacts(result.artifacts);
     } else {
       if (result.error === "service_unavailable") {
-        setError(t("artifacts.errors.storageNotConfigured"));
+        lv.setError(t("artifacts.errors.storageNotConfigured"));
       } else {
-        setError(result.message);
+        lv.setError(result.message);
       }
     }
   };
@@ -98,8 +90,8 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
   });
 
   const openDeleteModal = (arts: Artifact[]) => {
-    setArtifactsToDelete(arts);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete(arts);
+    lv.openDeleteModal();
   };
 
   const handleDeleteArtifact = (artifact: Artifact) => {
@@ -107,21 +99,21 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
   };
 
   const handleSelectionChange = (selected: Artifact[]) => {
-    setSelectedArtifacts(selected);
+    lv.setSelected(selected);
   };
 
   const handleDeleteSelected = () => {
-    const selected = selectedArtifacts();
+    const selected = lv.selected();
     if (selected.length === 0) return;
     openDeleteModal(selected);
   };
 
   const confirmDelete = async () => {
-    const toDelete = artifactsToDelete();
+    const toDelete = lv.itemsToDelete();
     if (toDelete.length === 0) return;
 
-    setIsDeleting(true);
-    setError(null);
+    lv.setIsDeleting(true);
+    lv.setError(null);
 
     for (const artifact of toDelete) {
       const result = await deleteArtifact(
@@ -129,8 +121,8 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
         artifact.key,
       );
       if (!result.success) {
-        setError(result.message);
-        setIsDeleting(false);
+        lv.setError(result.message);
+        lv.setIsDeleting(false);
         return;
       }
     }
@@ -138,15 +130,15 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
     // Remove deleted artifacts from the list
     const deletedKeys = new Set(toDelete.map((a) => a.full_key));
     setArtifacts((prev) => prev.filter((a) => !deletedKeys.has(a.full_key)));
-    setSelectedArtifacts([]);
-    setIsDeleting(false);
-    setDeleteModalOpen(false);
-    setArtifactsToDelete([]);
+    lv.setSelected([]);
+    lv.setIsDeleting(false);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setArtifactsToDelete([]);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
   };
 
   const handleDownload = async (artifact: Artifact) => {
@@ -156,7 +148,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
       const downloadUrl = result.webUrl || result.url;
       window.open(downloadUrl, "_blank");
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -170,7 +162,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
       const url = result.webUrl || result.url;
       await navigator.clipboard.writeText(url);
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -337,16 +329,16 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
               </Show>
               <button
                 onClick={handleDeleteSelected}
-                disabled={selectedArtifacts().length === 0}
+                disabled={lv.selected().length === 0}
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                  selectedArtifacts().length > 0
+                  lv.selected().length > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  {t("common.actions.delete")} ({selectedArtifacts().length})
+                  {t("common.actions.delete")} ({lv.selected().length})
                 </span>
               </button>
               <button
@@ -359,15 +351,15 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             </nav>
           </header>
 
-          <Show when={error()}>
+          <Show when={lv.error()}>
             <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-              {error()}
+              {lv.error()}
             </aside>
           </Show>
 
           <section class="flex-1 overflow-visible">
             <Show
-              when={!isLoading()}
+              when={!lv.isLoading()}
               fallback={
                 <section class="h-full flex items-center justify-center">
                   <Spinner size="lg" />
@@ -442,7 +434,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             </Show>
           </section>
 
-          <Show when={selectedArtifacts().length > 0}>
+          <Show when={lv.selected().length > 0}>
             <footer class="flex justify-end pt-4">
               <button
                 onClick={handleDeleteSelected}
@@ -451,7 +443,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
                 <Icon name="trash" size="sm" />
                 <span>
                   {t("artifacts.actions.deleteSelected", {
-                    count: selectedArtifacts().length,
+                    count: lv.selected().length,
                   })}
                 </span>
               </button>
@@ -591,31 +583,31 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
 
       {/* Delete Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={lv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("artifacts.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
             <Show
-              when={artifactsToDelete().length === 1}
+              when={lv.itemsToDelete().length === 1}
               fallback={
                 <>
                   {t("artifacts.delete.confirmMultiple", {
-                    count: artifactsToDelete().length,
+                    count: lv.itemsToDelete().length,
                   })}
                 </>
               }
             >
               {t("artifacts.delete.confirmSingle", {
-                name: artifactsToDelete()[0]?.key || "",
+                name: lv.itemsToDelete()[0]?.key || "",
               })}
             </Show>
           </p>
 
-          <Show when={artifactsToDelete().length > 1}>
+          <Show when={lv.itemsToDelete().length > 1}>
             <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto font-mono">
-              {artifactsToDelete().map((artifact) => (
+              {lv.itemsToDelete().map((artifact) => (
                 <li class="py-1">{artifact.key}</li>
               ))}
             </ul>
@@ -625,7 +617,7 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -633,16 +625,16 @@ export const Artifacts: Component<ArtifactsProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={lv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {lv.isDeleting()
                   ? t("artifacts.delete.deleting")
-                  : `${t("common.actions.delete")}${artifactsToDelete().length > 1 ? ` (${artifactsToDelete().length})` : ""}`}
+                  : `${t("common.actions.delete")}${lv.itemsToDelete().length > 1 ? ` (${lv.itemsToDelete().length})` : ""}`}
               </span>
             </button>
           </nav>
