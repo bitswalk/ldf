@@ -66,11 +66,6 @@ func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 		return
 	}
 
-	if req.Name == "" || req.URLPrefix == "" || req.MirrorURL == "" {
-		common.BadRequest(c, "name, url_prefix, and mirror_url are required")
-		return
-	}
-
 	entry := &db.MirrorConfigEntry{
 		Name:      req.Name,
 		URLPrefix: req.URLPrefix,

@@ -107,12 +107,6 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Validate toolchain type
-	if req.Type != string(db.ToolchainGCC) && req.Type != string(db.ToolchainLLVM) {
-		common.BadRequest(c, "Invalid toolchain type: must be gcc or llvm")
-		return
-	}
-
 	// Check for duplicate name
 	existing, err := h.repo.GetByName(req.Name)
 	if err != nil {

@@ -107,12 +107,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Validate architecture
 	arch := db.TargetArch(req.Arch)
-	if arch != db.ArchX86_64 && arch != db.ArchAARCH64 {
-		common.BadRequest(c, "Invalid architecture: must be x86_64 or aarch64")
-		return
-	}
 
 	// Check for duplicate name
 	existing, err := h.boardProfileRepo.GetByName(req.Name)
