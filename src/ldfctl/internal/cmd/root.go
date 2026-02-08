@@ -190,3 +190,10 @@ func getClient() *client.Client {
 func getOutputFormat() string {
 	return outputFormat
 }
+
+// setStringIfChanged sets *dst to the flag's string value if it was explicitly provided.
+func setStringIfChanged(cmd *cobra.Command, flag string, dst *string) {
+	if cmd.Flags().Changed(flag) {
+		*dst, _ = cmd.Flags().GetString(flag)
+	}
+}

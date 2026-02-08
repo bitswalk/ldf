@@ -1,7 +1,8 @@
 // Branding service for LDF server communication
 
 import { debugError } from "../lib/utils";
-import { getServerUrl, getAuthToken } from "./storage";
+import { getAuthToken, getServerUrl } from "./storage";
+import { authFetch, getApiUrl } from "./api";
 import { getServerSetting, updateServerSetting } from "./settings";
 
 export type BrandingAsset = "logo" | "favicon";
@@ -58,25 +59,6 @@ export type DeleteResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 /**
  * Get the direct URL for a branding asset (for use in img src, etc.)
  */
@@ -104,67 +86,34 @@ export async function getBrandingAssetInfo(
     };
   }
 
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+  const result = await authFetch<BrandingAssetInfo>(url);
 
-    if (response.ok) {
-      const info: BrandingAssetInfo = await response.json();
-      return { success: true, info };
-    }
-
-    let errorMessage = "";
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || "";
-    } catch {
-      // Response wasn't JSON
-    }
-
-    if (response.status === 401) {
-      const msg = errorMessage || "Authentication required";
-      debugError("[BrandingService] getBrandingAssetInfo: 401 -", msg);
-      return {
-        success: false,
-        error: "unauthorized",
-        message: msg,
-      };
-    }
-
-    if (response.status === 503) {
-      const msg = errorMessage || "Storage service not configured";
-      debugError("[BrandingService] getBrandingAssetInfo: 503 -", msg);
-      return {
-        success: false,
-        error: "service_unavailable",
-        message: msg,
-      };
-    }
-
-    const msg = errorMessage || `Server error (${response.status})`;
-    debugError(
-      "[BrandingService] getBrandingAssetInfo:",
-      response.status,
-      "-",
-      msg,
-    );
-    return {
-      success: false,
-      error: "internal_error",
-      message: msg,
-    };
-  } catch (err) {
-    const msg =
-      err instanceof Error ? err.message : "Failed to connect to server";
-    debugError("[BrandingService] getBrandingAssetInfo: Network error -", msg);
-    return {
-      success: false,
-      error: "network_error",
-      message: msg,
-    };
+  if (result.ok) {
+    return { success: true, info: result.data! };
   }
+
+  const errorMessage = result.message || result.error || "";
+
+  if (result.status === 401) {
+    const msg = errorMessage || "Authentication required";
+    debugError("[BrandingService] getBrandingAssetInfo: 401 -", msg);
+    return { success: false, error: "unauthorized", message: msg };
+  }
+
+  if (result.status === 503) {
+    const msg = errorMessage || "Storage service not configured";
+    debugError("[BrandingService] getBrandingAssetInfo: 503 -", msg);
+    return { success: false, error: "service_unavailable", message: msg };
+  }
+
+  const msg = errorMessage || `Server error (${result.status})`;
+  debugError(
+    "[BrandingService] getBrandingAssetInfo:",
+    result.status,
+    "-",
+    msg,
+  );
+  return { success: false, error: "internal_error", message: msg };
 }
 
 /**
@@ -417,45 +366,29 @@ export async function deleteBrandingAsset(
     };
   }
 
-  try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+  const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok || response.status === 204) {
-      return { success: true };
-    }
+  if (result.ok || result.status === 204) {
+    return { success: true };
+  }
 
-    if (response.status === 401) {
-      return {
-        success: false,
-        error: "unauthorized",
-        message: "Authentication required",
-      };
-    }
-
-    if (response.status === 404) {
-      return {
-        success: false,
-        error: "not_found",
-        message: "Asset not found",
-      };
-    }
-
+  if (result.status === 401) {
     return {
       success: false,
-      error: "internal_error",
-      message: "Failed to delete asset",
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: "network_error",
-      message:
-        err instanceof Error ? err.message : "Failed to connect to server",
+      error: "unauthorized",
+      message: "Authentication required",
     };
   }
+
+  if (result.status === 404) {
+    return { success: false, error: "not_found", message: "Asset not found" };
+  }
+
+  return {
+    success: false,
+    error: "internal_error",
+    message: "Failed to delete asset",
+  };
 }
 
 export type GetAppNameResult =

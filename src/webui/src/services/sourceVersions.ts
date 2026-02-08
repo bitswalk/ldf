@@ -1,6 +1,6 @@
+import { authFetch, getApiUrl } from "./api";
 // Source Versions service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storage";
 import type { Source } from "./sources";
 
 export type VersionType = "mainline" | "stable" | "longterm" | "linux-next";
@@ -95,25 +95,6 @@ export type GetSourceResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // Get a single source by ID
 export async function getSource(sourceId: string): Promise<GetSourceResult> {
   const url = getApiUrl(`/sources/${sourceId}`);
@@ -127,17 +108,14 @@ export async function getSource(sourceId: string): Promise<GetSourceResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const source = await response.json();
+    if (result.ok) {
+      const source = result.data as any;
       return { success: true, source };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -145,7 +123,7 @@ export async function getSource(sourceId: string): Promise<GetSourceResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -153,7 +131,7 @@ export async function getSource(sourceId: string): Promise<GetSourceResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -201,13 +179,10 @@ export async function listSourceVersions(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         versions: data.versions || [],
@@ -216,7 +191,7 @@ export async function listSourceVersions(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -224,7 +199,7 @@ export async function listSourceVersions(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -232,7 +207,7 @@ export async function listSourceVersions(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -270,13 +245,10 @@ export async function triggerVersionSync(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "POST" });
 
-    if (response.ok || response.status === 202) {
-      const data = await response.json();
+    if (response.ok || result.status === 202) {
+      const data = result.data as any;
       return {
         success: true,
         jobId: data.job_id,
@@ -284,7 +256,7 @@ export async function triggerVersionSync(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -292,7 +264,7 @@ export async function triggerVersionSync(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -300,7 +272,7 @@ export async function triggerVersionSync(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -308,7 +280,7 @@ export async function triggerVersionSync(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -346,20 +318,17 @@ export async function getSyncStatus(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         job: data.job || null,
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -367,7 +336,7 @@ export async function getSyncStatus(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -375,7 +344,7 @@ export async function getSyncStatus(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -458,20 +427,17 @@ export async function clearSourceVersions(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         message: data.message || "Version cache cleared",
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -479,7 +445,7 @@ export async function clearSourceVersions(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -487,7 +453,7 @@ export async function clearSourceVersions(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -495,7 +461,7 @@ export async function clearSourceVersions(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -547,20 +513,17 @@ export async function getSourceVersionTypes(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         types: data.types || [],
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -568,7 +531,7 @@ export async function getSourceVersionTypes(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -576,7 +539,7 @@ export async function getSourceVersionTypes(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",

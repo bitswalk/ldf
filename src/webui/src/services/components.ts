@@ -1,6 +1,6 @@
+import { authFetch, getApiUrl } from "./api";
 // Components service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storage";
 
 export type VersionRule = "pinned" | "latest-stable" | "latest-lts";
 
@@ -187,25 +187,6 @@ export type DeleteResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // List all components
 export async function listComponents(): Promise<ListResult> {
   const url = getApiUrl("/components");
@@ -219,13 +200,10 @@ export async function listComponents(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const components: Component[] = data.components || [];
       return { success: true, components };
     }
@@ -258,17 +236,14 @@ export async function getComponent(id: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const component = await response.json();
+    if (result.ok) {
+      const component = result.data as any;
       return { success: true, component };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -306,13 +281,10 @@ export async function listComponentsByCategory(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const components: Component[] = data.components || [];
       return { success: true, components };
     }
@@ -345,13 +317,10 @@ export async function listKernelModules(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const components: Component[] = data.components || [];
       return { success: true, components };
     }
@@ -384,13 +353,10 @@ export async function listUserspaceComponents(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const components: Component[] = data.components || [];
       return { success: true, components };
     }
@@ -423,13 +389,10 @@ export async function listHybridComponents(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const components: Component[] = data.components || [];
       return { success: true, components };
     }
@@ -462,13 +425,10 @@ export async function getCategories(): Promise<CategoriesResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const categories: string[] = data.categories || [];
       return { success: true, categories };
     }
@@ -553,18 +513,17 @@ export async function createComponent(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const component = await response.json();
+    if (result.ok) {
+      const component = result.data as any;
       return { success: true, component };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -572,7 +531,7 @@ export async function createComponent(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -580,8 +539,8 @@ export async function createComponent(
       };
     }
 
-    if (response.status === 400) {
-      const data = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const data = result;
       return {
         success: false,
         error: "invalid_request",
@@ -589,7 +548,7 @@ export async function createComponent(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -628,18 +587,17 @@ export async function updateComponent(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "PUT",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const component = await response.json();
+    if (result.ok) {
+      const component = result.data as any;
       return { success: true, component };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -647,7 +605,7 @@ export async function updateComponent(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -655,7 +613,7 @@ export async function updateComponent(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -663,8 +621,8 @@ export async function updateComponent(
       };
     }
 
-    if (response.status === 400) {
-      const data = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const data = result;
       return {
         success: false,
         error: "invalid_request",
@@ -672,7 +630,7 @@ export async function updateComponent(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -708,16 +666,13 @@ export async function deleteComponent(id: string): Promise<DeleteResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok || response.status === 204) {
+    if (response.ok || result.status === 204) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -725,7 +680,7 @@ export async function deleteComponent(id: string): Promise<DeleteResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -733,7 +688,7 @@ export async function deleteComponent(id: string): Promise<DeleteResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -805,17 +760,14 @@ export async function getComponentVersions(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data: ComponentVersionsResponse = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return { success: true, data };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -856,17 +808,14 @@ export async function resolveVersionRule(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data: ResolvedVersionResponse = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return { success: true, data };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -874,7 +823,7 @@ export async function resolveVersionRule(
       };
     }
 
-    if (response.status === 400) {
+    if (result.status === 400) {
       return {
         success: false,
         error: "invalid_rule",

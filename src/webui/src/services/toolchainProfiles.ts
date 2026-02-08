@@ -1,7 +1,6 @@
 // Toolchain profiles service for LDF server communication
 
-import { authFetch } from "./api";
-import { getServerUrl } from "./storage";
+import { authFetch, getApiUrl } from "./api";
 
 export interface ToolchainConfig {
   cross_compile_prefix?: string;
@@ -109,12 +108,6 @@ export type DeleteResult =
         | "internal_error";
       message: string;
     };
-
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
 
 /**
  * List all toolchain profiles, optionally filtered by type

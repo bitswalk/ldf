@@ -19,6 +19,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
 	"github.com/bitswalk/ldf/src/ldfd/api/toolchains"
 	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/security"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
@@ -55,7 +56,7 @@ func New(cfg Config) *API {
 			SourceRepo:      cfg.SourceRepo,
 			JWTService:      cfg.JWTService,
 			StorageManager:  newStorageManager(cfg.Storage),
-			KernelConfigSvc: build.NewKernelConfigService(cfg.Storage),
+			KernelConfigSvc: kernel.NewKernelConfigService(cfg.Storage),
 		}),
 
 		Components: components.NewHandler(components.Config{

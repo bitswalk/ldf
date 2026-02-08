@@ -1,7 +1,8 @@
+import { authFetch, getApiUrl } from "./api";
 // Settings service for LDF server settings management
 
 import { setDevModeLocal } from "../lib/utils";
-import { getServerUrl, getAuthToken, getUserInfo } from "./storage";
+import { getUserInfo } from "./storage";
 
 export interface ServerSetting {
   key: string;
@@ -73,25 +74,6 @@ export type UpdateSettingResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 /**
  * Check if the current user has root access
  */
@@ -115,17 +97,14 @@ export async function getServerSettings(): Promise<GetSettingsResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data: ServerSettingsResponse = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return { success: true, settings: data.settings };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -133,7 +112,7 @@ export async function getServerSettings(): Promise<GetSettingsResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -179,17 +158,14 @@ export async function getServerSetting(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const setting: ServerSetting = await response.json();
+    if (result.ok) {
+      const setting = result.data as any;
       return { success: true, setting };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -197,7 +173,7 @@ export async function getServerSetting(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -205,7 +181,7 @@ export async function getServerSetting(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -246,14 +222,13 @@ export async function updateServerSetting(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch<any>(url, {
       method: "PUT",
-      headers: getAuthHeaders(),
       body: JSON.stringify({ value }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data;
       return {
         success: true,
         key: data.key,
@@ -263,7 +238,7 @@ export async function updateServerSetting(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -271,7 +246,7 @@ export async function updateServerSetting(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -279,7 +254,7 @@ export async function updateServerSetting(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -287,8 +262,8 @@ export async function updateServerSetting(
       };
     }
 
-    if (response.status === 400) {
-      const errorData = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const errorData = result;
       return {
         success: false,
         error: "invalid_request",
@@ -393,21 +368,20 @@ export async function resetDatabase(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch<any>(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify({ confirmation }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data;
       return {
         success: true,
         message: data.message,
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -415,7 +389,7 @@ export async function resetDatabase(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -423,8 +397,8 @@ export async function resetDatabase(
       };
     }
 
-    if (response.status === 400) {
-      const errorData = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const errorData = result;
       return {
         success: false,
         error: "invalid_request",

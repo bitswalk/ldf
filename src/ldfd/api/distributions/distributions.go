@@ -8,7 +8,7 @@ import (
 
 	"github.com/bitswalk/ldf/src/common/logs"
 	"github.com/bitswalk/ldf/src/ldfd/api/common"
-	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/gin-gonic/gin"
 )
@@ -64,11 +64,7 @@ func (h *Handler) HandleList(c *gin.Context) {
 
 	distributions, err := h.distRepo.ListAccessible(userID, isAdmin, statusFilter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -99,29 +95,17 @@ func (h *Handler) HandleList(c *gin.Context) {
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateDistributionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
 	existing, err := h.distRepo.GetByName(req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if existing != nil {
-		c.JSON(http.StatusConflict, common.ErrorResponse{
-			Error:   "Conflict",
-			Code:    http.StatusConflict,
-			Message: "Distribution with this name already exists",
-		})
+		common.Conflict(c, "Distribution with this name already exists")
 		return
 	}
 
@@ -137,11 +121,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 	ownerID := claims.UserID
@@ -158,11 +138,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 	}
 
 	if err := h.distRepo.Create(dist); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -200,11 +176,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -218,37 +190,21 @@ func (h *Handler) HandleGet(c *gin.Context) {
 
 	canAccess, err := h.distRepo.CanUserAccess(id, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if !canAccess {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
@@ -274,58 +230,34 @@ func (h *Handler) HandleGet(c *gin.Context) {
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You can only update your own distributions",
-		})
+		common.Forbidden(c, "You can only update your own distributions")
 		return
 	}
 
 	var req UpdateDistributionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -359,11 +291,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	}
 
 	if err := h.distRepo.Update(dist); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -404,48 +332,28 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 func (h *Handler) HandleDeletionPreview(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You can only delete your own distributions",
-		})
+		common.Forbidden(c, "You can only delete your own distributions")
 		return
 	}
 
@@ -530,48 +438,28 @@ func (h *Handler) HandleDeletionPreview(c *gin.Context) {
 func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You can only delete your own distributions",
-		})
+		common.Forbidden(c, "You can only delete your own distributions")
 		return
 	}
 
@@ -611,11 +499,7 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 
 	// Finally delete the distribution itself
 	if err := h.distRepo.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -643,11 +527,7 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 func (h *Handler) HandleGetLogs(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
@@ -661,19 +541,11 @@ func (h *Handler) HandleGetLogs(c *gin.Context) {
 
 	canAccess, err := h.distRepo.CanUserAccess(id, userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if !canAccess {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
@@ -686,11 +558,7 @@ func (h *Handler) HandleGetLogs(c *gin.Context) {
 
 	logs, err := h.distRepo.GetLogs(id, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -712,11 +580,7 @@ func (h *Handler) HandleGetLogs(c *gin.Context) {
 func (h *Handler) HandleGetStats(c *gin.Context) {
 	stats, err := h.distRepo.GetStats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -750,100 +614,60 @@ func (h *Handler) HandleGetStats(c *gin.Context) {
 func (h *Handler) HandleUploadKernelConfig(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	// Check ownership or admin access
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You don't have permission to modify this distribution",
-		})
+		common.Forbidden(c, "You don't have permission to modify this distribution")
 		return
 	}
 
 	// Read uploaded file
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "File upload required (field: file)",
-		})
+		common.BadRequest(c, "File upload required (field: file)")
 		return
 	}
 	defer file.Close()
 
 	configData, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to read uploaded file",
-		})
+		common.InternalError(c, "Failed to read uploaded file")
 		return
 	}
 
 	// Basic validation: file should contain at least one CONFIG_ line
 	if !strings.Contains(string(configData), "CONFIG_") {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "File does not appear to be a valid kernel .config (no CONFIG_ entries found)",
-		})
+		common.BadRequest(c, "File does not appear to be a valid kernel .config (no CONFIG_ entries found)")
 		return
 	}
 
 	if h.kernelConfigSvc == nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Kernel config service not available",
-		})
+		common.InternalError(c, "Kernel config service not available")
 		return
 	}
 
 	// Store the custom config
 	if err := h.kernelConfigSvc.StoreCustomConfig(c.Request.Context(), dist, configData); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to store kernel config: " + err.Error(),
-		})
+		common.InternalError(c, "Failed to store kernel config: "+err.Error())
 		return
 	}
 
@@ -869,6 +693,6 @@ func (h *Handler) HandleUploadKernelConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Kernel configuration uploaded successfully",
-		"key":     build.KernelConfigArtifactPath(dist.OwnerID, dist.ID),
+		"key":     kernel.KernelConfigArtifactPath(dist.OwnerID, dist.ID),
 	})
 }

@@ -22,6 +22,9 @@ import {
   type UpdateComponentRequest,
 } from "../../services/components";
 import { t } from "../../services/i18n";
+import { getCategoryColor } from "../../utils/categoryStyles";
+import { isAdmin } from "../../utils/auth";
+import { useListView } from "../../composables/useListView";
 
 interface UserInfo {
   id: string;
@@ -37,35 +40,24 @@ interface ComponentsProps {
 }
 
 export const Components: SolidComponent<ComponentsProps> = (props) => {
-  const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
+  const lv = useListView<Component>();
   const [components, setComponents] = createSignal<Component[]>([]);
-  const [selectedComponents, setSelectedComponents] = createSignal<Component[]>(
-    [],
-  );
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [componentsToDelete, setComponentsToDelete] = createSignal<Component[]>(
-    [],
-  );
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [editingComponent, setEditingComponent] =
     createSignal<Component | null>(null);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [categoryFilter, setCategoryFilter] = createSignal<string>("all");
 
   const fetchComponents = async () => {
-    setIsLoading(true);
-    setError(null);
+    lv.setIsLoading(true);
+    lv.setError(null);
 
     const result = await listComponents();
 
-    setIsLoading(false);
+    lv.setIsLoading(false);
 
     if (result.success) {
       setComponents(result.components);
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
   };
 
@@ -75,12 +67,12 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
 
   const handleCreateComponent = () => {
     setEditingComponent(null);
-    setIsModalOpen(true);
+    lv.openModal();
   };
 
   const handleFormSubmit = async (formData: CreateComponentRequest) => {
-    setIsSubmitting(true);
-    setError(null);
+    lv.setIsSubmitting(true);
+    lv.setError(null);
 
     const editing = editingComponent();
 
@@ -97,43 +89,43 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
       };
       const result = await updateComponent(editing.id, updateReq);
 
-      setIsSubmitting(false);
+      lv.setIsSubmitting(false);
 
       if (result.success) {
-        setIsModalOpen(false);
+        lv.closeModal();
         setEditingComponent(null);
         fetchComponents();
       } else {
-        setError(result.message);
+        lv.setError(result.message);
       }
     } else {
       const result = await createComponent(formData);
 
-      setIsSubmitting(false);
+      lv.setIsSubmitting(false);
 
       if (result.success) {
-        setIsModalOpen(false);
+        lv.closeModal();
         fetchComponents();
       } else {
-        setError(result.message);
+        lv.setError(result.message);
       }
     }
   };
 
   const handleFormCancel = () => {
-    setIsModalOpen(false);
+    lv.closeModal();
     setEditingComponent(null);
   };
 
   const handleEditComponent = (component: Component) => {
     setEditingComponent(component);
-    setIsModalOpen(true);
+    lv.openModal();
   };
 
   const openDeleteModal = (comps: Component[]) => {
     if (comps.length === 0) return;
-    setComponentsToDelete(comps);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete(comps);
+    lv.openDeleteModal();
   };
 
   const handleDeleteComponent = (id: string) => {
@@ -144,42 +136,40 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
   };
 
   const handleSelectionChange = (selected: Component[]) => {
-    setSelectedComponents(selected);
+    lv.setSelected(selected);
   };
 
   const handleDeleteSelected = () => {
-    const selected = selectedComponents();
+    const selected = lv.selected();
     if (selected.length === 0) return;
     openDeleteModal(selected);
   };
 
   const confirmDelete = async () => {
-    const toDelete = componentsToDelete();
+    const toDelete = lv.itemsToDelete();
     if (toDelete.length === 0) return;
 
-    setIsDeleting(true);
-    setError(null);
+    lv.setIsDeleting(true);
+    lv.setError(null);
 
     for (const component of toDelete) {
       const result = await deleteComponent(component.id);
       if (!result.success) {
-        setError(result.message);
-        setIsDeleting(false);
+        lv.setError(result.message);
+        lv.setIsDeleting(false);
         return;
       }
     }
 
     const deletedIds = new Set(toDelete.map((c) => c.id));
     setComponents((prev) => prev.filter((c) => !deletedIds.has(c.id)));
-    setSelectedComponents([]);
-    setIsDeleting(false);
-    setDeleteModalOpen(false);
-    setComponentsToDelete([]);
+    lv.setSelected([]);
+    lv.setIsDeleting(false);
+    lv.closeDeleteModal();
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setComponentsToDelete([]);
+    lv.closeDeleteModal();
   };
 
   const formatDate = (
@@ -191,7 +181,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     return <span>{date.toLocaleDateString()}</span>;
   };
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const categories = () => {
     const cats = new Set(components().map((c) => c.category));
@@ -211,21 +201,10 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
     _row: Component,
   ): JSX.Element => {
     const category = value as string;
-    const colorMap: Record<string, string> = {
-      core: "bg-blue-500/10 text-blue-500",
-      bootloader: "bg-orange-500/10 text-orange-500",
-      init: "bg-green-500/10 text-green-500",
-      runtime: "bg-purple-500/10 text-purple-500",
-      security: "bg-red-500/10 text-red-500",
-      desktop: "bg-pink-500/10 text-pink-500",
-      toolchain: "bg-lime-500/10 text-lime-500",
-      filesystem: "bg-stone-500/10 text-stone-500",
-    };
-    const colorClass = colorMap[category] || "bg-muted text-muted-foreground";
 
     return (
       <span
-        class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}
+        class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(category)}`}
       >
         {getCategoryDisplayName(category)}
       </span>
@@ -275,7 +254,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
             <Icon name="eye" size="sm" />
             <span>{t("common.actions.viewDetails")}</span>
           </DropdownMenuItem>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <DropdownMenuItem
               onSelect={() => handleEditComponent(cellProps.row)}
               class="gap-2"
@@ -319,19 +298,19 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                 )}
               </For>
             </select>
-            <Show when={isAdmin()}>
+            <Show when={admin()}>
               <button
                 onClick={handleDeleteSelected}
-                disabled={selectedComponents().length === 0}
+                disabled={lv.selected().length === 0}
                 class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                  selectedComponents().length > 0
+                  lv.selected().length > 0
                     ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 <Icon name="trash" size="sm" />
                 <span>
-                  {t("common.actions.delete")} ({selectedComponents().length})
+                  {t("common.actions.delete")} ({lv.selected().length})
                 </span>
               </button>
               <button
@@ -345,15 +324,15 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
           </nav>
         </header>
 
-        <Show when={error()}>
+        <Show when={lv.error()}>
           <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-            {error()}
+            {lv.error()}
           </aside>
         </Show>
 
         <section class="flex-1 overflow-visible">
           <Show
-            when={!isLoading()}
+            when={!lv.isLoading()}
             fallback={
               <section class="h-full flex items-center justify-center">
                 <Spinner size="lg" />
@@ -434,14 +413,14 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
                 ]}
                 data={filteredComponents()}
                 rowKey="id"
-                selectable={isAdmin()}
+                selectable={admin()}
                 onSelectionChange={handleSelectionChange}
               />
             </Show>
           </Show>
         </section>
 
-        <Show when={isAdmin() && selectedComponents().length > 0}>
+        <Show when={admin() && lv.selected().length > 0}>
           <footer class="flex justify-end pt-4">
             <button
               onClick={handleDeleteSelected}
@@ -450,7 +429,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
               <Icon name="trash" size="sm" />
               <span>
                 {t("components.delete.deleteSelected", {
-                  count: selectedComponents().length,
+                  count: lv.selected().length,
                 })}
               </span>
             </button>
@@ -459,7 +438,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
       </section>
 
       <Modal
-        isOpen={isModalOpen()}
+        isOpen={lv.isModalOpen()}
         onClose={handleFormCancel}
         title={
           editingComponent()
@@ -471,29 +450,29 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           initialData={editingComponent() || undefined}
-          isSubmitting={isSubmitting()}
+          isSubmitting={lv.isSubmitting()}
         />
       </Modal>
 
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={lv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("components.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
             <Show
-              when={componentsToDelete().length === 1}
+              when={lv.itemsToDelete().length === 1}
               fallback={
                 <>
                   {t("components.delete.confirmMultiple", {
-                    count: componentsToDelete().length,
+                    count: lv.itemsToDelete().length,
                   })}
                 </>
               }
             >
               {t("components.delete.confirmSingle", {
-                name: componentsToDelete()[0]?.display_name || "",
+                name: lv.itemsToDelete()[0]?.display_name || "",
               })}
             </Show>
           </p>
@@ -505,9 +484,9 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
             </div>
           </aside>
 
-          <Show when={componentsToDelete().length > 1}>
+          <Show when={lv.itemsToDelete().length > 1}>
             <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
-              {componentsToDelete().map((component) => (
+              {lv.itemsToDelete().map((component) => (
                 <li class="py-1">{component.display_name}</li>
               ))}
             </ul>
@@ -517,7 +496,7 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -525,18 +504,18 @@ export const Components: SolidComponent<ComponentsProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={lv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {lv.isDeleting()
                   ? t("components.delete.deleting")
-                  : componentsToDelete().length > 1
+                  : lv.itemsToDelete().length > 1
                     ? t("components.delete.deleteCount", {
-                        count: componentsToDelete().length,
+                        count: lv.itemsToDelete().length,
                       })
                     : t("common.actions.delete")}
               </span>

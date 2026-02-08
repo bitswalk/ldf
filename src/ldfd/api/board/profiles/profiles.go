@@ -97,11 +97,7 @@ func (h *Handler) HandleGet(c *gin.Context) {
 func (h *Handler) HandleCreate(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
@@ -111,12 +107,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 		return
 	}
 
-	// Validate architecture
 	arch := db.TargetArch(req.Arch)
-	if arch != db.ArchX86_64 && arch != db.ArchAARCH64 {
-		common.BadRequest(c, "Invalid architecture: must be x86_64 or aarch64")
-		return
-	}
 
 	// Check for duplicate name
 	existing, err := h.boardProfileRepo.GetByName(req.Name)
@@ -166,11 +157,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
@@ -192,19 +179,11 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 
 	// Permission check: system profiles require admin, user profiles require ownership
 	if profile.IsSystem && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Admin access required to modify system profiles",
-		})
+		common.Forbidden(c, "Admin access required to modify system profiles")
 		return
 	}
 	if !profile.IsSystem && profile.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You can only modify your own profiles",
-		})
+		common.Forbidden(c, "You can only modify your own profiles")
 		return
 	}
 
@@ -265,11 +244,7 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 func (h *Handler) HandleDelete(c *gin.Context) {
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
@@ -291,21 +266,13 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 
 	// System profiles cannot be deleted
 	if profile.IsSystem {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "System board profiles cannot be deleted",
-		})
+		common.Forbidden(c, "System board profiles cannot be deleted")
 		return
 	}
 
 	// Permission check: user profiles require ownership or admin
 	if profile.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "You can only delete your own profiles",
-		})
+		common.Forbidden(c, "You can only delete your own profiles")
 		return
 	}
 

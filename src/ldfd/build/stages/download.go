@@ -1,10 +1,11 @@
-package build
+package stages
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
@@ -29,7 +30,7 @@ func (s *DownloadCheckStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *DownloadCheckStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *DownloadCheckStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if len(sc.Components) == 0 {
 		return fmt.Errorf("no components resolved - resolve stage must run first")
 	}
@@ -37,7 +38,7 @@ func (s *DownloadCheckStage) Validate(ctx context.Context, sc *StageContext) err
 }
 
 // Execute verifies all component downloads are complete and artifacts exist
-func (s *DownloadCheckStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *DownloadCheckStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Verifying component downloads")
 
 	totalComponents := len(sc.Components)

@@ -121,28 +121,24 @@ func runComponentList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No components found.")
-		return nil
-	}
-
-	rows := make([][]string, len(resp.Components))
-	for i, comp := range resp.Components {
-		system := ""
-		if comp.IsSystem {
-			system = "system"
+		if resp.Count == 0 {
+			output.PrintMessage("No components found.")
+			return nil
 		}
-		rows[i] = []string{comp.ID, comp.Name, comp.Category, system}
-	}
-	output.PrintTable([]string{"ID", "NAME", "CATEGORY", "TYPE"}, rows)
-	return nil
+
+		rows := make([][]string, len(resp.Components))
+		for i, comp := range resp.Components {
+			system := ""
+			if comp.IsSystem {
+				system = "system"
+			}
+			rows[i] = []string{comp.ID, comp.Name, comp.Category, system}
+		}
+		output.PrintTable([]string{"ID", "NAME", "CATEGORY", "TYPE"}, rows)
+		return nil
+	})
 }
 
 func runComponentGet(cmd *cobra.Command, args []string) error {
@@ -154,33 +150,29 @@ func runComponentGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	isSystem := "no"
-	if resp.IsSystem {
-		isSystem = "yes"
-	}
+		isSystem := "no"
+		if resp.IsSystem {
+			isSystem = "yes"
+		}
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", resp.ID},
-			{"Name", resp.Name},
-			{"Category", resp.Category},
-			{"Description", resp.Description},
-			{"Source URL", resp.SourceURL},
-			{"License", resp.License},
-			{"System", isSystem},
-			{"Created", resp.CreatedAt},
-			{"Updated", resp.UpdatedAt},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", resp.ID},
+				{"Name", resp.Name},
+				{"Category", resp.Category},
+				{"Description", resp.Description},
+				{"Source URL", resp.SourceURL},
+				{"License", resp.License},
+				{"System", isSystem},
+				{"Created", resp.CreatedAt},
+				{"Updated", resp.UpdatedAt},
+			},
+		)
+		return nil
+	})
 }
 
 func runComponentCreate(cmd *cobra.Command, args []string) error {
@@ -206,15 +198,11 @@ func runComponentCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Component %q created (ID: %s)", resp.Name, resp.ID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Component %q created (ID: %s)", resp.Name, resp.ID))
+		return nil
+	})
 }
 
 func runComponentUpdate(cmd *cobra.Command, args []string) error {
@@ -222,41 +210,22 @@ func runComponentUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateComponentRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("category") {
-		v, _ := cmd.Flags().GetString("category")
-		req.Category = v
-	}
-	if cmd.Flags().Changed("description") {
-		v, _ := cmd.Flags().GetString("description")
-		req.Description = v
-	}
-	if cmd.Flags().Changed("source-url") {
-		v, _ := cmd.Flags().GetString("source-url")
-		req.SourceURL = v
-	}
-	if cmd.Flags().Changed("license") {
-		v, _ := cmd.Flags().GetString("license")
-		req.License = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "category", &req.Category)
+	setStringIfChanged(cmd, "description", &req.Description)
+	setStringIfChanged(cmd, "source-url", &req.SourceURL)
+	setStringIfChanged(cmd, "license", &req.License)
 
 	resp, err := c.UpdateComponent(ctx, args[0], req)
 	if err != nil {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Component %q updated.", resp.Name))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Component %q updated.", resp.Name))
+		return nil
+	})
 }
 
 func runComponentDelete(cmd *cobra.Command, args []string) error {
@@ -267,15 +236,11 @@ func runComponentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Component deleted", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Component deleted", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Component deleted", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Component %s deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Component %s deleted.", args[0]))
+		return nil
+	})
 }
 
 func runComponentCategories(cmd *cobra.Command, args []string) error {
@@ -287,24 +252,20 @@ func runComponentCategories(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	categories, ok := resp["categories"].([]interface{})
-	if !ok {
-		return output.PrintJSON(resp)
-	}
+		categories, ok := resp["categories"].([]interface{})
+		if !ok {
+			return output.PrintJSON(resp)
+		}
 
-	rows := make([][]string, len(categories))
-	for i, cat := range categories {
-		rows[i] = []string{fmt.Sprintf("%v", cat)}
-	}
-	output.PrintTable([]string{"CATEGORY"}, rows)
-	return nil
+		rows := make([][]string, len(categories))
+		for i, cat := range categories {
+			rows[i] = []string{fmt.Sprintf("%v", cat)}
+		}
+		output.PrintTable([]string{"CATEGORY"}, rows)
+		return nil
+	})
 }
 
 func runComponentVersions(cmd *cobra.Command, args []string) error {
@@ -321,19 +282,15 @@ func runComponentVersions(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	rows := make([][]string, len(resp.Versions))
-	for i, v := range resp.Versions {
-		rows[i] = []string{v}
-	}
-	output.PrintTable([]string{"VERSION"}, rows)
-	return nil
+		rows := make([][]string, len(resp.Versions))
+		for i, v := range resp.Versions {
+			rows[i] = []string{v}
+		}
+		output.PrintTable([]string{"VERSION"}, rows)
+		return nil
+	})
 }
 
 func runComponentResolveVersion(cmd *cobra.Command, args []string) error {
@@ -345,20 +302,16 @@ func runComponentResolveVersion(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Component ID", resp.ComponentID},
-			{"Version", resp.Version},
-			{"Resolved URL", resp.ResolvedURL},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Component ID", resp.ComponentID},
+				{"Version", resp.Version},
+				{"Resolved URL", resp.ResolvedURL},
+			},
+		)
+		return nil
+	})
 }

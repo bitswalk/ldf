@@ -1,7 +1,6 @@
 // Mirror management service for LDF server communication
 
-import { authFetch } from "./api";
-import { getServerUrl } from "./storage";
+import { authFetch, getApiUrl } from "./api";
 
 export interface Mirror {
   id: string;
@@ -66,12 +65,6 @@ export type DeleteResult =
       error: "not_found" | "unauthorized" | "forbidden" | "network_error" | "not_configured" | "internal_error";
       message: string;
     };
-
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
 
 /**
  * List all configured mirrors

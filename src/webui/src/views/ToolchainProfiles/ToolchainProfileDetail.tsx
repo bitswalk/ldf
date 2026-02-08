@@ -1,8 +1,10 @@
 import type { Component } from "solid-js";
+import { useDetailView } from "../../composables/useDetailView";
 import { createSignal, onMount, Show, For } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import { ToolchainProfileForm } from "../../components/ToolchainProfileForm";
 import {
@@ -14,6 +16,7 @@ import {
   type CreateToolchainProfileRequest,
 } from "../../services/toolchainProfiles";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -32,58 +35,39 @@ interface ToolchainProfileDetailProps {
 export const ToolchainProfileDetail: Component<
   ToolchainProfileDetailProps
 > = (props) => {
+  const dv = useDetailView();
   const [profile, setProfile] = createSignal<ToolchainProfile | null>(null);
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  const [notification, setNotification] = createSignal<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [editModalOpen, setEditModalOpen] = createSignal(false);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const fetchProfile = async () => {
-    setLoading(true);
-    setError(null);
+    dv.setLoading(true);
+    dv.setError(null);
 
     const result = await getToolchainProfile(props.profileId);
 
     if (result.success) {
       setProfile(result.profile);
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
-    setLoading(false);
+    dv.setLoading(false);
   };
 
   onMount(() => {
     fetchProfile();
   });
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
-  const showNotification = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), type === "success" ? 3000 : 5000);
-  };
-
   const handleEdit = () => {
     setFormError(null);
-    setEditModalOpen(true);
+    dv.openEditModal();
   };
 
   const handleEditSubmit = async (
     data: CreateToolchainProfileRequest | UpdateToolchainProfileRequest,
   ) => {
-    setIsSubmitting(true);
+    dv.setIsSubmitting(true);
     setFormError(null);
 
     const result = await updateToolchainProfile(
@@ -91,12 +75,12 @@ export const ToolchainProfileDetail: Component<
       data as UpdateToolchainProfileRequest,
     );
 
-    setIsSubmitting(false);
+    dv.setIsSubmitting(false);
 
     if (result.success) {
-      setEditModalOpen(false);
+      dv.closeEditModal();
       fetchProfile();
-      showNotification(
+      dv.showNotification(
         "success",
         t("toolchainProfiles.detail.updateSuccess"),
       );
@@ -106,37 +90,37 @@ export const ToolchainProfileDetail: Component<
   };
 
   const handleEditCancel = () => {
-    setEditModalOpen(false);
+    dv.closeEditModal();
     setFormError(null);
   };
 
   const handleDeleteClick = () => {
-    setDeleteModalOpen(true);
+    dv.openDeleteModal();
   };
 
   const confirmDelete = async () => {
-    setIsDeleting(true);
-    setError(null);
+    dv.setIsDeleting(true);
+    dv.setError(null);
 
     const result = await deleteToolchainProfile(props.profileId);
 
-    setIsDeleting(false);
+    dv.setIsDeleting(false);
 
     if (result.success) {
-      setDeleteModalOpen(false);
-      showNotification(
+      dv.closeDeleteModal();
+      dv.showNotification(
         "success",
         t("toolchainProfiles.detail.deleteSuccess"),
       );
       props.onDeleted?.();
       props.onBack();
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
+    dv.closeDeleteModal();
   };
 
   const config = () => profile()?.config;
@@ -190,7 +174,7 @@ export const ToolchainProfileDetail: Component<
               {profile()?.name || t("toolchainProfiles.detail.subtitle")}
             </p>
           </div>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <div class="flex items-center gap-2">
               <button
                 onClick={handleEdit}
@@ -213,47 +197,29 @@ export const ToolchainProfileDetail: Component<
         </header>
 
         {/* Notification */}
-        <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+        <Show when={dv.notification()}>
+          <Notification type={dv.notification()!.type} message={dv.notification()!.message} />
         </Show>
 
         {/* Error state */}
-        <Show when={error()}>
+        <Show when={dv.error()}>
           <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-md">
             <div class="flex items-center gap-2 text-red-500">
               <Icon name="warning-circle" size="md" />
-              <span>{error()}</span>
+              <span>{dv.error()}</span>
             </div>
           </div>
         </Show>
 
         {/* Loading state */}
-        <Show when={loading()}>
+        <Show when={dv.loading()}>
           <div class="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
         </Show>
 
         {/* Content */}
-        <Show when={!loading() && profile()}>
+        <Show when={!dv.loading() && profile()}>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Profile Details */}
             <Card
@@ -329,7 +295,7 @@ export const ToolchainProfileDetail: Component<
                       {t("toolchainProfiles.detail.created")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(profile()!.created_at)}
+                      {dv.formatDate(profile()!.created_at)}
                     </span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
@@ -337,7 +303,7 @@ export const ToolchainProfileDetail: Component<
                       {t("toolchainProfiles.detail.updated")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(profile()!.updated_at)}
+                      {dv.formatDate(profile()!.updated_at)}
                     </span>
                   </div>
                 </div>
@@ -405,7 +371,7 @@ export const ToolchainProfileDetail: Component<
 
       {/* Edit Modal */}
       <Modal
-        isOpen={editModalOpen()}
+        isOpen={dv.editModalOpen()}
         onClose={handleEditCancel}
         title={t("toolchainProfiles.edit")}
       >
@@ -414,7 +380,7 @@ export const ToolchainProfileDetail: Component<
             profile={profile()!}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
-            submitting={isSubmitting()}
+            submitting={dv.isSubmitting()}
             error={formError()}
           />
         </Show>
@@ -422,7 +388,7 @@ export const ToolchainProfileDetail: Component<
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={dv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("toolchainProfiles.delete.title")}
       >
@@ -437,7 +403,7 @@ export const ToolchainProfileDetail: Component<
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -445,14 +411,14 @@ export const ToolchainProfileDetail: Component<
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={dv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {dv.isDeleting()
                   ? t("common.status.deleting")
                   : t("common.actions.delete")}
               </span>

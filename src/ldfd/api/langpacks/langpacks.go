@@ -36,11 +36,7 @@ func NewHandler(cfg Config) *Handler {
 func (h *Handler) HandleList(c *gin.Context) {
 	packs, err := h.langPackRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to list language packs: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to list language packs: %v", err))
 		return
 	}
 
@@ -71,20 +67,12 @@ func (h *Handler) HandleGet(c *gin.Context) {
 
 	pack, err := h.langPackRepo.Get(locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to get language pack: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to get language pack: %v", err))
 		return
 	}
 
 	if pack == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Language pack '%s' not found", locale),
-		})
+		common.NotFound(c, fmt.Sprintf("Language pack '%s' not found", locale))
 		return
 	}
 
@@ -116,11 +104,7 @@ func (h *Handler) HandleGet(c *gin.Context) {
 func (h *Handler) HandleUpload(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "No file provided. Please upload a .tar.xz, .tar.gz, or .xz archive.",
-		})
+		common.BadRequest(c, "No file provided. Please upload a .tar.xz, .tar.gz, or .xz archive.")
 		return
 	}
 	defer file.Close()
@@ -137,58 +121,34 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 	} else if strings.HasSuffix(filename, ".xz") {
 		meta, dictionary, err = extractXZ(file)
 	} else {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Unsupported archive format. Please use .tar.xz, .tar.gz, or .xz",
-		})
+		common.BadRequest(c, "Unsupported archive format. Please use .tar.xz, .tar.gz, or .xz")
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("Failed to extract archive: %v", err),
-		})
+		common.BadRequest(c, fmt.Sprintf("Failed to extract archive: %v", err))
 		return
 	}
 
 	if meta == nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Archive must contain a meta.json file with locale, name, and version fields",
-		})
+		common.BadRequest(c, "Archive must contain a meta.json file with locale, name, and version fields")
 		return
 	}
 
 	if meta.Locale == "" || meta.Name == "" || meta.Version == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "meta.json must contain locale, name, and version fields",
-		})
+		common.BadRequest(c, "meta.json must contain locale, name, and version fields")
 		return
 	}
 
 	dictJSON, err := json.Marshal(dictionary)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to serialize dictionary: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to serialize dictionary: %v", err))
 		return
 	}
 
 	exists, err := h.langPackRepo.Exists(meta.Locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to check language pack existence: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to check language pack existence: %v", err))
 		return
 	}
 
@@ -202,11 +162,7 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 
 	if exists {
 		if err := h.langPackRepo.Update(pack); err != nil {
-			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-				Error:   "Internal server error",
-				Code:    http.StatusInternalServerError,
-				Message: fmt.Sprintf("Failed to update language pack: %v", err),
-			})
+			common.InternalError(c, fmt.Sprintf("Failed to update language pack: %v", err))
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
@@ -217,11 +173,7 @@ func (h *Handler) HandleUpload(c *gin.Context) {
 		})
 	} else {
 		if err := h.langPackRepo.Create(pack); err != nil {
-			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-				Error:   "Internal server error",
-				Code:    http.StatusInternalServerError,
-				Message: fmt.Sprintf("Failed to create language pack: %v", err),
-			})
+			common.InternalError(c, fmt.Sprintf("Failed to create language pack: %v", err))
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{
@@ -252,29 +204,17 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 
 	exists, err := h.langPackRepo.Exists(locale)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to check language pack: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to check language pack: %v", err))
 		return
 	}
 
 	if !exists {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprintf("Language pack '%s' not found", locale),
-		})
+		common.NotFound(c, fmt.Sprintf("Language pack '%s' not found", locale))
 		return
 	}
 
 	if err := h.langPackRepo.Delete(locale); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: fmt.Sprintf("Failed to delete language pack: %v", err),
-		})
+		common.InternalError(c, fmt.Sprintf("Failed to delete language pack: %v", err))
 		return
 	}
 

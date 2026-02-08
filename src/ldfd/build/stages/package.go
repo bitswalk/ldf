@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 )
@@ -33,7 +34,7 @@ func (s *PackageStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *PackageStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *PackageStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if sc.RootfsDir == "" {
 		return fmt.Errorf("rootfs directory not set")
 	}
@@ -59,7 +60,7 @@ func (s *PackageStage) Validate(ctx context.Context, sc *StageContext) error {
 }
 
 // Execute creates the final image and uploads it to storage
-func (s *PackageStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *PackageStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Starting image packaging")
 
 	// Ensure output directory exists
@@ -154,7 +155,7 @@ func (s *PackageStage) Execute(ctx context.Context, sc *StageContext, progress P
 }
 
 // uploadToStorage uploads a file to the storage backend
-func (s *PackageStage) uploadToStorage(ctx context.Context, localPath, storageKey string, progress ProgressFunc) error {
+func (s *PackageStage) uploadToStorage(ctx context.Context, localPath, storageKey string, progress build.ProgressFunc) error {
 	file, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)

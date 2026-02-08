@@ -113,15 +113,11 @@ func runReleaseCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Release %q v%s created (ID: %s)", resp.Name, resp.Version, resp.ID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Release %q v%s created (ID: %s)", resp.Name, resp.Version, resp.ID))
+		return nil
+	})
 }
 
 func runReleaseConfigure(cmd *cobra.Command, args []string) error {
@@ -323,15 +319,11 @@ func runReleaseConfigure(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Release %q configured.", resp.Name))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Release %q configured.", resp.Name))
+		return nil
+	})
 }
 
 func runReleaseShow(cmd *cobra.Command, args []string) error {
@@ -343,39 +335,35 @@ func runReleaseShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	// Print distribution info
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", resp.ID},
-			{"Name", resp.Name},
-			{"Version", resp.Version},
-			{"Status", resp.Status},
-			{"Visibility", resp.Visibility},
-		},
-	)
+		// Print distribution info
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", resp.ID},
+				{"Name", resp.Name},
+				{"Version", resp.Version},
+				{"Status", resp.Status},
+				{"Visibility", resp.Visibility},
+			},
+		)
 
-	// Print config if present
-	if resp.Config != nil {
-		fmt.Println()
-		output.PrintMessage("Configuration:")
-		configBytes, err := json.MarshalIndent(resp.Config, "  ", "  ")
-		if err == nil {
-			fmt.Printf("  %s\n", string(configBytes))
+		// Print config if present
+		if resp.Config != nil {
+			fmt.Println()
+			output.PrintMessage("Configuration:")
+			configBytes, err := json.MarshalIndent(resp.Config, "  ", "  ")
+			if err == nil {
+				fmt.Printf("  %s\n", string(configBytes))
+			}
+		} else {
+			fmt.Println()
+			output.PrintMessage("No configuration set. Use 'ldfctl release configure' to set components.")
 		}
-	} else {
-		fmt.Println()
-		output.PrintMessage("No configuration set. Use 'ldfctl release configure' to set components.")
-	}
 
-	return nil
+		return nil
+	})
 }
 
 // ensureMap ensures a key exists in the map as a map[string]interface{}

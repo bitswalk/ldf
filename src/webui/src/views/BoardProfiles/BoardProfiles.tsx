@@ -12,6 +12,7 @@ import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { BoardProfileForm } from "../../components/BoardProfileForm";
 import { t } from "../../services/i18n";
+import { useListView } from "../../composables/useListView";
 import {
   listBoardProfiles,
   createBoardProfile,
@@ -28,29 +29,14 @@ interface BoardProfilesProps {
 }
 
 export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
+  const lv = useListView<BoardProfile>();
   const [profiles, setProfiles] = createSignal<BoardProfile[]>([]);
-  const [isLoading, setIsLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
   const [archFilter, setArchFilter] = createSignal<string>("");
-  const [selectedProfiles, setSelectedProfiles] = createSignal<BoardProfile[]>(
-    [],
-  );
-
-  // Create modal state
-  const [formModalOpen, setFormModalOpen] = createSignal(false);
-  const [formSubmitting, setFormSubmitting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
-  // Delete modal state
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [profilesToDelete, setProfilesToDelete] = createSignal<BoardProfile[]>(
-    [],
-  );
-  const [deleting, setDeleting] = createSignal(false);
-
   const fetchProfiles = async () => {
-    setIsLoading(true);
-    setError(null);
+    lv.setIsLoading(true);
+    lv.setError(null);
 
     const filter = archFilter() || undefined;
     const result = await listBoardProfiles(filter);
@@ -58,10 +44,10 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
     if (result.success) {
       setProfiles(result.profiles);
     } else {
-      setError(result.message);
+      lv.setError(result.message);
     }
 
-    setIsLoading(false);
+    lv.setIsLoading(false);
   };
 
   onMount(() => {
@@ -76,21 +62,21 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
   };
 
   const handleSelectionChange = (selected: BoardProfile[]) => {
-    setSelectedProfiles(selected);
+    lv.setSelected(selected);
   };
 
   const openCreateModal = () => {
     setFormError(null);
-    setFormModalOpen(true);
+    lv.openModal();
   };
 
   const closeFormModal = () => {
-    setFormModalOpen(false);
+    lv.closeModal();
     setFormError(null);
   };
 
   const handleFormSubmit = async (data: CreateBoardProfileRequest) => {
-    setFormSubmitting(true);
+    lv.setIsSubmitting(true);
     setFormError(null);
 
     const result = await createBoardProfile(data);
@@ -101,49 +87,49 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
       setFormError(result.message);
     }
 
-    setFormSubmitting(false);
+    lv.setIsSubmitting(false);
   };
 
   const openDeleteModal = (profile: BoardProfile) => {
-    setProfilesToDelete([profile]);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete([profile]);
+    lv.openDeleteModal();
   };
 
   const handleDeleteSelected = () => {
-    const selected = selectedProfiles().filter((p) => !p.is_system);
+    const selected = lv.selected().filter((p) => !p.is_system);
     if (selected.length === 0) return;
-    setProfilesToDelete(selected);
-    setDeleteModalOpen(true);
+    lv.setItemsToDelete(selected);
+    lv.openDeleteModal();
   };
 
   const confirmDelete = async () => {
-    const toDelete = profilesToDelete();
+    const toDelete = lv.itemsToDelete();
     if (toDelete.length === 0) return;
 
-    setDeleting(true);
+    lv.setIsDeleting(true);
 
     for (const profile of toDelete) {
       const result = await deleteBoardProfile(profile.id);
       if (!result.success) {
-        setError(result.message);
-        setDeleting(false);
-        setDeleteModalOpen(false);
-        setProfilesToDelete([]);
+        lv.setError(result.message);
+        lv.setIsDeleting(false);
+        lv.closeDeleteModal();
+        lv.setItemsToDelete([]);
         return;
       }
     }
 
     const deletedIds = new Set(toDelete.map((p) => p.id));
     setProfiles((prev) => prev.filter((p) => !deletedIds.has(p.id)));
-    setSelectedProfiles([]);
-    setDeleting(false);
-    setDeleteModalOpen(false);
-    setProfilesToDelete([]);
+    lv.setSelected([]);
+    lv.setIsDeleting(false);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
-    setProfilesToDelete([]);
+    lv.closeDeleteModal();
+    lv.setItemsToDelete([]);
   };
 
   const ActionsCell: Component<{ value: unknown; row: BoardProfile }> = (
@@ -214,16 +200,16 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
             {/* Bulk delete button */}
             <button
               onClick={handleDeleteSelected}
-              disabled={selectedProfiles().length === 0}
+              disabled={lv.selected().length === 0}
               class={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors ${
-                selectedProfiles().length > 0
+                lv.selected().length > 0
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
               }`}
             >
               <Icon name="trash" size="sm" />
               <span>
-                {t("common.actions.delete")} ({selectedProfiles().length})
+                {t("common.actions.delete")} ({lv.selected().length})
               </span>
             </button>
 
@@ -238,15 +224,15 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
           </nav>
         </header>
 
-        <Show when={error()}>
+        <Show when={lv.error()}>
           <aside class="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-            {error()}
+            {lv.error()}
           </aside>
         </Show>
 
         <section class="flex-1 overflow-visible">
           <Show
-            when={!isLoading()}
+            when={!lv.isLoading()}
             fallback={
               <section class="h-full flex items-center justify-center">
                 <Spinner size="lg" />
@@ -335,41 +321,41 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
 
       {/* Create Modal */}
       <Modal
-        isOpen={formModalOpen()}
+        isOpen={lv.isModalOpen()}
         onClose={closeFormModal}
         title={t("boardProfiles.create")}
       >
         <BoardProfileForm
           onSubmit={handleFormSubmit}
           onCancel={closeFormModal}
-          submitting={formSubmitting()}
+          submitting={lv.isSubmitting()}
           error={formError()}
         />
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={lv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("boardProfiles.delete.title")}
       >
         <section class="flex flex-col gap-6">
           <p class="text-muted-foreground">
             <Show
-              when={profilesToDelete().length === 1}
+              when={lv.itemsToDelete().length === 1}
               fallback={t("boardProfiles.delete.confirmMultiple", {
-                count: profilesToDelete().length.toString(),
+                count: lv.itemsToDelete().length.toString(),
               })}
             >
               {t("boardProfiles.delete.confirm", {
-                name: profilesToDelete()[0]?.display_name || "",
+                name: lv.itemsToDelete()[0]?.display_name || "",
               })}
             </Show>
           </p>
 
-          <Show when={profilesToDelete().length > 1}>
+          <Show when={lv.itemsToDelete().length > 1}>
             <ul class="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
-              {profilesToDelete().map((p) => (
+              {lv.itemsToDelete().map((p) => (
                 <li class="py-1">{p.display_name}</li>
               ))}
             </ul>
@@ -379,7 +365,7 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={deleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -387,14 +373,14 @@ export const BoardProfiles: Component<BoardProfilesProps> = (props) => {
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={deleting()}
+              disabled={lv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={deleting()}>
+              <Show when={lv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {deleting()
+                {lv.isDeleting()
                   ? t("common.status.deleting")
                   : t("common.actions.delete")}
               </span>

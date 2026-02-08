@@ -47,48 +47,28 @@ func calculateProgress(progressBytes, totalBytes int64) float64 {
 func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
@@ -99,11 +79,7 @@ func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 
 	jobs, err := h.downloadManager.CreateJobsForDistribution(dist, claims.UserID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -160,51 +136,31 @@ func (h *Handler) HandleStartDistributionDownloads(c *gin.Context) {
 func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, common.ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Access denied to private distribution",
-			})
+			common.Forbidden(c, "Access denied to private distribution")
 			return
 		}
 	}
 
 	jobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -244,50 +200,30 @@ func (h *Handler) HandleListDistributionDownloads(c *gin.Context) {
 func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Job ID required",
-		})
+		common.BadRequest(c, "Job ID required")
 		return
 	}
 
 	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Download job not found",
-		})
+		common.NotFound(c, "Download job not found")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if dist != nil && dist.Visibility == db.VisibilityPrivate {
 		if claims == nil || (dist.OwnerID != claims.UserID && !claims.HasAdminAccess()) {
-			c.JSON(http.StatusForbidden, common.ErrorResponse{
-				Error:   "Forbidden",
-				Code:    http.StatusForbidden,
-				Message: "Access denied",
-			})
+			common.Forbidden(c, "Access denied")
 			return
 		}
 	}
@@ -320,67 +256,39 @@ func (h *Handler) HandleGetDownloadJob(c *gin.Context) {
 func (h *Handler) HandleCancelDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Job ID required",
-		})
+		common.BadRequest(c, "Job ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Download job not found",
-		})
+		common.NotFound(c, "Download job not found")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	if err := h.downloadManager.CancelJob(jobID); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -406,67 +314,39 @@ func (h *Handler) HandleCancelDownload(c *gin.Context) {
 func (h *Handler) HandleRetryDownload(c *gin.Context) {
 	jobID := c.Param("jobId")
 	if jobID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Job ID required",
-		})
+		common.BadRequest(c, "Job ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	job, err := h.downloadManager.JobRepo().GetByID(jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if job == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Download job not found",
-		})
+		common.NotFound(c, "Download job not found")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(job.DistributionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	if dist != nil && dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	if err := h.downloadManager.RetryJob(jobID); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -500,11 +380,7 @@ func (h *Handler) HandleRetryDownload(c *gin.Context) {
 func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
 	jobs, err := h.downloadManager.JobRepo().ListActive()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -544,58 +420,34 @@ func (h *Handler) HandleListActiveDownloads(c *gin.Context) {
 func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 	distID := c.Param("id")
 	if distID == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Distribution ID required",
-		})
+		common.BadRequest(c, "Distribution ID required")
 		return
 	}
 
 	claims := common.GetClaimsFromContext(c)
 	if claims == nil {
-		c.JSON(http.StatusUnauthorized, common.ErrorResponse{
-			Error:   "Unauthorized",
-			Code:    http.StatusUnauthorized,
-			Message: "Authentication required",
-		})
+		common.Unauthorized(c, "Authentication required")
 		return
 	}
 
 	dist, err := h.distRepo.GetByID(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if dist == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Distribution not found",
-		})
+		common.NotFound(c, "Distribution not found")
 		return
 	}
 
 	if dist.OwnerID != claims.UserID && !claims.HasAdminAccess() {
-		c.JSON(http.StatusForbidden, common.ErrorResponse{
-			Error:   "Forbidden",
-			Code:    http.StatusForbidden,
-			Message: "Write access required",
-		})
+		common.Forbidden(c, "Write access required")
 		return
 	}
 
 	activeJobs, err := h.downloadManager.JobRepo().ListByDistribution(distID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -608,11 +460,7 @@ func (h *Handler) HandleFlushDistributionDownloads(c *gin.Context) {
 	}
 
 	if err := h.downloadManager.JobRepo().DeleteByDistribution(distID); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 

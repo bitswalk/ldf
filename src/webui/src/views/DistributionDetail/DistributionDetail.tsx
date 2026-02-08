@@ -1,8 +1,10 @@
 import type { Component } from "solid-js";
+import { useDetailView } from "../../composables/useDetailView";
 import { createSignal, onMount, Show, For } from "solid-js";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import {
   DownloadStatus,
@@ -25,6 +27,7 @@ import {
 } from "../../services/distribution";
 import { clearDistributionBuilds } from "../../services/builds";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -118,19 +121,10 @@ const getOptionName = (
 export const DistributionDetail: Component<DistributionDetailProps> = (
   props,
 ) => {
+  const dv = useDetailView();
   const [distribution, setDistribution] = createSignal<Distribution | null>(
     null,
   );
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  const [notification, setNotification] = createSignal<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [editModalOpen, setEditModalOpen] = createSignal(false);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [deletionPreview, setDeletionPreview] =
     createSignal<DeletionPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = createSignal(false);
@@ -144,31 +138,26 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   const [downloadActions, setDownloadActions] =
     createSignal<DownloadActions | null>(null);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const fetchDistribution = async () => {
-    setLoading(true);
-    setError(null);
+    dv.setLoading(true);
+    dv.setError(null);
 
     const result = await getDistribution(props.distributionId);
 
-    setLoading(false);
+    dv.setLoading(false);
 
     if (result.success) {
       setDistribution(result.distribution);
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   onMount(() => {
     fetchDistribution();
   });
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return "0 B";
@@ -214,46 +203,41 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     }
   };
 
-  const showNotification = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), type === "success" ? 3000 : 5000);
-  };
-
   const handleDownloadSuccess = (message: string) => {
-    showNotification("success", message);
+    dv.showNotification("success", message);
   };
 
   const handleDownloadError = (message: string) => {
-    showNotification("error", message);
+    dv.showNotification("error", message);
   };
 
   const handleEdit = () => {
-    setEditModalOpen(true);
+    dv.openEditModal();
   };
 
   const handleEditSubmit = async (data: UpdateDistributionRequest) => {
-    setIsSubmitting(true);
-    setError(null);
+    dv.setIsSubmitting(true);
+    dv.setError(null);
 
     const result = await updateDistribution(props.distributionId, data);
 
-    setIsSubmitting(false);
+    dv.setIsSubmitting(false);
 
     if (result.success) {
-      setEditModalOpen(false);
+      dv.closeEditModal();
       setDistribution(result.distribution);
-      showNotification("success", t("distribution.detail.info.configSaved"));
+      dv.showNotification("success", t("distribution.detail.info.configSaved"));
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const handleEditCancel = () => {
-    setEditModalOpen(false);
+    dv.closeEditModal();
   };
 
   const handleDeleteClick = async () => {
-    setDeleteModalOpen(true);
+    dv.openDeleteModal();
     setLoadingPreview(true);
     setDeletionPreview(null);
 
@@ -267,25 +251,25 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
   };
 
   const confirmDelete = async () => {
-    setIsDeleting(true);
-    setError(null);
+    dv.setIsDeleting(true);
+    dv.setError(null);
 
     const result = await deleteDistribution(props.distributionId);
 
-    setIsDeleting(false);
+    dv.setIsDeleting(false);
 
     if (result.success) {
-      setDeleteModalOpen(false);
-      showNotification("success", t("distribution.detail.deleteSuccess"));
+      dv.closeDeleteModal();
+      dv.showNotification("success", t("distribution.detail.deleteSuccess"));
       props.onDeleted?.();
       props.onBack();
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
+    dv.closeDeleteModal();
   };
 
   const confirmClearBuilds = async () => {
@@ -295,10 +279,10 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
     setClearBuildsModalOpen(false);
 
     if (result.success) {
-      showNotification("success", t("build.list.clearSuccess"));
+      dv.showNotification("success", t("build.list.clearSuccess"));
       refetchBuilds?.();
     } else {
-      showNotification("error", result.message);
+      dv.showNotification("error", result.message);
     }
   };
 
@@ -316,13 +300,13 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
     if (result.success) {
       setKernelConfigModalOpen(false);
-      showNotification(
+      dv.showNotification(
         "success",
         t("distribution.detail.quickActions.uploadKernelConfigSuccess"),
       );
       fetchDistribution();
     } else {
-      showNotification("error", result.message);
+      dv.showNotification("error", result.message);
     }
   };
 
@@ -396,7 +380,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
               {t("distribution.detail.subtitle")}
             </p>
           </div>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <div class="flex items-center gap-2">
               <button
                 onClick={handleEdit}
@@ -417,47 +401,29 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
         </header>
 
         {/* Notification */}
-        <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+        <Show when={dv.notification()}>
+          <Notification type={dv.notification()!.type} message={dv.notification()!.message} />
         </Show>
 
         {/* Error state */}
-        <Show when={error()}>
+        <Show when={dv.error()}>
           <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-md">
             <div class="flex items-center gap-2 text-red-500">
               <Icon name="warning-circle" size="md" />
-              <span>{error()}</span>
+              <span>{dv.error()}</span>
             </div>
           </div>
         </Show>
 
         {/* Loading state */}
-        <Show when={loading()}>
+        <Show when={dv.loading()}>
           <div class="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
         </Show>
 
         {/* Content */}
-        <Show when={!loading() && distribution()}>
+        <Show when={!dv.loading() && distribution()}>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Distribution Info & Configuration */}
             <Card header={{ title: t("distribution.detail.info.title") }}>
@@ -686,7 +652,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.created")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(distribution()!.created_at)}
+                      {dv.formatDate(distribution()!.created_at)}
                     </span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
@@ -694,7 +660,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
                       {t("distribution.detail.updated")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(distribution()!.updated_at)}
+                      {dv.formatDate(distribution()!.updated_at)}
                     </span>
                   </div>
                   <Show when={distribution()!.owner_id}>
@@ -889,7 +855,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
 
       {/* Edit Modal */}
       <Modal
-        isOpen={editModalOpen()}
+        isOpen={dv.editModalOpen()}
         onClose={handleEditCancel}
         title={t("distribution.editForm.modalTitle")}
       >
@@ -898,14 +864,14 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             distribution={distribution()!}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
-            isSubmitting={isSubmitting()}
+            isSubmitting={dv.isSubmitting()}
           />
         </Show>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={dv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("distribution.delete.title")}
       >
@@ -1018,7 +984,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -1026,14 +992,14 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting() || loadingPreview()}
+              disabled={dv.isDeleting() || loadingPreview()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={dv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {dv.isDeleting()
                   ? t("distribution.delete.deleting")
                   : t("common.actions.delete")}
               </span>
@@ -1049,7 +1015,7 @@ export const DistributionDetail: Component<DistributionDetailProps> = (
         distributionId={props.distributionId}
         distributionName={distribution()?.name || ""}
         onBuildStarted={(buildId) => {
-          showNotification("success", t("build.startDialog.success"));
+          dv.showNotification("success", t("build.startDialog.success"));
           props.onNavigateToBuild?.(buildId);
         }}
       />

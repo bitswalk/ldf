@@ -116,24 +116,20 @@ func runDistributionList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No distributions found.")
+		if resp.Count == 0 {
+			output.PrintMessage("No distributions found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Distributions))
+		for i, d := range resp.Distributions {
+			rows[i] = []string{d.ID, d.Name, d.Version, d.Status, d.Visibility}
+		}
+		output.PrintTable([]string{"ID", "NAME", "VERSION", "STATUS", "VISIBILITY"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Distributions))
-	for i, d := range resp.Distributions {
-		rows[i] = []string{d.ID, d.Name, d.Version, d.Status, d.Visibility}
-	}
-	output.PrintTable([]string{"ID", "NAME", "VERSION", "STATUS", "VISIBILITY"}, rows)
-	return nil
+	})
 }
 
 func runDistributionGet(cmd *cobra.Command, args []string) error {
@@ -145,27 +141,23 @@ func runDistributionGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", resp.ID},
-			{"Name", resp.Name},
-			{"Version", resp.Version},
-			{"Status", resp.Status},
-			{"Visibility", resp.Visibility},
-			{"Source URL", resp.SourceURL},
-			{"Created", resp.CreatedAt},
-			{"Updated", resp.UpdatedAt},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", resp.ID},
+				{"Name", resp.Name},
+				{"Version", resp.Version},
+				{"Status", resp.Status},
+				{"Visibility", resp.Visibility},
+				{"Source URL", resp.SourceURL},
+				{"Created", resp.CreatedAt},
+				{"Updated", resp.UpdatedAt},
+			},
+		)
+		return nil
+	})
 }
 
 func runDistributionCreate(cmd *cobra.Command, args []string) error {
@@ -200,15 +192,11 @@ func runDistributionCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Distribution %q created (ID: %s)", resp.Name, resp.ID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Distribution %q created (ID: %s)", resp.Name, resp.ID))
+		return nil
+	})
 }
 
 func runDistributionUpdate(cmd *cobra.Command, args []string) error {
@@ -216,30 +204,12 @@ func runDistributionUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateDistributionRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("version") {
-		v, _ := cmd.Flags().GetString("version")
-		req.Version = v
-	}
-	if cmd.Flags().Changed("status") {
-		v, _ := cmd.Flags().GetString("status")
-		req.Status = v
-	}
-	if cmd.Flags().Changed("visibility") {
-		v, _ := cmd.Flags().GetString("visibility")
-		req.Visibility = v
-	}
-	if cmd.Flags().Changed("source-url") {
-		v, _ := cmd.Flags().GetString("source-url")
-		req.SourceURL = v
-	}
-	if cmd.Flags().Changed("checksum") {
-		v, _ := cmd.Flags().GetString("checksum")
-		req.Checksum = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "version", &req.Version)
+	setStringIfChanged(cmd, "status", &req.Status)
+	setStringIfChanged(cmd, "visibility", &req.Visibility)
+	setStringIfChanged(cmd, "source-url", &req.SourceURL)
+	setStringIfChanged(cmd, "checksum", &req.Checksum)
 	if cmd.Flags().Changed("toolchain") {
 		v, _ := cmd.Flags().GetString("toolchain")
 		req.Config = map[string]interface{}{
@@ -254,15 +224,11 @@ func runDistributionUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Distribution %q updated.", resp.Name))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Distribution %q updated.", resp.Name))
+		return nil
+	})
 }
 
 func runDistributionDelete(cmd *cobra.Command, args []string) error {
@@ -273,15 +239,11 @@ func runDistributionDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Distribution deleted", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Distribution deleted", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Distribution deleted", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Distribution %s deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Distribution %s deleted.", args[0]))
+		return nil
+	})
 }
 
 func runDistributionLogs(cmd *cobra.Command, args []string) error {
@@ -305,22 +267,18 @@ func runDistributionStats(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Total distributions: %d", resp.Total))
-	if len(resp.Stats) > 0 {
-		rows := make([][]string, 0, len(resp.Stats))
-		for status, count := range resp.Stats {
-			rows = append(rows, []string{status, fmt.Sprintf("%d", count)})
+		output.PrintMessage(fmt.Sprintf("Total distributions: %d", resp.Total))
+		if len(resp.Stats) > 0 {
+			rows := make([][]string, 0, len(resp.Stats))
+			for status, count := range resp.Stats {
+				rows = append(rows, []string{status, fmt.Sprintf("%d", count)})
+			}
+			output.PrintTable([]string{"STATUS", "COUNT"}, rows)
 		}
-		output.PrintTable([]string{"STATUS", "COUNT"}, rows)
-	}
-	return nil
+		return nil
+	})
 }
 
 func runDistributionDeletionPreview(cmd *cobra.Command, args []string) error {

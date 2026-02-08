@@ -30,11 +30,7 @@ func NewMirrorHandler(mirrorRepo *db.MirrorConfigRepository) *MirrorHandler {
 func (h *MirrorHandler) HandleListMirrors(c *gin.Context) {
 	mirrors, err := h.mirrorRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -66,20 +62,7 @@ func (h *MirrorHandler) HandleListMirrors(c *gin.Context) {
 func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 	var req CreateMirrorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	if req.Name == "" || req.URLPrefix == "" || req.MirrorURL == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "name, url_prefix, and mirror_url are required",
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -95,11 +78,7 @@ func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 	}
 
 	if err := h.mirrorRepo.Create(entry); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -133,39 +112,23 @@ func (h *MirrorHandler) HandleCreateMirror(c *gin.Context) {
 func (h *MirrorHandler) HandleUpdateMirror(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Mirror ID required",
-		})
+		common.BadRequest(c, "Mirror ID required")
 		return
 	}
 
 	existing, err := h.mirrorRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if existing == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Mirror not found",
-		})
+		common.NotFound(c, "Mirror not found")
 		return
 	}
 
 	var req UpdateMirrorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -186,11 +149,7 @@ func (h *MirrorHandler) HandleUpdateMirror(c *gin.Context) {
 	}
 
 	if err := h.mirrorRepo.Update(existing); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -221,20 +180,12 @@ func (h *MirrorHandler) HandleUpdateMirror(c *gin.Context) {
 func (h *MirrorHandler) HandleDeleteMirror(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Mirror ID required",
-		})
+		common.BadRequest(c, "Mirror ID required")
 		return
 	}
 
 	if err := h.mirrorRepo.Delete(id); err != nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Mirror not found",
-		})
+		common.NotFound(c, "Mirror not found")
 		return
 	}
 

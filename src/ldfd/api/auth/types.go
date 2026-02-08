@@ -35,7 +35,7 @@ type AuthRequest struct {
 
 // RefreshRequest represents the refresh token request body
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 // RoleCreateRequest represents the request body for creating a new role

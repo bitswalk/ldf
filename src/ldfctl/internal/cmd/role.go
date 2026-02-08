@@ -81,41 +81,37 @@ func runRoleList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if len(resp.Roles) == 0 {
-		output.PrintMessage("No roles found.")
+		if len(resp.Roles) == 0 {
+			output.PrintMessage("No roles found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Roles))
+		for i, r := range resp.Roles {
+			perms := ""
+			if r.Permissions.CanRead {
+				perms += "R"
+			}
+			if r.Permissions.CanWrite {
+				perms += "W"
+			}
+			if r.Permissions.CanDelete {
+				perms += "D"
+			}
+			if r.Permissions.CanAdmin {
+				perms += "A"
+			}
+			system := ""
+			if r.IsSystem {
+				system = "system"
+			}
+			rows[i] = []string{r.ID, r.Name, perms, system}
+		}
+		output.PrintTable([]string{"ID", "NAME", "PERMISSIONS", "TYPE"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Roles))
-	for i, r := range resp.Roles {
-		perms := ""
-		if r.Permissions.CanRead {
-			perms += "R"
-		}
-		if r.Permissions.CanWrite {
-			perms += "W"
-		}
-		if r.Permissions.CanDelete {
-			perms += "D"
-		}
-		if r.Permissions.CanAdmin {
-			perms += "A"
-		}
-		system := ""
-		if r.IsSystem {
-			system = "system"
-		}
-		rows[i] = []string{r.ID, r.Name, perms, system}
-	}
-	output.PrintTable([]string{"ID", "NAME", "PERMISSIONS", "TYPE"}, rows)
-	return nil
+	})
 }
 
 func runRoleGet(cmd *cobra.Command, args []string) error {
@@ -127,28 +123,24 @@ func runRoleGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	r := resp.Role
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", r.ID},
-			{"Name", r.Name},
-			{"Description", r.Description},
-			{"System", strconv.FormatBool(r.IsSystem)},
-			{"Can Read", strconv.FormatBool(r.Permissions.CanRead)},
-			{"Can Write", strconv.FormatBool(r.Permissions.CanWrite)},
-			{"Can Delete", strconv.FormatBool(r.Permissions.CanDelete)},
-			{"Can Admin", strconv.FormatBool(r.Permissions.CanAdmin)},
-		},
-	)
-	return nil
+		r := resp.Role
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", r.ID},
+				{"Name", r.Name},
+				{"Description", r.Description},
+				{"System", strconv.FormatBool(r.IsSystem)},
+				{"Can Read", strconv.FormatBool(r.Permissions.CanRead)},
+				{"Can Write", strconv.FormatBool(r.Permissions.CanWrite)},
+				{"Can Delete", strconv.FormatBool(r.Permissions.CanDelete)},
+				{"Can Admin", strconv.FormatBool(r.Permissions.CanAdmin)},
+			},
+		)
+		return nil
+	})
 }
 
 func runRoleCreate(cmd *cobra.Command, args []string) error {
@@ -178,15 +170,11 @@ func runRoleCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Role %q created (ID: %s)", resp.Role.Name, resp.Role.ID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Role %q created (ID: %s)", resp.Role.Name, resp.Role.ID))
+		return nil
+	})
 }
 
 func runRoleUpdate(cmd *cobra.Command, args []string) error {
@@ -194,14 +182,8 @@ func runRoleUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateRoleRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("description") {
-		v, _ := cmd.Flags().GetString("description")
-		req.Description = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "description", &req.Description)
 
 	if cmd.Flags().Changed("can-read") || cmd.Flags().Changed("can-write") ||
 		cmd.Flags().Changed("can-delete") || cmd.Flags().Changed("can-admin") {
@@ -227,15 +209,11 @@ func runRoleUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Role %q updated.", resp.Role.Name))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Role %q updated.", resp.Role.Name))
+		return nil
+	})
 }
 
 func runRoleDelete(cmd *cobra.Command, args []string) error {
@@ -246,13 +224,9 @@ func runRoleDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Role deleted", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Role deleted", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Role deleted", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Role %s deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Role %s deleted.", args[0]))
+		return nil
+	})
 }

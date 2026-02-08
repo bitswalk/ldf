@@ -63,6 +63,20 @@ func PrintTable(headers []string, rows [][]string) {
 	w.Flush()
 }
 
+// PrintFormatted handles the json/yaml/table output format switch.
+// For "json" and "yaml" formats it serializes data directly.
+// For any other format (typically "table") it calls tableFn.
+func PrintFormatted(format string, data interface{}, tableFn func() error) error {
+	switch format {
+	case "json":
+		return PrintJSON(data)
+	case "yaml":
+		return PrintYAML(data)
+	default:
+		return tableFn()
+	}
+}
+
 // PrintMessage writes a plain message to stdout
 func PrintMessage(msg string) {
 	fmt.Println(msg)

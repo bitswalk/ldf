@@ -1,8 +1,10 @@
 import type { Component } from "solid-js";
 import { createSignal, onMount, Show, For } from "solid-js";
+import { useDetailView } from "../../composables/useDetailView";
 import { Card } from "../../components/Card";
 import { Spinner } from "../../components/Spinner";
 import { Icon } from "../../components/Icon";
+import { Notification } from "../../components/Notification";
 import { Modal } from "../../components/Modal";
 import { BoardProfileForm } from "../../components/BoardProfileForm";
 import {
@@ -14,6 +16,7 @@ import {
   type CreateBoardProfileRequest,
 } from "../../services/boardProfiles";
 import { t } from "../../services/i18n";
+import { isAdmin } from "../../utils/auth";
 
 interface UserInfo {
   id: string;
@@ -32,58 +35,39 @@ interface BoardProfileDetailProps {
 export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
   props,
 ) => {
+  const dv = useDetailView();
   const [profile, setProfile] = createSignal<BoardProfile | null>(null);
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  const [notification, setNotification] = createSignal<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [editModalOpen, setEditModalOpen] = createSignal(false);
-  const [deleteModalOpen, setDeleteModalOpen] = createSignal(false);
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [isDeleting, setIsDeleting] = createSignal(false);
   const [formError, setFormError] = createSignal<string | null>(null);
 
-  const isAdmin = () => props.user?.role === "root";
+  const admin = () => isAdmin(props.user);
 
   const fetchProfile = async () => {
-    setLoading(true);
-    setError(null);
+    dv.setLoading(true);
+    dv.setError(null);
 
     const result = await getBoardProfile(props.profileId);
 
     if (result.success) {
       setProfile(result.profile);
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
-    setLoading(false);
+    dv.setLoading(false);
   };
 
   onMount(() => {
     fetchProfile();
   });
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
-  const showNotification = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), type === "success" ? 3000 : 5000);
-  };
-
   const handleEdit = () => {
     setFormError(null);
-    setEditModalOpen(true);
+    dv.openEditModal();
   };
 
   const handleEditSubmit = async (
     data: CreateBoardProfileRequest | UpdateBoardProfileRequest,
   ) => {
-    setIsSubmitting(true);
+    dv.setIsSubmitting(true);
     setFormError(null);
 
     const result = await updateBoardProfile(
@@ -91,46 +75,46 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
       data as UpdateBoardProfileRequest,
     );
 
-    setIsSubmitting(false);
+    dv.setIsSubmitting(false);
 
     if (result.success) {
-      setEditModalOpen(false);
+      dv.closeEditModal();
       fetchProfile();
-      showNotification("success", t("boardProfiles.detail.updateSuccess"));
+      dv.showNotification("success", t("boardProfiles.detail.updateSuccess"));
     } else {
       setFormError(result.message);
     }
   };
 
   const handleEditCancel = () => {
-    setEditModalOpen(false);
+    dv.closeEditModal();
     setFormError(null);
   };
 
   const handleDeleteClick = () => {
-    setDeleteModalOpen(true);
+    dv.openDeleteModal();
   };
 
   const confirmDelete = async () => {
-    setIsDeleting(true);
-    setError(null);
+    dv.setIsDeleting(true);
+    dv.setError(null);
 
     const result = await deleteBoardProfile(props.profileId);
 
-    setIsDeleting(false);
+    dv.setIsDeleting(false);
 
     if (result.success) {
-      setDeleteModalOpen(false);
-      showNotification("success", t("boardProfiles.detail.deleteSuccess"));
+      dv.closeDeleteModal();
+      dv.showNotification("success", t("boardProfiles.detail.deleteSuccess"));
       props.onDeleted?.();
       props.onBack();
     } else {
-      setError(result.message);
+      dv.setError(result.message);
     }
   };
 
   const cancelDelete = () => {
-    setDeleteModalOpen(false);
+    dv.closeDeleteModal();
   };
 
   const config = () => profile()?.config;
@@ -179,7 +163,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
               {profile()?.name || t("boardProfiles.detail.subtitle")}
             </p>
           </div>
-          <Show when={isAdmin()}>
+          <Show when={admin()}>
             <div class="flex items-center gap-2">
               <button
                 onClick={handleEdit}
@@ -202,47 +186,32 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
         </header>
 
         {/* Notification */}
-        <Show when={notification()}>
-          <div
-            class={`p-3 rounded-md ${
-              notification()?.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
-            }`}
-          >
-            <div class="flex items-center gap-2">
-              <Icon
-                name={
-                  notification()?.type === "success"
-                    ? "check-circle"
-                    : "warning-circle"
-                }
-                size="md"
-              />
-              <span>{notification()?.message}</span>
-            </div>
-          </div>
+        <Show when={dv.notification()}>
+          <Notification
+            type={dv.notification()!.type}
+            message={dv.notification()!.message}
+          />
         </Show>
 
         {/* Error state */}
-        <Show when={error()}>
+        <Show when={dv.error()}>
           <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-md">
             <div class="flex items-center gap-2 text-red-500">
               <Icon name="warning-circle" size="md" />
-              <span>{error()}</span>
+              <span>{dv.error()}</span>
             </div>
           </div>
         </Show>
 
         {/* Loading state */}
-        <Show when={loading()}>
+        <Show when={dv.loading()}>
           <div class="flex items-center justify-center py-16">
             <Spinner size="lg" />
           </div>
         </Show>
 
         {/* Content */}
-        <Show when={!loading() && profile()}>
+        <Show when={!dv.loading() && profile()}>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Profile Details */}
             <Card
@@ -287,9 +256,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                     {t("boardProfiles.detail.system")}
                   </span>
                   <Icon
-                    name={
-                      profile()!.is_system ? "check-circle" : "x-circle"
-                    }
+                    name={profile()!.is_system ? "check-circle" : "x-circle"}
                     size="sm"
                     class={
                       profile()!.is_system
@@ -304,9 +271,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                     <span class="text-sm text-muted-foreground">
                       {t("boardProfiles.detail.owner")}
                     </span>
-                    <span class="font-mono text-xs">
-                      {profile()!.owner_id}
-                    </span>
+                    <span class="font-mono text-xs">{profile()!.owner_id}</span>
                   </div>
                 </Show>
 
@@ -316,7 +281,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                       {t("boardProfiles.detail.created")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(profile()!.created_at)}
+                      {dv.formatDate(profile()!.created_at)}
                     </span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
@@ -324,7 +289,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                       {t("boardProfiles.detail.updated")}
                     </span>
                     <span class="font-mono text-xs">
-                      {formatDate(profile()!.updated_at)}
+                      {dv.formatDate(profile()!.updated_at)}
                     </span>
                   </div>
                 </div>
@@ -346,9 +311,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                       size="xl"
                       class="mx-auto mb-2 opacity-50"
                     />
-                    <p class="text-sm">
-                      {t("boardProfiles.detail.noConfig")}
-                    </p>
+                    <p class="text-sm">{t("boardProfiles.detail.noConfig")}</p>
                   </div>
                 }
               >
@@ -365,8 +328,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
 
                 <Show
                   when={
-                    config()!.device_trees &&
-                    config()!.device_trees!.length > 0
+                    config()!.device_trees && config()!.device_trees!.length > 0
                   }
                 >
                   <div class="border-t border-border pt-4 mt-4">
@@ -378,9 +340,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                         {(dt) => (
                           <div class="text-sm font-mono bg-muted/50 p-2 rounded">
                             <p>{dt.source}</p>
-                            <Show
-                              when={dt.overlays && dt.overlays.length > 0}
-                            >
+                            <Show when={dt.overlays && dt.overlays.length > 0}>
                               <p class="text-xs text-muted-foreground mt-1">
                                 Overlays: {dt.overlays!.join(", ")}
                               </p>
@@ -425,9 +385,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                 </Show>
 
                 <Show
-                  when={
-                    config()!.firmware && config()!.firmware!.length > 0
-                  }
+                  when={config()!.firmware && config()!.firmware!.length > 0}
                 >
                   <div class="border-t border-border pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-muted-foreground mb-3">
@@ -466,9 +424,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
                       Kernel Overlay
                     </h4>
                     <div class="space-y-1">
-                      <For
-                        each={Object.entries(config()!.kernel_overlay!)}
-                      >
+                      <For each={Object.entries(config()!.kernel_overlay!)}>
                         {([key, value]) => (
                           <ConfigRow label={key} value={value} />
                         )}
@@ -484,7 +440,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
 
       {/* Edit Modal */}
       <Modal
-        isOpen={editModalOpen()}
+        isOpen={dv.editModalOpen()}
         onClose={handleEditCancel}
         title={t("boardProfiles.edit")}
       >
@@ -493,7 +449,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
             profile={profile()!}
             onSubmit={handleEditSubmit}
             onCancel={handleEditCancel}
-            submitting={isSubmitting()}
+            submitting={dv.isSubmitting()}
             error={formError()}
           />
         </Show>
@@ -501,7 +457,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={deleteModalOpen()}
+        isOpen={dv.deleteModalOpen()}
         onClose={cancelDelete}
         title={t("boardProfiles.delete.title")}
       >
@@ -516,7 +472,7 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
             <button
               type="button"
               onClick={cancelDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
               {t("common.actions.cancel")}
@@ -524,14 +480,14 @@ export const BoardProfileDetail: Component<BoardProfileDetailProps> = (
             <button
               type="button"
               onClick={confirmDelete}
-              disabled={isDeleting()}
+              disabled={dv.isDeleting()}
               class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              <Show when={isDeleting()}>
+              <Show when={dv.isDeleting()}>
                 <Spinner size="sm" />
               </Show>
               <span>
-                {isDeleting()
+                {dv.isDeleting()
                   ? t("common.status.deleting")
                   : t("common.actions.delete")}
               </span>

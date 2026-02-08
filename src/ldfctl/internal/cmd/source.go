@@ -122,28 +122,24 @@ func runSourceList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No sources found.")
-		return nil
-	}
-
-	rows := make([][]string, len(resp.Sources))
-	for i, s := range resp.Sources {
-		srcType := "user"
-		if s.IsSystem {
-			srcType = "system"
+		if resp.Count == 0 {
+			output.PrintMessage("No sources found.")
+			return nil
 		}
-		rows[i] = []string{s.ID, s.Name, s.ForgeType, srcType, s.LastSyncStatus, fmt.Sprintf("%d", s.VersionCount)}
-	}
-	output.PrintTable([]string{"ID", "NAME", "FORGE", "TYPE", "SYNC STATUS", "VERSIONS"}, rows)
-	return nil
+
+		rows := make([][]string, len(resp.Sources))
+		for i, s := range resp.Sources {
+			srcType := "user"
+			if s.IsSystem {
+				srcType = "system"
+			}
+			rows[i] = []string{s.ID, s.Name, s.ForgeType, srcType, s.LastSyncStatus, fmt.Sprintf("%d", s.VersionCount)}
+		}
+		output.PrintTable([]string{"ID", "NAME", "FORGE", "TYPE", "SYNC STATUS", "VERSIONS"}, rows)
+		return nil
+	})
 }
 
 func runSourceGet(cmd *cobra.Command, args []string) error {
@@ -155,36 +151,32 @@ func runSourceGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	isSystem := "no"
-	if resp.IsSystem {
-		isSystem = "yes"
-	}
+		isSystem := "no"
+		if resp.IsSystem {
+			isSystem = "yes"
+		}
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"ID", resp.ID},
-			{"Name", resp.Name},
-			{"URL", resp.URL},
-			{"Forge Type", resp.ForgeType},
-			{"Component ID", resp.ComponentID},
-			{"System", isSystem},
-			{"Version Filter", resp.VersionFilter},
-			{"Last Sync", resp.LastSyncAt},
-			{"Sync Status", resp.LastSyncStatus},
-			{"Versions", fmt.Sprintf("%d", resp.VersionCount)},
-			{"Created", resp.CreatedAt},
-			{"Updated", resp.UpdatedAt},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"ID", resp.ID},
+				{"Name", resp.Name},
+				{"URL", resp.URL},
+				{"Forge Type", resp.ForgeType},
+				{"Component ID", resp.ComponentID},
+				{"System", isSystem},
+				{"Version Filter", resp.VersionFilter},
+				{"Last Sync", resp.LastSyncAt},
+				{"Sync Status", resp.LastSyncStatus},
+				{"Versions", fmt.Sprintf("%d", resp.VersionCount)},
+				{"Created", resp.CreatedAt},
+				{"Updated", resp.UpdatedAt},
+			},
+		)
+		return nil
+	})
 }
 
 func runSourceCreate(cmd *cobra.Command, args []string) error {
@@ -208,15 +200,11 @@ func runSourceCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Source %q created (ID: %s)", resp.Name, resp.ID))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Source %q created (ID: %s)", resp.Name, resp.ID))
+		return nil
+	})
 }
 
 func runSourceUpdate(cmd *cobra.Command, args []string) error {
@@ -224,33 +212,20 @@ func runSourceUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateSourceRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("url") {
-		v, _ := cmd.Flags().GetString("url")
-		req.URL = v
-	}
-	if cmd.Flags().Changed("version-filter") {
-		v, _ := cmd.Flags().GetString("version-filter")
-		req.VersionFilter = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "url", &req.URL)
+	setStringIfChanged(cmd, "version-filter", &req.VersionFilter)
 
 	resp, err := c.UpdateSource(ctx, args[0], req)
 	if err != nil {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Source %q updated.", resp.Name))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Source %q updated.", resp.Name))
+		return nil
+	})
 }
 
 func runSourceDelete(cmd *cobra.Command, args []string) error {
@@ -261,15 +236,11 @@ func runSourceDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Source deleted", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Source deleted", "id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Source deleted", "id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Source %s deleted.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Source %s deleted.", args[0]))
+		return nil
+	})
 }
 
 func runSourceSync(cmd *cobra.Command, args []string) error {
@@ -281,15 +252,11 @@ func runSourceSync(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Sync triggered for source %s: %s", resp.SourceID, resp.Message))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Sync triggered for source %s: %s", resp.SourceID, resp.Message))
+		return nil
+	})
 }
 
 func runSourceVersions(cmd *cobra.Command, args []string) error {
@@ -306,24 +273,20 @@ func runSourceVersions(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	if resp.Count == 0 {
-		output.PrintMessage("No versions found.")
+		if resp.Count == 0 {
+			output.PrintMessage("No versions found.")
+			return nil
+		}
+
+		rows := make([][]string, len(resp.Versions))
+		for i, v := range resp.Versions {
+			rows[i] = []string{v.Version, v.Type, v.URL}
+		}
+		output.PrintTable([]string{"VERSION", "TYPE", "URL"}, rows)
 		return nil
-	}
-
-	rows := make([][]string, len(resp.Versions))
-	for i, v := range resp.Versions {
-		rows[i] = []string{v.Version, v.Type, v.URL}
-	}
-	output.PrintTable([]string{"VERSION", "TYPE", "URL"}, rows)
-	return nil
+	})
 }
 
 func runSourceSyncStatus(cmd *cobra.Command, args []string) error {
@@ -335,24 +298,20 @@ func runSourceSyncStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Source ID", resp.SourceID},
-			{"Status", resp.Status},
-			{"Last Sync", resp.LastSyncAt},
-			{"Versions", fmt.Sprintf("%d", resp.VersionCount)},
-			{"Error", resp.Error},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Source ID", resp.SourceID},
+				{"Status", resp.Status},
+				{"Last Sync", resp.LastSyncAt},
+				{"Versions", fmt.Sprintf("%d", resp.VersionCount)},
+				{"Error", resp.Error},
+			},
+		)
+		return nil
+	})
 }
 
 func runSourceClearVersions(cmd *cobra.Command, args []string) error {
@@ -363,13 +322,9 @@ func runSourceClearVersions(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Versions cleared", "source_id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Versions cleared", "source_id": args[0]})
-	}
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Versions cleared", "source_id": args[0]}, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Versions cleared for source %s.", args[0]))
-	return nil
+		output.PrintMessage(fmt.Sprintf("Versions cleared for source %s.", args[0]))
+		return nil
+	})
 }

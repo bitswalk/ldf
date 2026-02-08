@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"archive/tar"
@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/storage"
 	"github.com/ulikunitz/xz"
@@ -35,7 +36,7 @@ func (s *PrepareStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *PrepareStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *PrepareStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if len(sc.Components) == 0 {
 		return fmt.Errorf("no components resolved")
 	}
@@ -46,7 +47,7 @@ func (s *PrepareStage) Validate(ctx context.Context, sc *StageContext) error {
 }
 
 // Execute creates workspace directories and extracts sources
-func (s *PrepareStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *PrepareStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Creating workspace directories")
 
 	// Create workspace directory structure
@@ -280,7 +281,7 @@ func (s *PrepareStage) findSourceDir(extractDir string) (string, error) {
 }
 
 // generateBuildScripts creates shell scripts for container execution
-func (s *PrepareStage) generateBuildScripts(sc *StageContext) error {
+func (s *PrepareStage) generateBuildScripts(sc *build.StageContext) error {
 	scriptsDir := filepath.Join(sc.WorkspacePath, "scripts")
 	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
 		return err

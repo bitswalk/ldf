@@ -1,4 +1,4 @@
-package build
+package stages
 
 import (
 	"bufio"
@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bitswalk/ldf/src/ldfd/build"
+	"github.com/bitswalk/ldf/src/ldfd/build/kernel"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 )
 
@@ -29,17 +31,17 @@ func (s *CompileStage) Name() db.BuildStageName {
 }
 
 // Validate checks whether this stage can run
-func (s *CompileStage) Validate(ctx context.Context, sc *StageContext) error {
+func (s *CompileStage) Validate(ctx context.Context, sc *build.StageContext) error {
 	if len(sc.Components) == 0 {
 		return fmt.Errorf("no components resolved")
 	}
 
 	// Find kernel component
-	kernel := s.findKernelComponent(sc.Components)
-	if kernel == nil {
+	kernelComp := s.findKernelComponent(sc.Components)
+	if kernelComp == nil {
 		return fmt.Errorf("kernel component not found")
 	}
-	if kernel.LocalPath == "" {
+	if kernelComp.LocalPath == "" {
 		return fmt.Errorf("kernel source path not set - prepare stage must run first")
 	}
 
@@ -53,11 +55,11 @@ func (s *CompileStage) Validate(ctx context.Context, sc *StageContext) error {
 }
 
 // Execute compiles the kernel
-func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress ProgressFunc) error {
+func (s *CompileStage) Execute(ctx context.Context, sc *build.StageContext, progress build.ProgressFunc) error {
 	progress(0, "Starting kernel compilation")
 
-	kernel := s.findKernelComponent(sc.Components)
-	if kernel == nil {
+	kernelComp := s.findKernelComponent(sc.Components)
+	if kernelComp == nil {
 		return fmt.Errorf("kernel component not found")
 	}
 
@@ -92,14 +94,14 @@ func (s *CompileStage) Execute(ctx context.Context, sc *StageContext, progress P
 
 	// Route to appropriate execution method based on runtime type
 	if executor.RuntimeType().IsContainerRuntime() {
-		return s.executeInContainer(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
+		return s.executeInContainer(ctx, sc, kernelComp, configPath, configMode, outputDir, makeArch, crossCompile, progress)
 	}
 
-	return s.executeDirect(ctx, sc, kernel, configPath, configMode, outputDir, makeArch, crossCompile, progress)
+	return s.executeDirect(ctx, sc, kernelComp, configPath, configMode, outputDir, makeArch, crossCompile, progress)
 }
 
 // executeInContainer runs compilation inside an OCI container
-func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+func (s *CompileStage) executeInContainer(ctx context.Context, sc *build.StageContext, kernelComp *build.ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress build.ProgressFunc) error {
 	progress(10, "Preparing container build environment")
 
 	// Generate the build script based on config mode
@@ -112,14 +114,14 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 	// Generate board profile kernel overlay file if present (for container to consume)
 	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.KernelOverlay) > 0 {
 		overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
-		if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
+		if err := kernel.GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
 			return fmt.Errorf("failed to generate board kernel overlay: %w", err)
 		}
 	}
 
 	// Setup container mounts — mount the entire config dir so overlay files are accessible
-	mounts := []Mount{
-		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+	mounts := []build.Mount{
+		{Source: kernelComp.LocalPath, Target: "/src/kernel", ReadOnly: false},
 		{Source: sc.ConfigDir, Target: "/config", ReadOnly: true},
 		{Source: outputDir, Target: "/output", ReadOnly: false},
 		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
@@ -127,7 +129,7 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 
 	// Mount downloaded toolchain if available
 	if sc.ToolchainDir != "" {
-		mounts = append(mounts, Mount{
+		mounts = append(mounts, build.Mount{
 			Source:   filepath.Dir(sc.ToolchainDir), // parent of bin/
 			Target:   "/opt/toolchain",
 			ReadOnly: true,
@@ -163,7 +165,7 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 
 	// Build environment variables from toolchain config
 	toolchain := db.ResolveToolchain(&sc.Config.Core)
-	envVars := ToolchainEnvVars(toolchain, crossCompile)
+	envVars := build.ToolchainEnvVars(toolchain, crossCompile)
 	envVars["ARCH"] = makeArch
 	envVars["NPROC"] = "0" // 0 means auto-detect
 	if _, ok := envVars["CROSS_COMPILE"]; !ok && crossCompile != "" {
@@ -175,7 +177,7 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 		envVars["TOOLCHAIN_PATH"] = "/opt/toolchain/bin"
 	}
 
-	opts := ContainerRunOpts{
+	opts := build.ContainerRunOpts{
 		Image:    containerImage,
 		Mounts:   mounts,
 		WorkDir:  "/src/kernel",
@@ -201,7 +203,7 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 	// Compile device trees if board profile specifies them
 	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.DeviceTrees) > 0 {
 		progress(92, "Compiling device tree blobs")
-		if err := s.compileDeviceTrees(ctx, sc, kernel, outputDir, makeArch, crossCompile, progress); err != nil {
+		if err := s.compileDeviceTrees(ctx, sc, kernelComp, outputDir, makeArch, crossCompile, progress); err != nil {
 			return fmt.Errorf("device tree compilation failed: %w", err)
 		}
 	}
@@ -211,15 +213,15 @@ func (s *CompileStage) executeInContainer(ctx context.Context, sc *StageContext,
 }
 
 // compileDeviceTrees compiles device tree sources specified by the board profile (container mode)
-func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *build.StageContext, kernelComp *build.ResolvedComponent, outputDir, makeArch, crossCompile string, progress build.ProgressFunc) error {
 	dtbScript := s.generateDTBBuildScript(sc.BoardProfile.Config.DeviceTrees, makeArch, crossCompile)
 	dtbScriptPath := filepath.Join(sc.WorkspacePath, "scripts", "compile-dtbs.sh")
 	if err := os.WriteFile(dtbScriptPath, []byte(dtbScript), 0755); err != nil {
 		return fmt.Errorf("failed to write DTB build script: %w", err)
 	}
 
-	mounts := []Mount{
-		{Source: kernel.LocalPath, Target: "/src/kernel", ReadOnly: false},
+	mounts := []build.Mount{
+		{Source: kernelComp.LocalPath, Target: "/src/kernel", ReadOnly: false},
 		{Source: outputDir, Target: "/output", ReadOnly: false},
 		{Source: filepath.Join(sc.WorkspacePath, "scripts"), Target: "/scripts", ReadOnly: true},
 	}
@@ -241,13 +243,13 @@ func (s *CompileStage) compileDeviceTrees(ctx context.Context, sc *StageContext,
 
 	// Build DTB env vars from toolchain config
 	dtbToolchain := db.ResolveToolchain(&sc.Config.Core)
-	dtbEnv := ToolchainEnvVars(dtbToolchain, crossCompile)
+	dtbEnv := build.ToolchainEnvVars(dtbToolchain, crossCompile)
 	dtbEnv["ARCH"] = makeArch
 	if _, ok := dtbEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
 		dtbEnv["CROSS_COMPILE"] = crossCompile
 	}
 
-	opts := ContainerRunOpts{
+	opts := build.ContainerRunOpts{
 		Image:    dtbContainerImage,
 		Mounts:   mounts,
 		WorkDir:  "/src/kernel",
@@ -312,15 +314,15 @@ ls -la /output/boot/dtbs/
 
 // executeDirect runs kernel compilation directly on the host using sequential
 // executor.Run calls with real paths. No bash script generation needed.
-func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress ProgressFunc) error {
+func (s *CompileStage) executeDirect(ctx context.Context, sc *build.StageContext, kernelComp *build.ResolvedComponent, configPath, configMode, outputDir, makeArch, crossCompile string, progress build.ProgressFunc) error {
 	progress(10, "Preparing direct build environment")
 
-	kernelDir := kernel.LocalPath
+	kernelDir := kernelComp.LocalPath
 	nproc := fmt.Sprintf("%d", runtime.NumCPU())
 
 	// Build environment variables from toolchain config
 	toolchain := db.ResolveToolchain(&sc.Config.Core)
-	makeEnv := ToolchainEnvVars(toolchain, crossCompile)
+	makeEnv := build.ToolchainEnvVars(toolchain, crossCompile)
 	makeEnv["ARCH"] = makeArch
 	if _, ok := makeEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
 		makeEnv["CROSS_COMPILE"] = crossCompile
@@ -350,7 +352,7 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 	// Helper to run a make command in the kernel source directory
 	runMake := func(args ...string) error {
 		cmd := append([]string{"make"}, args...)
-		return sc.Executor.Run(ctx, ContainerRunOpts{
+		return sc.Executor.Run(ctx, build.ContainerRunOpts{
 			WorkDir: kernelDir,
 			Env:     makeEnv,
 			Command: cmd,
@@ -372,7 +374,7 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 		}
 	} else {
 		// Fragment (defconfig or options): run defconfig then merge fragment on top
-		defconfigName := GetDefconfigName(sc.BoardProfile, sc.TargetArch)
+		defconfigName := kernel.GetDefconfigName(sc.BoardProfile, sc.TargetArch)
 		defconfigTarget := defconfigName
 		if defconfigName != "defconfig" {
 			defconfigTarget = defconfigName + "_defconfig"
@@ -392,7 +394,7 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 				"board", sc.BoardProfile.Name,
 				"options", len(sc.BoardProfile.Config.KernelOverlay))
 			overlayPath := filepath.Join(sc.ConfigDir, ".config.board-overlay")
-			if err := GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
+			if err := kernel.GenerateConfigFragment(sc.BoardProfile.Config.KernelOverlay, overlayPath); err != nil {
 				return fmt.Errorf("failed to generate board kernel overlay: %w", err)
 			}
 			if err := s.applyKconfigOptions(kernelDir, overlayPath); err != nil {
@@ -470,7 +472,7 @@ func (s *CompileStage) executeDirect(ctx context.Context, sc *StageContext, kern
 	// Compile device trees if board profile specifies them
 	if sc.BoardProfile != nil && len(sc.BoardProfile.Config.DeviceTrees) > 0 {
 		progress(92, "Compiling device tree blobs")
-		if err := s.compileDeviceTreesDirect(ctx, sc, kernel, outputDir, makeArch, crossCompile, nproc, progress); err != nil {
+		if err := s.compileDeviceTreesDirect(ctx, sc, kernelComp, outputDir, makeArch, crossCompile, nproc, progress); err != nil {
 			return fmt.Errorf("device tree compilation failed: %w", err)
 		}
 	}
@@ -586,8 +588,8 @@ func (s *CompileStage) copyCustomConfig(kernelDir, configPath string) error {
 
 // compileDeviceTreesDirect compiles device trees directly on the host
 // using sequential executor.Run calls.
-func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageContext, kernel *ResolvedComponent, outputDir, makeArch, crossCompile, nproc string, progress ProgressFunc) error {
-	kernelDir := kernel.LocalPath
+func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *build.StageContext, kernelComp *build.ResolvedComponent, outputDir, makeArch, crossCompile, nproc string, progress build.ProgressFunc) error {
+	kernelDir := kernelComp.LocalPath
 	dtbsDir := filepath.Join(outputDir, "boot", "dtbs")
 
 	if err := os.MkdirAll(dtbsDir, 0755); err != nil {
@@ -606,7 +608,7 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 
 	// Build DTB env vars from toolchain config
 	dtbDirectToolchain := db.ResolveToolchain(&sc.Config.Core)
-	dtbDirectEnv := ToolchainEnvVars(dtbDirectToolchain, crossCompile)
+	dtbDirectEnv := build.ToolchainEnvVars(dtbDirectToolchain, crossCompile)
 	dtbDirectEnv["ARCH"] = makeArch
 	if _, ok := dtbDirectEnv["CROSS_COMPILE"]; !ok && crossCompile != "" {
 		dtbDirectEnv["CROSS_COMPILE"] = crossCompile
@@ -618,7 +620,7 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 		progress(94, fmt.Sprintf("Building DTB %d/%d: %s", i+1, len(sc.BoardProfile.Config.DeviceTrees), dt.Source))
 
 		// Build the DTB
-		if err := sc.Executor.Run(ctx, ContainerRunOpts{
+		if err := sc.Executor.Run(ctx, build.ContainerRunOpts{
 			WorkDir: kernelDir,
 			Env:     dtbDirectEnv,
 			Command: []string{"make", archFlag, crossFlag, dtbTarget},
@@ -643,7 +645,7 @@ func (s *CompileStage) compileDeviceTreesDirect(ctx context.Context, sc *StageCo
 			for _, overlay := range dt.Overlays {
 				dtboTarget := strings.TrimSuffix(overlay, ".dts") + ".dtbo"
 
-				if err := sc.Executor.Run(ctx, ContainerRunOpts{
+				if err := sc.Executor.Run(ctx, build.ContainerRunOpts{
 					WorkDir: kernelDir,
 					Env:     dtbDirectEnv,
 					Command: []string{"make", archFlag, crossFlag, dtboTarget},
@@ -841,11 +843,11 @@ func (s *CompileStage) parseConfigMode(configPath string) (string, error) {
 
 // getCrossCompilePrefix returns the cross-compile prefix from BuildEnvironment,
 // falling back to toolchain registry lookup if BuildEnv is not populated.
-func (s *CompileStage) getCrossCompilePrefix(sc *StageContext) string {
+func (s *CompileStage) getCrossCompilePrefix(sc *build.StageContext) string {
 	if sc.BuildEnv != nil {
 		return sc.BuildEnv.Toolchain.CrossCompilePrefix
 	}
-	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	tc, err := build.GetToolchain(build.DetectHostArch(), sc.TargetArch)
 	if err != nil {
 		return ""
 	}
@@ -854,11 +856,11 @@ func (s *CompileStage) getCrossCompilePrefix(sc *StageContext) string {
 
 // getMakeArch returns the ARCH value for make from BuildEnvironment,
 // falling back to toolchain registry lookup if BuildEnv is not populated.
-func (s *CompileStage) getMakeArch(sc *StageContext) string {
+func (s *CompileStage) getMakeArch(sc *build.StageContext) string {
 	if sc.BuildEnv != nil {
 		return sc.BuildEnv.Toolchain.MakeArch
 	}
-	tc, err := GetToolchain(DetectHostArch(), sc.TargetArch)
+	tc, err := build.GetToolchain(build.DetectHostArch(), sc.TargetArch)
 	if err != nil {
 		return "x86"
 	}
@@ -866,7 +868,7 @@ func (s *CompileStage) getMakeArch(sc *StageContext) string {
 }
 
 // findKernelComponent finds the kernel component in the resolved list
-func (s *CompileStage) findKernelComponent(components []ResolvedComponent) *ResolvedComponent {
+func (s *CompileStage) findKernelComponent(components []build.ResolvedComponent) *build.ResolvedComponent {
 	for i := range components {
 		if strings.Contains(strings.ToLower(components[i].Component.Name), "kernel") {
 			return &components[i]
@@ -877,7 +879,7 @@ func (s *CompileStage) findKernelComponent(components []ResolvedComponent) *Reso
 
 // buildProgressWriter parses build output and updates progress
 type buildProgressWriter struct {
-	progress    ProgressFunc
+	progress    build.ProgressFunc
 	basePercent int
 	maxPercent  int
 	logFile     *os.File

@@ -59,20 +59,16 @@ func runForgeDetect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintTable(
-		[]string{"FIELD", "VALUE"},
-		[][]string{
-			{"Forge Type", resp.ForgeType},
-		},
-	)
-	return nil
+		output.PrintTable(
+			[]string{"FIELD", "VALUE"},
+			[][]string{
+				{"Forge Type", resp.ForgeType},
+			},
+		)
+		return nil
+	})
 }
 
 func runForgePreviewFilter(cmd *cobra.Command, args []string) error {
@@ -93,27 +89,23 @@ func runForgePreviewFilter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	output.PrintMessage(fmt.Sprintf("Filter: %s (source: %s)", resp.AppliedFilter, resp.FilterSource))
-	output.PrintMessage(fmt.Sprintf("Total: %d, Included: %d, Excluded: %d\n",
-		resp.TotalVersions, resp.IncludedVersions, resp.ExcludedVersions))
+		output.PrintMessage(fmt.Sprintf("Filter: %s (source: %s)", resp.AppliedFilter, resp.FilterSource))
+		output.PrintMessage(fmt.Sprintf("Total: %d, Included: %d, Excluded: %d\n",
+			resp.TotalVersions, resp.IncludedVersions, resp.ExcludedVersions))
 
-	rows := make([][]string, len(resp.Versions))
-	for i, v := range resp.Versions {
-		included := "yes"
-		if !v.Included {
-			included = "no"
+		rows := make([][]string, len(resp.Versions))
+		for i, v := range resp.Versions {
+			included := "yes"
+			if !v.Included {
+				included = "no"
+			}
+			rows[i] = []string{v.Version, included, v.Reason}
 		}
-		rows[i] = []string{v.Version, included, v.Reason}
-	}
-	output.PrintTable([]string{"VERSION", "INCLUDED", "REASON"}, rows)
-	return nil
+		output.PrintTable([]string{"VERSION", "INCLUDED", "REASON"}, rows)
+		return nil
+	})
 }
 
 func runForgeTypes(cmd *cobra.Command, args []string) error {
@@ -137,17 +129,13 @@ func runForgeFilters(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	}
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 
-	rows := make([][]string, 0, len(resp.Filters))
-	for name, pattern := range resp.Filters {
-		rows = append(rows, []string{name, pattern})
-	}
-	output.PrintTable([]string{"NAME", "PATTERN"}, rows)
-	return nil
+		rows := make([][]string, 0, len(resp.Filters))
+		for name, pattern := range resp.Filters {
+			rows = append(rows, []string{name, pattern})
+		}
+		output.PrintTable([]string{"NAME", "PATTERN"}, rows)
+		return nil
+	})
 }

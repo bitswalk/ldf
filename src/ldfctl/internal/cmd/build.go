@@ -98,12 +98,7 @@ func runBuildStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	default:
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 		output.PrintMessage(fmt.Sprintf("Build %s started for distribution %s.", resp.ID, args[0]))
 		output.PrintTable(
 			[]string{"FIELD", "VALUE"},
@@ -115,7 +110,7 @@ func runBuildStart(cmd *cobra.Command, args []string) error {
 			},
 		)
 		return nil
-	}
+	})
 }
 
 func runBuildGet(cmd *cobra.Command, args []string) error {
@@ -127,12 +122,7 @@ func runBuildGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	default:
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 		output.PrintTable(
 			[]string{"FIELD", "VALUE"},
 			[][]string{
@@ -165,7 +155,7 @@ func runBuildGet(cmd *cobra.Command, args []string) error {
 			output.PrintTable([]string{"STAGE", "STATUS", "PROGRESS", "DURATION", "ERROR"}, rows)
 		}
 		return nil
-	}
+	})
 }
 
 func runBuildList(cmd *cobra.Command, args []string) error {
@@ -181,12 +171,7 @@ func runBuildList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	default:
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 		if resp.Count == 0 {
 			output.PrintMessage("No builds found.")
 			return nil
@@ -198,7 +183,7 @@ func runBuildList(cmd *cobra.Command, args []string) error {
 		}
 		output.PrintTable([]string{"ID", "STATUS", "STAGE", "PROGRESS", "ARCH", "FORMAT"}, rows)
 		return nil
-	}
+	})
 }
 
 func runBuildLogs(cmd *cobra.Command, args []string) error {
@@ -210,12 +195,7 @@ func runBuildLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	default:
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 		if resp.Count == 0 {
 			output.PrintMessage("No build logs found.")
 			return nil
@@ -227,7 +207,7 @@ func runBuildLogs(cmd *cobra.Command, args []string) error {
 		}
 		output.PrintTable([]string{"TIME", "STAGE", "LEVEL", "MESSAGE"}, rows)
 		return nil
-	}
+	})
 }
 
 func runBuildCancel(cmd *cobra.Command, args []string) error {
@@ -238,15 +218,10 @@ func runBuildCancel(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Build cancelled", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Build cancelled", "id": args[0]})
-	default:
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Build cancelled", "id": args[0]}, func() error {
 		output.PrintMessage(fmt.Sprintf("Build %s cancelled.", args[0]))
 		return nil
-	}
+	})
 }
 
 func runBuildRetry(cmd *cobra.Command, args []string) error {
@@ -257,15 +232,10 @@ func runBuildRetry(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(map[string]string{"message": "Build retry started", "id": args[0]})
-	case "yaml":
-		return output.PrintYAML(map[string]string{"message": "Build retry started", "id": args[0]})
-	default:
+	return output.PrintFormatted(getOutputFormat(), map[string]string{"message": "Build retry started", "id": args[0]}, func() error {
 		output.PrintMessage(fmt.Sprintf("Build %s retry started.", args[0]))
 		return nil
-	}
+	})
 }
 
 func runBuildActive(cmd *cobra.Command, args []string) error {
@@ -277,12 +247,7 @@ func runBuildActive(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch getOutputFormat() {
-	case "json":
-		return output.PrintJSON(resp)
-	case "yaml":
-		return output.PrintYAML(resp)
-	default:
+	return output.PrintFormatted(getOutputFormat(), resp, func() error {
 		if resp.Count == 0 {
 			output.PrintMessage("No active builds.")
 			return nil
@@ -294,5 +259,5 @@ func runBuildActive(cmd *cobra.Command, args []string) error {
 		}
 		output.PrintTable([]string{"ID", "DISTRIBUTION", "STATUS", "STAGE", "PROGRESS", "ARCH"}, rows)
 		return nil
-	}
+	})
 }

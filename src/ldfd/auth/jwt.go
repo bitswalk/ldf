@@ -14,13 +14,20 @@ import (
 
 var log = logs.NewDefault()
 
+const (
+	DefaultIssuer               = "ldfd"
+	DefaultTokenDuration        = 15 * time.Minute
+	DefaultRefreshTokenDuration = 7 * 24 * time.Hour
+	DefaultMaxRefreshTokens     = 5
+)
+
 // DefaultJWTConfig returns default JWT configuration
 func DefaultJWTConfig() JWTConfig {
 	return JWTConfig{
-		Issuer:               "ldfd",
-		TokenDuration:        15 * time.Minute,   // Short-lived access tokens
-		RefreshTokenDuration: 7 * 24 * time.Hour, // 7 days for refresh tokens
-		MaxRefreshTokens:     5,                  // Max active refresh tokens per user
+		Issuer:               DefaultIssuer,
+		TokenDuration:        DefaultTokenDuration,
+		RefreshTokenDuration: DefaultRefreshTokenDuration,
+		MaxRefreshTokens:     DefaultMaxRefreshTokens,
 	}
 }
 
@@ -48,7 +55,7 @@ func NewJWTService(cfg JWTConfig, userManager *UserManager, settings SettingsSto
 
 	maxRefresh := cfg.MaxRefreshTokens
 	if maxRefresh <= 0 {
-		maxRefresh = 5
+		maxRefresh = DefaultMaxRefreshTokens
 	}
 
 	return &JWTService{
@@ -159,7 +166,7 @@ func (s *JWTService) RefreshAccessToken(refreshToken string) (*TokenPair, *User,
 	// Clean up excess refresh tokens for this user
 	maxTokens := s.maxRefreshTokens
 	if maxTokens <= 0 {
-		maxTokens = 5
+		maxTokens = DefaultMaxRefreshTokens
 	}
 	if err := s.userManager.CleanupExcessTokens(user.ID, maxTokens); err != nil {
 		log.Warn("Failed to cleanup excess refresh tokens", "user_id", user.ID, "error", err)

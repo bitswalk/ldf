@@ -27,11 +27,7 @@ func NewHandler(cfg Config) *Handler {
 func (h *Handler) HandleList(c *gin.Context) {
 	components, err := h.componentRepo.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -59,30 +55,18 @@ func (h *Handler) HandleList(c *gin.Context) {
 func (h *Handler) HandleGet(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Component ID required",
-		})
+		common.BadRequest(c, "Component ID required")
 		return
 	}
 
 	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	if component == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Component not found",
-		})
+		common.NotFound(c, "Component not found")
 		return
 	}
 
@@ -102,21 +86,13 @@ func (h *Handler) HandleGet(c *gin.Context) {
 func (h *Handler) HandleListByCategory(c *gin.Context) {
 	category := c.Param("category")
 	if category == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Category required",
-		})
+		common.BadRequest(c, "Category required")
 		return
 	}
 
 	components, err := h.componentRepo.GetByCategory(category)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -141,11 +117,7 @@ func (h *Handler) HandleListByCategory(c *gin.Context) {
 func (h *Handler) HandleGetCategories(c *gin.Context) {
 	categories, err := h.componentRepo.GetCategories()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -174,11 +146,7 @@ func (h *Handler) HandleGetCategories(c *gin.Context) {
 func (h *Handler) HandleCreate(c *gin.Context) {
 	var req CreateComponentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
@@ -201,11 +169,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 	versionRule := db.VersionRule(req.DefaultVersionRule)
 	if req.DefaultVersionRule != "" {
 		if !isValidVersionRule(versionRule) {
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
-			})
+			common.BadRequest(c, "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts")
 			return
 		}
 	}
@@ -226,11 +190,7 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 	}
 
 	if err := h.componentRepo.Create(component); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -255,58 +215,34 @@ func (h *Handler) HandleCreate(c *gin.Context) {
 func (h *Handler) HandleUpdate(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Component ID required",
-		})
+		common.BadRequest(c, "Component ID required")
 		return
 	}
 
 	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Component not found",
-		})
+		common.NotFound(c, "Component not found")
 		return
 	}
 
 	var req UpdateComponentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		common.BadRequest(c, err.Error())
 		return
 	}
 
 	if req.Name != "" && req.Name != component.Name {
 		existing, err := h.componentRepo.GetByName(req.Name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-				Error:   "Internal server error",
-				Code:    http.StatusInternalServerError,
-				Message: err.Error(),
-			})
+			common.InternalError(c, err.Error())
 			return
 		}
 		if existing != nil {
-			c.JSON(http.StatusConflict, common.ErrorResponse{
-				Error:   "Conflict",
-				Code:    http.StatusConflict,
-				Message: "A component with this name already exists",
-			})
+			common.Conflict(c, "A component with this name already exists")
 			return
 		}
 		component.Name = req.Name
@@ -344,22 +280,14 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 	if req.DefaultVersionRule != "" {
 		versionRule := db.VersionRule(req.DefaultVersionRule)
 		if !isValidVersionRule(versionRule) {
-			c.JSON(http.StatusBadRequest, common.ErrorResponse{
-				Error:   "Bad request",
-				Code:    http.StatusBadRequest,
-				Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
-			})
+			common.BadRequest(c, "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts")
 			return
 		}
 		component.DefaultVersionRule = versionRule
 	}
 
 	if err := h.componentRepo.Update(component); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -379,20 +307,12 @@ func (h *Handler) HandleUpdate(c *gin.Context) {
 func (h *Handler) HandleDelete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Component ID required",
-		})
+		common.BadRequest(c, "Component ID required")
 		return
 	}
 
 	if err := h.componentRepo.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -416,42 +336,26 @@ func (h *Handler) HandleDelete(c *gin.Context) {
 func (h *Handler) HandleGetVersions(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Component ID required",
-		})
+		common.BadRequest(c, "Component ID required")
 		return
 	}
 
 	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Component not found",
-		})
+		common.NotFound(c, "Component not found")
 		return
 	}
 
-	limit, offset := common.GetPaginationParams(c, 100)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListByComponentPaginated(id, limit, offset, versionType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -482,39 +386,23 @@ func (h *Handler) HandleGetVersions(c *gin.Context) {
 func (h *Handler) HandleResolveVersion(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Component ID required",
-		})
+		common.BadRequest(c, "Component ID required")
 		return
 	}
 
 	rule := c.Query("rule")
 	if rule == "" {
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Version rule required (e.g., latest-stable, latest-lts)",
-		})
+		common.BadRequest(c, "Version rule required (e.g., latest-stable, latest-lts)")
 		return
 	}
 
 	component, err := h.componentRepo.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 	if component == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "Component not found",
-		})
+		common.NotFound(c, "Component not found")
 		return
 	}
 
@@ -532,29 +420,17 @@ func (h *Handler) HandleResolveVersion(c *gin.Context) {
 		})
 		return
 	default:
-		c.JSON(http.StatusBadRequest, common.ErrorResponse{
-			Error:   "Bad request",
-			Code:    http.StatusBadRequest,
-			Message: "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts",
-		})
+		common.BadRequest(c, "Invalid version rule. Must be one of: pinned, latest-stable, latest-lts")
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
 	if version == nil {
-		c.JSON(http.StatusNotFound, common.ErrorResponse{
-			Error:   "Not found",
-			Code:    http.StatusNotFound,
-			Message: "No version found matching the rule",
-		})
+		common.NotFound(c, "No version found matching the rule")
 		return
 	}
 
@@ -586,11 +462,7 @@ func isValidVersionRule(rule db.VersionRule) bool {
 func (h *Handler) HandleListKernelModules(c *gin.Context) {
 	components, err := h.componentRepo.ListKernelModules()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -615,11 +487,7 @@ func (h *Handler) HandleListKernelModules(c *gin.Context) {
 func (h *Handler) HandleListUserspace(c *gin.Context) {
 	components, err := h.componentRepo.ListUserspace()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
@@ -644,11 +512,7 @@ func (h *Handler) HandleListUserspace(c *gin.Context) {
 func (h *Handler) HandleListHybrid(c *gin.Context) {
 	components, err := h.componentRepo.ListHybrid()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.ErrorResponse{
-			Error:   "Internal server error",
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		common.InternalError(c, err.Error())
 		return
 	}
 
