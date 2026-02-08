@@ -174,6 +174,8 @@ export const ComponentDetails: SolidComponent<ComponentDetailsProps> = (
       desktop: "bg-pink-500/10 text-pink-500",
       container: "bg-sky-500/10 text-sky-500",
       virtualization: "bg-fuchsia-500/10 text-fuchsia-500",
+      toolchain: "bg-lime-500/10 text-lime-500",
+      filesystem: "bg-stone-500/10 text-stone-500",
     };
     return colorMap[category] || "bg-muted text-muted-foreground";
   };

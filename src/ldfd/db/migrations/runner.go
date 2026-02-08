@@ -64,6 +64,7 @@ func (r *Runner) registerAll() {
 		migration016DownloadCache(),
 		migration017ToolchainProfiles(),
 		migration018ToolchainComponents(),
+		migration019ToolchainComponentsCross(),
 	}
 
 	// Sort by version to ensure correct order
