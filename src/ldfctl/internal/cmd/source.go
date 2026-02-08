@@ -212,18 +212,9 @@ func runSourceUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateSourceRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("url") {
-		v, _ := cmd.Flags().GetString("url")
-		req.URL = v
-	}
-	if cmd.Flags().Changed("version-filter") {
-		v, _ := cmd.Flags().GetString("version-filter")
-		req.VersionFilter = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "url", &req.URL)
+	setStringIfChanged(cmd, "version-filter", &req.VersionFilter)
 
 	resp, err := c.UpdateSource(ctx, args[0], req)
 	if err != nil {

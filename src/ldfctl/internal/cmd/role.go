@@ -182,14 +182,8 @@ func runRoleUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	req := &client.UpdateRoleRequest{}
-	if cmd.Flags().Changed("name") {
-		v, _ := cmd.Flags().GetString("name")
-		req.Name = v
-	}
-	if cmd.Flags().Changed("description") {
-		v, _ := cmd.Flags().GetString("description")
-		req.Description = v
-	}
+	setStringIfChanged(cmd, "name", &req.Name)
+	setStringIfChanged(cmd, "description", &req.Description)
 
 	if cmd.Flags().Changed("can-read") || cmd.Flags().Changed("can-write") ||
 		cmd.Flags().Changed("can-delete") || cmd.Flags().Changed("can-admin") {
