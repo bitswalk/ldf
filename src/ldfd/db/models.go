@@ -464,3 +464,24 @@ type BoardFirmware struct {
 	Path        string `json:"path,omitempty"`         // install path in rootfs
 	Description string `json:"description,omitempty"`
 }
+
+// ToolchainProfile represents a reusable build toolchain configuration
+type ToolchainProfile struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"` // unique slug: "gcc-native", "llvm-cross-aarch64"
+	DisplayName string          `json:"display_name"`
+	Description string          `json:"description,omitempty"`
+	Type        string          `json:"type"` // "gcc" or "llvm"
+	Config      ToolchainConfig `json:"config"`
+	IsSystem    bool            `json:"is_system"`
+	OwnerID     string          `json:"owner_id,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// ToolchainConfig holds toolchain-specific build parameters
+type ToolchainConfig struct {
+	CrossCompilePrefix string            `json:"cross_compile_prefix,omitempty"` // e.g. "aarch64-linux-gnu-"
+	ExtraEnv           map[string]string `json:"extra_env,omitempty"`            // additional env vars for make
+	CompilerFlags      string            `json:"compiler_flags,omitempty"`       // extra CFLAGS/LDFLAGS
+}

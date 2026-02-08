@@ -565,6 +565,22 @@ func (d *Database) LoadFromDisk() error {
 		}
 	}
 
+	// Copy toolchain_profiles table (delete seeded profiles first, load all from disk)
+	if d.tableExistsInDiskDB("toolchain_profiles") {
+		if _, err := d.db.Exec(`DELETE FROM toolchain_profiles`); err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles delete: %v", err))
+		}
+		result, err := d.db.Exec(`
+			INSERT INTO toolchain_profiles
+			SELECT * FROM disk_db.toolchain_profiles
+		`)
+		if err != nil {
+			loadErrors = append(loadErrors, fmt.Sprintf("toolchain_profiles: %v", err))
+		} else if rows, _ := result.RowsAffected(); rows > 0 {
+			loadedTables = append(loadedTables, fmt.Sprintf("toolchain_profiles(%d)", rows))
+		}
+	}
+
 	// Copy build_jobs table
 	if d.tableExistsInDiskDB("build_jobs") {
 		result, err := d.db.Exec(`

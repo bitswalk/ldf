@@ -17,6 +17,7 @@ import (
 	"github.com/bitswalk/ldf/src/ldfd/api/langpacks"
 	"github.com/bitswalk/ldf/src/ldfd/api/settings"
 	"github.com/bitswalk/ldf/src/ldfd/api/sources"
+	"github.com/bitswalk/ldf/src/ldfd/api/toolchains"
 	"github.com/bitswalk/ldf/src/ldfd/build"
 	"github.com/bitswalk/ldf/src/ldfd/db"
 	"github.com/bitswalk/ldf/src/ldfd/security"
@@ -106,6 +107,10 @@ func New(cfg Config) *API {
 
 		BoardProfiles: boardprofiles.NewHandler(boardprofiles.Config{
 			BoardProfileRepo: cfg.BoardProfileRepo,
+		}),
+
+		ToolchainProfiles: toolchains.NewHandler(toolchains.Config{
+			ToolchainProfileRepo: cfg.ToolchainProfileRepo,
 		}),
 
 		jwtService:    cfg.JWTService,
