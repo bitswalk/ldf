@@ -350,7 +350,7 @@ func (h *Handler) HandleGetVersions(c *gin.Context) {
 		return
 	}
 
-	limit, offset := common.GetPaginationParams(c, 100)
+	limit, offset := common.GetPaginationParams(c, common.MaxPaginationLimit)
 	versionType := c.Query("version_type")
 
 	versions, total, err := h.sourceVersionRepo.ListByComponentPaginated(id, limit, offset, versionType)
