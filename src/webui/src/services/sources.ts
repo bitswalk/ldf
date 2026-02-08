@@ -1,6 +1,6 @@
+import { authFetch, getApiUrl } from "./api";
 // Sources service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storage";
 
 export interface Source {
   id: string;
@@ -117,25 +117,6 @@ export type DeleteResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // List all sources (system + user sources) for the current user
 export async function listSources(): Promise<ListResult> {
   const url = getApiUrl("/sources");
@@ -149,18 +130,15 @@ export async function listSources(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const sources: Source[] = data.sources || [];
       return { success: true, sources };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -196,17 +174,14 @@ export async function getSourceById(id: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const source: Source = await response.json();
+    if (result.ok) {
+      const source = result.data as any;
       return { success: true, source };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -214,7 +189,7 @@ export async function getSourceById(id: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -222,7 +197,7 @@ export async function getSourceById(id: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -260,18 +235,17 @@ export async function createSource(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const source = await response.json();
+    if (result.ok) {
+      const source = result.data as any;
       return { success: true, source };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -279,7 +253,7 @@ export async function createSource(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -287,7 +261,7 @@ export async function createSource(
       };
     }
 
-    if (response.status === 400) {
+    if (result.status === 400) {
       return {
         success: false,
         error: "invalid_request",
@@ -295,7 +269,7 @@ export async function createSource(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -334,18 +308,17 @@ export async function updateSource(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "PUT",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const source = await response.json();
+    if (result.ok) {
+      const source = result.data as any;
       return { success: true, source };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -353,7 +326,7 @@ export async function updateSource(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -361,7 +334,7 @@ export async function updateSource(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -369,7 +342,7 @@ export async function updateSource(
       };
     }
 
-    if (response.status === 400) {
+    if (result.status === 400) {
       return {
         success: false,
         error: "invalid_request",
@@ -405,16 +378,13 @@ export async function deleteSource(id: string): Promise<DeleteResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -422,7 +392,7 @@ export async function deleteSource(id: string): Promise<DeleteResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -430,7 +400,7 @@ export async function deleteSource(id: string): Promise<DeleteResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",

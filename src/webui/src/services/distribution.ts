@@ -1,6 +1,7 @@
+import { authFetch, getApiUrl } from "./api";
 // Distribution service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storage";
+import { getAuthToken } from "./storage";
 
 export type DistributionStatus =
   | "pending"
@@ -193,25 +194,6 @@ export type UploadKernelConfigResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 export async function listDistributions(): Promise<ListResult> {
   const url = getApiUrl("/distributions");
 
@@ -224,19 +206,16 @@ export async function listDistributions(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       // API returns { count, distributions } wrapper
       const distributions: Distribution[] = data.distributions || [];
       return { success: true, distributions };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -402,17 +381,14 @@ export async function getDistribution(id: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const distribution: Distribution = await response.json();
+    if (result.ok) {
+      const distribution = result.data as any;
       return { success: true, distribution };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -420,7 +396,7 @@ export async function getDistribution(id: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -455,16 +431,13 @@ export async function deleteDistribution(id: string): Promise<DeleteResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -472,7 +445,7 @@ export async function deleteDistribution(id: string): Promise<DeleteResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -547,17 +520,14 @@ export async function getDeletionPreview(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const preview: DeletionPreview = await response.json();
+    if (result.ok) {
+      const preview = result.data as any;
       return { success: true, preview };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -565,7 +535,7 @@ export async function getDeletionPreview(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -573,7 +543,7 @@ export async function getDeletionPreview(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -608,17 +578,14 @@ export async function getDistributionStats(): Promise<StatsResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const stats: DistributionStats = await response.json();
+    if (result.ok) {
+      const stats = result.data as any;
       return { success: true, stats };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -655,18 +622,17 @@ export async function createDistribution(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const distribution: Distribution = await response.json();
+    if (result.ok) {
+      const distribution = result.data as any;
       return { success: true, distribution };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -674,7 +640,7 @@ export async function createDistribution(
       };
     }
 
-    if (response.status === 400) {
+    if (result.status === 400) {
       return {
         success: false,
         error: "invalid_request",
@@ -682,7 +648,7 @@ export async function createDistribution(
       };
     }
 
-    if (response.status === 409) {
+    if (result.status === 409) {
       return {
         success: false,
         error: "conflict",
@@ -720,18 +686,17 @@ export async function updateDistribution(
   }
 
   try {
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "PUT",
-      headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    if (response.ok) {
-      const distribution: Distribution = await response.json();
+    if (result.ok) {
+      const distribution = result.data as any;
       return { success: true, distribution };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -739,7 +704,7 @@ export async function updateDistribution(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -747,7 +712,7 @@ export async function updateDistribution(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -755,7 +720,7 @@ export async function updateDistribution(
       };
     }
 
-    if (response.status === 400) {
+    if (result.status === 400) {
       return {
         success: false,
         error: "invalid_request",

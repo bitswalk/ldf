@@ -1,7 +1,8 @@
+import { authFetch, getApiUrl } from "./api";
 // Artifact service for LDF server communication
 
 import { debugError } from "../lib/utils";
-import { getServerUrl, getAuthToken } from "./storage";
+import { getAuthToken } from "./storage";
 
 export interface Artifact {
   key: string;
@@ -65,25 +66,6 @@ export type GetURLResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 export async function listArtifacts(): Promise<ListResult> {
   const url = getApiUrl("/artifacts");
 
@@ -98,26 +80,23 @@ export async function listArtifacts(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data: ArtifactListResponse = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return { success: true, artifacts: data.artifacts || [] };
     }
 
     // Try to get error details from response
     let errorMessage = "";
     try {
-      const errorData = await response.json();
+      const errorData = result.data as any;
       errorMessage = errorData.message || errorData.error || "";
     } catch {
       // Response wasn't JSON
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       const msg = errorMessage || "Authentication required";
       debugError("[ArtifactService] listArtifacts: 401 -", msg);
       return {
@@ -127,7 +106,7 @@ export async function listArtifacts(): Promise<ListResult> {
       };
     }
 
-    if (response.status === 503) {
+    if (result.status === 503) {
       const msg = errorMessage || "Storage service not configured";
       debugError("[ArtifactService] listArtifacts: 503 -", msg);
       return {
@@ -137,7 +116,7 @@ export async function listArtifacts(): Promise<ListResult> {
       };
     }
 
-    if (response.status === 500) {
+    if (result.status === 500) {
       const msg = errorMessage || "Failed to reach storage backend";
       debugError("[ArtifactService] listArtifacts: 500 -", msg);
       return {
@@ -147,8 +126,8 @@ export async function listArtifacts(): Promise<ListResult> {
       };
     }
 
-    const msg = errorMessage || `Server error (${response.status})`;
-    debugError("[ArtifactService] listArtifacts:", response.status, "-", msg);
+    const msg = errorMessage || `Server error (${result.status})`;
+    debugError("[ArtifactService] listArtifacts:", result.status, "-", msg);
     return {
       success: false,
       error: "internal_error",
@@ -183,16 +162,13 @@ export async function deleteArtifact(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok || response.status === 204) {
+    if (response.ok || result.status === 204) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -200,7 +176,7 @@ export async function deleteArtifact(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -245,13 +221,10 @@ export async function getArtifactURL(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data: ArtifactURLResponse = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         url: data.url,
@@ -260,7 +233,7 @@ export async function getArtifactURL(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -268,7 +241,7 @@ export async function getArtifactURL(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -443,7 +416,7 @@ export async function uploadArtifact(
     });
 
     if (response.ok) {
-      const data: UploadArtifactResponse = await response.json();
+      const data = await response.json();
       return { success: true, key: data.key, size: data.size };
     }
 
