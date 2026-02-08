@@ -34,7 +34,7 @@ type DownloadJobsListResponse struct {
 
 // StartDownloadsRequest represents the request to start downloads
 type StartDownloadsRequest struct {
-	Components []string `json:"components"`
+	Components []string `json:"components" binding:"required"`
 	Priority   int      `json:"priority,omitempty"`
 }
 

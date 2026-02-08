@@ -268,11 +268,6 @@ func (h *Handler) HandleRefresh(c *gin.Context) {
 		return
 	}
 
-	if req.RefreshToken == "" {
-		c.JSON(http.StatusBadRequest, errors.ErrMissingRequiredField.WithMessage("refresh_token is required").ToResponse())
-		return
-	}
-
 	tokenPair, user, err := h.jwtService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
 		common.AuditLog(c, common.AuditEvent{Action: "auth.refresh", Detail: "invalid refresh token", Success: false})

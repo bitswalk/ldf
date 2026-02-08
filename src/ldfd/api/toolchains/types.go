@@ -19,7 +19,7 @@ type CreateToolchainProfileRequest struct {
 	Name        string             `json:"name" binding:"required" example:"gcc-cross-aarch64"`
 	DisplayName string             `json:"display_name" binding:"required" example:"GCC Cross (aarch64)"`
 	Description string             `json:"description" example:"GCC cross-compiler for aarch64 targets"`
-	Type        string             `json:"type" binding:"required" example:"gcc"`
+	Type        string             `json:"type" binding:"required,oneof=gcc llvm" example:"gcc"`
 	Config      db.ToolchainConfig `json:"config"`
 }
 

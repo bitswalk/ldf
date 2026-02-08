@@ -19,7 +19,7 @@ type CreateBoardProfileRequest struct {
 	Name        string         `json:"name" binding:"required" example:"jetson-orin"`
 	DisplayName string         `json:"display_name" binding:"required" example:"NVIDIA Jetson Orin"`
 	Description string         `json:"description" example:"NVIDIA Jetson Orin developer kit"`
-	Arch        string         `json:"arch" binding:"required" example:"aarch64"`
+	Arch        string         `json:"arch" binding:"required,oneof=x86_64 aarch64" example:"aarch64"`
 	Config      db.BoardConfig `json:"config"`
 }
 
