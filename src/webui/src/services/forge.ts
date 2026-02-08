@@ -1,6 +1,5 @@
+import { authFetch, getApiUrl } from "./api";
 // Forge service for LDF server communication
-
-import { getServerUrl, getAuthToken } from "./storage";
 
 export type ForgeType =
   | "github"
@@ -105,25 +104,6 @@ export type CommonFiltersResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // Detect forge type and get defaults for a URL
 export async function detectForge(url: string): Promise<DetectResult> {
   const apiUrl = getApiUrl("/forge/detect");
@@ -137,18 +117,16 @@ export async function detectForge(url: string): Promise<DetectResult> {
   }
 
   try {
-    const response = await fetch(apiUrl, {
+    const result = await authFetch<DetectResponse>(apiUrl, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify({ url }),
     });
 
-    if (response.ok) {
-      const data: DetectResponse = await response.json();
-      return { success: true, data };
+    if (result.ok) {
+      return { success: true, data: result.data! };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -188,9 +166,8 @@ export async function previewFilter(
   }
 
   try {
-    const response = await fetch(apiUrl, {
+    const result = await authFetch<PreviewFilterResponse>(apiUrl, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify({
         url,
         forge_type: forgeType,
@@ -198,12 +175,11 @@ export async function previewFilter(
       }),
     });
 
-    if (response.ok) {
-      const data: PreviewFilterResponse = await response.json();
-      return { success: true, data };
+    if (result.ok) {
+      return { success: true, data: result.data! };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -211,7 +187,7 @@ export async function previewFilter(
       };
     }
 
-    if (response.status === 502) {
+    if (result.status === 502) {
       return {
         success: false,
         error: "upstream_error",
@@ -247,17 +223,13 @@ export async function listForgeTypes(): Promise<ListForgeTypesResult> {
   }
 
   try {
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch<{ forge_types: ForgeTypeInfo[] }>(apiUrl);
 
-    if (response.ok) {
-      const data = await response.json();
-      return { success: true, forge_types: data.forge_types };
+    if (result.ok) {
+      return { success: true, forge_types: result.data!.forge_types };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -293,17 +265,13 @@ export async function getCommonFilters(): Promise<CommonFiltersResult> {
   }
 
   try {
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch<CommonFiltersResponse>(apiUrl);
 
-    if (response.ok) {
-      const data: CommonFiltersResponse = await response.json();
-      return { success: true, filters: data.filters };
+    if (result.ok) {
+      return { success: true, filters: result.data!.filters };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -341,10 +309,34 @@ export function getForgeTypeDisplayName(forgeType: ForgeType): string {
 
 // All available forge types for local use
 export const FORGE_TYPES: ForgeTypeInfo[] = [
-  { type: "github", display_name: "GitHub", description: "GitHub.com repositories" },
-  { type: "gitlab", display_name: "GitLab", description: "GitLab.com or self-hosted GitLab instances" },
-  { type: "gitea", display_name: "Gitea", description: "Gitea self-hosted instances" },
-  { type: "codeberg", display_name: "Codeberg", description: "Codeberg.org repositories" },
-  { type: "forgejo", display_name: "Forgejo", description: "Forgejo self-hosted instances" },
-  { type: "generic", display_name: "Generic", description: "Generic Git/HTTP sources (kernel.org style)" },
+  {
+    type: "github",
+    display_name: "GitHub",
+    description: "GitHub.com repositories",
+  },
+  {
+    type: "gitlab",
+    display_name: "GitLab",
+    description: "GitLab.com or self-hosted GitLab instances",
+  },
+  {
+    type: "gitea",
+    display_name: "Gitea",
+    description: "Gitea self-hosted instances",
+  },
+  {
+    type: "codeberg",
+    display_name: "Codeberg",
+    description: "Codeberg.org repositories",
+  },
+  {
+    type: "forgejo",
+    display_name: "Forgejo",
+    description: "Forgejo self-hosted instances",
+  },
+  {
+    type: "generic",
+    display_name: "Generic",
+    description: "Generic Git/HTTP sources (kernel.org style)",
+  },
 ];

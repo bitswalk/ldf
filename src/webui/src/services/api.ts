@@ -3,6 +3,7 @@
 import {
   getAuthToken,
   getRefreshToken,
+  getServerUrl,
   setAuthToken,
   setRefreshToken,
   setTokenExpiresAt,
@@ -95,7 +96,7 @@ export interface ApiResponse<T> {
  */
 export async function authFetch<T = unknown>(
   url: string,
-  options: FetchOptions = {}
+  options: FetchOptions = {},
 ): Promise<ApiResponse<T>> {
   const { skipAuth = false, skipRetry = false, ...fetchOptions } = options;
 
@@ -192,6 +193,16 @@ export async function authFetch<T = unknown>(
       message: err instanceof Error ? err.message : "Network error",
     };
   }
+}
+
+/**
+ * Build a full API URL from a path like "/components".
+ * Returns null if the server URL is not configured.
+ */
+export function getApiUrl(path: string): string | null {
+  const serverUrl = getServerUrl();
+  if (!serverUrl) return null;
+  return `${serverUrl}/v1${path}`;
 }
 
 /**

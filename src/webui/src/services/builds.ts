@@ -1,3 +1,4 @@
+import { authFetch, getApiUrl } from "./api";
 // Builds service for LDF server communication
 
 import { getServerUrl, getAuthToken } from "./storage";
@@ -149,25 +150,6 @@ export type ActionResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // Start a build for a distribution
 export async function startBuild(
   distributionId: string,
@@ -188,18 +170,17 @@ export async function startBuild(
   try {
     const body: StartBuildRequest = { arch, format, clear_cache: clearCache };
 
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
 
-    if (response.ok) {
-      const build = await response.json();
+    if (result.ok) {
+      const build = result.data as any;
       return { success: true, build };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -207,7 +188,7 @@ export async function startBuild(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -215,7 +196,7 @@ export async function startBuild(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -223,8 +204,8 @@ export async function startBuild(
       };
     }
 
-    if (response.status === 400) {
-      const data = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const data = result;
       return {
         success: false,
         error: "bad_request",
@@ -260,17 +241,14 @@ export async function getBuild(buildId: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const build = await response.json();
+    if (result.ok) {
+      const build = result.data as any;
       return { success: true, build };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -278,7 +256,7 @@ export async function getBuild(buildId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -286,7 +264,7 @@ export async function getBuild(buildId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -332,13 +310,10 @@ export async function listDistributionBuilds(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         builds: data.builds || [],
@@ -346,7 +321,7 @@ export async function listDistributionBuilds(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -354,7 +329,7 @@ export async function listDistributionBuilds(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -362,7 +337,7 @@ export async function listDistributionBuilds(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -400,16 +375,13 @@ export async function clearDistributionBuilds(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -417,7 +389,7 @@ export async function clearDistributionBuilds(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -425,7 +397,7 @@ export async function clearDistributionBuilds(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -473,13 +445,10 @@ export async function getBuildLogs(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         logs: data.logs || [],
@@ -487,7 +456,7 @@ export async function getBuildLogs(
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -495,7 +464,7 @@ export async function getBuildLogs(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -503,7 +472,7 @@ export async function getBuildLogs(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -609,16 +578,13 @@ export async function cancelBuild(buildId: string): Promise<ActionResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "POST" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -626,7 +592,7 @@ export async function cancelBuild(buildId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -634,7 +600,7 @@ export async function cancelBuild(buildId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -670,16 +636,13 @@ export async function retryBuild(buildId: string): Promise<ActionResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "POST" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -687,7 +650,7 @@ export async function retryBuild(buildId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -695,7 +658,7 @@ export async function retryBuild(buildId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -703,8 +666,8 @@ export async function retryBuild(buildId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 400) {
-      const data = await response.json().catch(() => ({}));
+    if (result.status === 400) {
+      const data = result;
       return {
         success: false,
         error: "bad_request",
@@ -740,13 +703,10 @@ export async function listActiveBuilds(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       return {
         success: true,
         builds: data.builds || [],
@@ -754,7 +714,7 @@ export async function listActiveBuilds(): Promise<ListResult> {
       };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -762,7 +722,7 @@ export async function listActiveBuilds(): Promise<ListResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",

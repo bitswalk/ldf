@@ -1,6 +1,6 @@
+import { authFetch, getApiUrl } from "./api";
 // Downloads service for LDF server communication
 
-import { getServerUrl, getAuthToken } from "./storage";
 
 export type DownloadJobStatus =
   | "pending"
@@ -94,25 +94,6 @@ export type ActionResult =
       message: string;
     };
 
-function getApiUrl(path: string): string | null {
-  const serverUrl = getServerUrl();
-  if (!serverUrl) return null;
-  return `${serverUrl}/v1${path}`;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
 // Start downloads for a distribution
 export async function startDownloads(
   distributionId: string,
@@ -134,19 +115,18 @@ export async function startDownloads(
       body.components = components;
     }
 
-    const response = await fetch(url, {
+    const result = await authFetch(url, {
       method: "POST",
-      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const jobs: DownloadJob[] = data.jobs || [];
       return { success: true, jobs };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -154,7 +134,7 @@ export async function startDownloads(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -162,7 +142,7 @@ export async function startDownloads(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -200,18 +180,15 @@ export async function listDownloads(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const jobs: DownloadJob[] = data.jobs || [];
       return { success: true, jobs };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -219,7 +196,7 @@ export async function listDownloads(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -227,7 +204,7 @@ export async function listDownloads(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -263,17 +240,14 @@ export async function getDownload(jobId: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const job = await response.json();
+    if (result.ok) {
+      const job = result.data as any;
       return { success: true, job };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -281,7 +255,7 @@ export async function getDownload(jobId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -289,7 +263,7 @@ export async function getDownload(jobId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -325,16 +299,13 @@ export async function cancelDownload(jobId: string): Promise<ActionResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "POST" });
 
-    if (response.ok) {
+    if (result.ok) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -342,7 +313,7 @@ export async function cancelDownload(jobId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -350,7 +321,7 @@ export async function cancelDownload(jobId: string): Promise<ActionResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -386,17 +357,14 @@ export async function retryDownload(jobId: string): Promise<GetResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "POST" });
 
-    if (response.ok) {
-      const job = await response.json();
+    if (result.ok) {
+      const job = result.data as any;
       return { success: true, job };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -404,7 +372,7 @@ export async function retryDownload(jobId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -412,7 +380,7 @@ export async function retryDownload(jobId: string): Promise<GetResult> {
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -450,16 +418,13 @@ export async function flushDownloads(
   }
 
   try {
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url, { method: "DELETE" });
 
-    if (response.ok || response.status === 204) {
+    if (response.ok || result.status === 204) {
       return { success: true };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -467,7 +432,7 @@ export async function flushDownloads(
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
@@ -475,7 +440,7 @@ export async function flushDownloads(
       };
     }
 
-    if (response.status === 404) {
+    if (result.status === 404) {
       return {
         success: false,
         error: "not_found",
@@ -511,18 +476,15 @@ export async function listActiveDownloads(): Promise<ListResult> {
   }
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const result = await authFetch(url);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (result.ok) {
+      const data = result.data as any;
       const jobs: DownloadJob[] = data.jobs || [];
       return { success: true, jobs };
     }
 
-    if (response.status === 401) {
+    if (result.status === 401) {
       return {
         success: false,
         error: "unauthorized",
@@ -530,7 +492,7 @@ export async function listActiveDownloads(): Promise<ListResult> {
       };
     }
 
-    if (response.status === 403) {
+    if (result.status === 403) {
       return {
         success: false,
         error: "forbidden",
