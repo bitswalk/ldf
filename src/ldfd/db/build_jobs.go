@@ -77,16 +77,28 @@ func (r *BuildJobRepository) GetByID(id string) (*BuildJob, error) {
 	return r.scanJob(row)
 }
 
-// ListByDistribution retrieves all build jobs for a distribution
-func (r *BuildJobRepository) ListByDistribution(distributionID string) ([]BuildJob, error) {
-	query := selectBuildJobsQuery + ` WHERE distribution_id = ? ORDER BY created_at DESC`
-	rows, err := r.db.DB().Query(query, distributionID)
+// ListByDistribution retrieves build jobs for a distribution with pagination
+func (r *BuildJobRepository) ListByDistribution(distributionID string, limit, offset int) ([]BuildJob, int, error) {
+	// Get total count
+	var total int
+	countQuery := `SELECT COUNT(*) FROM build_jobs WHERE distribution_id = ?`
+	if err := r.db.DB().QueryRow(countQuery, distributionID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count build jobs: %w", err)
+	}
+
+	query := selectBuildJobsQuery + ` WHERE distribution_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	rows, err := r.db.DB().Query(query, distributionID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list build jobs: %w", err)
+		return nil, 0, fmt.Errorf("failed to list build jobs: %w", err)
 	}
 	defer rows.Close()
 
-	return r.scanJobs(rows)
+	jobs, err := r.scanJobs(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return jobs, total, nil
 }
 
 // ListByStatus retrieves all build jobs with a specific status

@@ -13,7 +13,6 @@ import {
   getFormatDisplayText,
   formatBytes,
   formatDuration,
-  isBuildActive,
 } from "../../services/builds";
 import { t } from "../../services/i18n";
 
@@ -210,11 +209,6 @@ export const BuildsList: Component<BuildsListProps> = (props) => {
                     </Show>
                   </div>
                   <div class="flex-shrink-0">
-                    <Show when={isBuildActive(build.status)}>
-                      <div class="text-sm text-muted-foreground">
-                        {build.progress_percent}%
-                      </div>
-                    </Show>
                     <Icon
                       name="caret-right"
                       size="sm"

@@ -342,7 +342,7 @@ export async function listDistributionBuilds(
       return {
         success: true,
         builds: data.builds || [],
-        count: data.count || 0,
+        count: data.total || data.count || 0,
       };
     }
 
